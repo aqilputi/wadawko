@@ -1,0 +1,3 @@
+# reaproveita os artefatos já compilados do spike (gpui leva ~19 min do zero)
+[build]
+target-dir = "spike/target"

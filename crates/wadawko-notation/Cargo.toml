@@ -1,0 +1,13 @@
+[package]
+name = "wadawko-notation"
+description = "WaDAWko — engraving da partitura de taiko (subconjunto SMuFL/Bravura) sobre wadawko-draw::Canvas2D"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+wadawko-core = { path = "../wadawko-core" }
+wadawko-draw = { path = "../wadawko-draw" }
+
+[dev-dependencies]
+serde_json = { workspace = true }

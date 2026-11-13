@@ -1,0 +1,17 @@
+[package]
+name = "wadawko-export"
+description = "WaDAWko — export de áudio (WAV 16/24-bit, MP3 192 kbps via ffmpeg) e o binário wadawko-render"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+wadawko-core = { path = "../wadawko-core" }
+wadawko-samples = { path = "../wadawko-samples" }
+wadawko-audio = { path = "../wadawko-audio" }
+anyhow = { workspace = true }
+serde_json = { workspace = true }
+
+[[bin]]
+name = "wadawko-render"
+path = "src/bin/wadawko-render.rs"

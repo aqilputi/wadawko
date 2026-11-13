@@ -1,0 +1,11 @@
+# dependências e builds
+node_modules/
+target/
+spike/target/
+dist/
+
+# banco vivo (a cópia de uso fica em ~/.local/share/wadawko/); o backup JSON entra
+data/*.db
+data/*.db-wal
+data/*.db-shm
+*.db-journal

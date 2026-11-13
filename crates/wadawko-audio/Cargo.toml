@@ -1,0 +1,15 @@
+[package]
+name = "wadawko-audio"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+wadawko-core = { path = "../wadawko-core" }
+wadawko-samples = { path = "../wadawko-samples" }
+cpal = { workspace = true }
+rtrb = { workspace = true }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

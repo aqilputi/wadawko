@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="120" height="80" viewBox="0 0 120 80">
+<defs>
+<clipPath id="clip0"><rect x="0" y="0" width="20" height="20" transform="translate(10 50)"/></clipPath>
+</defs>
+<rect x="0" y="0" width="120" height="80" fill="#f6f1e7"/>
+<rect x="11" y="11" width="38" height="18" rx="3" fill="#c8102e" fill-opacity="0.5" stroke="#1f1a17" stroke-width="2"/>
+<line x1="10" y1="40.5" x2="110" y2="40.5" stroke="#1f1a17" stroke-width="1"/>
+<path d="M60 10 L80 10 Q90 20 80 30 C75 35 65 35 60 30 Z" fill="#1f1a17"/>
+<path d="M60 10 L80 10 Q90 20 80 30 C75 35 65 35 60 30 Z" fill="none" stroke="#c8102e" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="60" y="60" font-family="Zen Kaku Gothic New" font-size="12" font-weight="700" font-style="italic" text-anchor="middle" fill="#c8102e">Don &amp; &lt;ka&gt;</text>
+<g clip-path="url(#clip0)">
+<path d="M10 5 C10 7.761 7.761 10 5 10 C2.239 10 0 7.761 0 5 C0 2.239 2.239 0 5 0 C7.761 0 10 2.239 10 5 Z" fill="#1f1a17" transform="matrix(2 0 0 2 10 50)"/>
+</g>
+<rect x="100.5" y="60.5" width="9" height="9" fill="none" stroke="#1f1a17" stroke-width="1"/>
+</svg>

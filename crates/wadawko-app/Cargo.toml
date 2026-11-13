@@ -1,0 +1,22 @@
+[package]
+name = "wadawko-app"
+description = "WaDAWko — app desktop (GPUI): shell, grade, teclado"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "wadawko"
+path = "src/main.rs"
+
+[dependencies]
+wadawko-core = { path = "../wadawko-core" }
+wadawko-store = { path = "../wadawko-store" }
+wadawko-samples = { path = "../wadawko-samples" }
+wadawko-audio = { path = "../wadawko-audio" }
+wadawko-export = { path = "../wadawko-export" }
+wadawko-draw = { path = "../wadawko-draw" }
+wadawko-notation = { path = "../wadawko-notation" }
+gpui-kit = { workspace = true }
+anyhow = { workspace = true }
+serde_json = { workspace = true }

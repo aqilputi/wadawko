@@ -1,0 +1,13 @@
+[package]
+name = "wadawko-store"
+description = "WaDAWko — persistência: SQLite kv (mesmo banco do app web), workspace/projetos, autosave, histórico, import/export"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+wadawko-core = { path = "../wadawko-core" }
+rusqlite = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }

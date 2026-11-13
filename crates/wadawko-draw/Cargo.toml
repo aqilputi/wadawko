@@ -1,0 +1,12 @@
+[package]
+name = "wadawko-draw"
+description = "WaDAWko — desenho 2D independente de backend: trait Canvas2D, medição de fontes/glifos (SMuFL/Bravura) e backends SVG, tiny-skia e Recording"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+ttf-parser = "0.25"
+tiny-skia = { version = "0.11", default-features = false, features = ["std", "simd", "png-format"] }
