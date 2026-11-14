@@ -422,6 +422,8 @@ impl Shell {
                     let ch = ch.to_string();
                     self.grid.update(cx, |g, cx| {
                         if g.cursor.is_some() {
+                            // começou a digitar: a seleção (do arrasto) sai
+                            g.anchor = None;
                             g.edit.push_str(&ch);
                             cx.notify();
                         }
@@ -647,26 +649,23 @@ impl Shell {
         let topbar = self.topbar(&th, playing, cx);
 
         // ── página ──
-        let content = match self.page {
+        // No editor, abas + barra de contexto ficam FIXAS no topo (fora da rolagem):
+        // dá para usá-las com a grade rolada em qualquer seção.
+        let (header, content) = match self.page {
             Page::Editor => {
-                let tabs = div().flex().child(self.view_tabs(&th));
+                let mut head = div().flex().flex_col().gap(px(12.0)).child(div().flex().child(self.view_tabs(&th)));
                 let body = match self.views.tab(self.tab) {
                     None => {
+                        head = head.child(self.context_toolbar(&th, cx));
                         let grid_h = self.grid.read(cx).grid_height();
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap(px(18.0))
-                            .child(self.context_toolbar(&th, cx))
-                            .child(self.grid.clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(grid_h))))
-                            .into_any_element()
+                        self.grid.clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(grid_h))).into_any_element()
                     }
                     Some(view) => view,
                 };
-                div().flex().flex_col().gap(px(18.0)).child(tabs).child(body).into_any_element()
+                (Some(head), body)
             }
-            Page::Config => self.config_page(&th, cx).into_any_element(),
-            other => self.views.page(other).unwrap_or_else(|| div().into_any_element()),
+            Page::Config => (None, self.config_page(&th, cx).into_any_element()),
+            other => (None, self.views.page(other).unwrap_or_else(|| div().into_any_element())),
         };
 
         // playhead + notas soando agora (overlay sem cache, irmão da grade)
@@ -709,14 +708,22 @@ impl Shell {
         .absolute()
         .inset_0();
 
+        // overlay (playhead/flashes) só sobre a área rolável: nunca pinta por cima do cabeçalho
+        let scroll_area = div()
+            .flex_1()
+            .min_h_0()
+            .relative()
+            .child(div().id("editor-scroll").size_full().overflow_y_scroll().track_scroll(&self.scroll).p(px(20.0)).when(header.is_some(), |d| d.pt(px(12.0))).child(content))
+            .child(overlay);
         let editor = div()
             .flex_1()
             .min_w_0()
             .h_full()
-            .relative()
+            .flex()
+            .flex_col()
             .bg(th.bg)
-            .child(div().id("editor-scroll").size_full().overflow_y_scroll().track_scroll(&self.scroll).p(px(20.0)).child(content))
-            .child(overlay);
+            .when_some(header, |d, h| d.child(div().flex_none().px(px(20.0)).pt(px(16.0)).pb(px(8.0)).border_b_1().border_color(th.line).child(h)))
+            .child(scroll_area);
 
         let panel = self.right_panel(&th, cx);
         let status = self.status_bar(&th, playing, play_pos, cx);

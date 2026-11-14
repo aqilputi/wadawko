@@ -1145,7 +1145,9 @@ impl GridView {
                 }
                 self.commit_edit_in_place(cx);
                 let selecting = self.mode == Mode::Select || matches!(self.vmode, VMode::Visual | VMode::VLine);
-                if self.lane == Lane::Cells && selecting && self.in_selection(c) && !ev.modifiers.shift {
+                // sobre a seleção: arrasta o bloco (modo selecionar/visual) ou, com Alt,
+                // clona em qualquer modo — no modo editar o clique simples só põe o cursor
+                if self.lane == Lane::Cells && (selecting || ev.modifiers.alt) && self.in_selection(c) && !ev.modifiers.shift {
                     self.move_drag = Some(MoveDrag { from: c, dt: 0, dg: 0, clone: ev.modifiers.alt });
                     cx.notify();
                     return;
@@ -1221,7 +1223,7 @@ impl GridView {
             return;
         }
         if let Some(md) = self.move_drag {
-            if let Some(Hit::Cell(c)) = self.hit(s, ev.position) {
+                if let Some(Hit::Cell(c)) = self.hit(s, ev.position) {
                 let song = &self.song;
                 let dg = song.flat(c.m, c.k) as isize - song.flat(md.from.m, md.from.k) as isize;
                 let dt = c.t as isize - md.from.t as isize;
@@ -1233,7 +1235,9 @@ impl GridView {
             }
             return;
         }
-        let drag_selects = self.mode == Mode::Select || matches!(self.vmode, VMode::Normal | VMode::Visual | VMode::VLine);
+        // arrastar seleciona em todos os modos (no modo editar também: depois dá
+        // para Ctrl+C / Delete / Alt+arrastar; digitar continua no cursor)
+        let drag_selects = self.lane == Lane::Cells || self.mode == Mode::Select || matches!(self.vmode, VMode::Normal | VMode::Visual | VMode::VLine);
         let here = match self.hit(s, ev.position) {
             Some(Hit::Cell(c)) if self.lane == Lane::Cells => Some(c),
             Some(Hit::Kyai(c)) if self.lane == Lane::Kyai => self.cursor.filter(|cur| cur.t == c.t).map(|_| c),

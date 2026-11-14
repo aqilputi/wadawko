@@ -44,7 +44,8 @@ WaDAWko — editor/DAW de taiko
   --mute               volume de saída 0 (o engine roda normalmente)
   --bench N            toca com follow e zoom oscilando por N s e imprime o relatório
   --demo MODO          palette | hints | whichkey | roothints | cmdline | config | visual | play | enter |
-                       kiai | menu | dyn | simple | mixer | pessoas | kit | kit-new | esteira | lane | partitura
+                       kiai | menu | dyn | simple | mixer | pessoas | kit | kit-new | esteira | lane | partitura |
+                       probe (simula mouse e teclado e imprime o efeito; use com cópia do banco)
   --selftest           abre, pinta, toca, edita, desfaz/refaz, grava e sai (imprime linhas TESTE)
   --help
 ";
@@ -211,7 +212,9 @@ fn main() {
         if args.selftest {
             selftest(state.clone(), win.1.clone(), win.0, cx);
         }
-        if let Some(demo) = args.demo.clone() {
+        if args.demo.as_deref() == Some("probe") {
+            run_probe(state.clone(), win.1.clone(), win.0, cx);
+        } else if let Some(demo) = args.demo.clone() {
             run_demo(demo, state.clone(), win.1.clone(), win.0, cx);
         }
         cx.activate(true);
@@ -322,6 +325,159 @@ fn selftest(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App)
     .detach();
 }
 
+/// `--demo probe`: simula mouse e teclado PELO CAMINHO REAL (hitboxes, foco,
+/// keymap) e imprime o efeito de cada passo. Use com uma cópia do banco.
+fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App) {
+    use gpui_kit::{Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PlatformInput, Pixels, Point};
+    fn wait(cx: &mut AsyncApp, ms: u64) -> impl std::future::Future<Output = ()> {
+        cx.background_executor().timer(Duration::from_millis(ms))
+    }
+    let alt = Modifiers { alt: true, ..Default::default() };
+    let none = Modifiers::default();
+    cx.spawn(async move |cx: &mut AsyncApp| {
+        wait(cx, 1500).await;
+        let report = |label: &str, cx: &mut AsyncApp| {
+            let _ = w.update(cx, |_, window, cx| {
+                let sh = shell.read(cx);
+                let focused = window.focused(cx);
+                let on_ws = focused.as_ref() == Some(&sh.focus);
+                let g = sh.grid.read(cx);
+                let clip = cx.read_from_clipboard().and_then(|c| c.text()).unwrap_or_default();
+                let toast = state.read(cx).toast.as_ref().map(|(t, _)| t.clone()).unwrap_or_default();
+                println!(
+                    "PROBE {label}: foco={} (workspace={on_ws}) · modo={}/{:?} · cursor={:?} · âncora={:?} · clipboard={:?} · toast={toast:?}",
+                    if focused.is_some() { "sim" } else { "NENHUM" },
+                    if g.mode == views::grid::Mode::Select { "selecionar" } else { "editar" },
+                    g.vmode,
+                    g.cursor.map(|c| (c.m, c.t, c.k)),
+                    g.anchor.map(|c| (c.m, c.t, c.k)),
+                    clip.chars().take(40).collect::<String>()
+                );
+            });
+        };
+        let key = |k: &'static str, cx: &mut AsyncApp| {
+            let _ = w.update(cx, |_, window, cx| {
+                let handled = window.dispatch_keystroke(Keystroke::parse(k).unwrap(), cx);
+                println!("PROBE tecla {k}: tratada={handled}");
+            });
+        };
+        let cell = |m: usize, t: usize, k: usize, cx: &mut AsyncApp| -> Option<Point<Pixels>> {
+            cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m, t, k }).map(|b| b.center()))
+        };
+        let mouse = |ev: PlatformInput, cx: &mut AsyncApp| {
+            let _ = w.update(cx, |_, window, cx| {
+                window.dispatch_event(ev, cx);
+            });
+        };
+        let down = |p, m: Modifiers| PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position: p, modifiers: m, click_count: 1, first_mouse: false });
+        let up = |p, m: Modifiers| PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: p, modifiers: m, click_count: 1 });
+        let mv = |p, m: Modifiers| PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: Some(MouseButton::Left), modifiers: m });
+
+        report("início", cx);
+        // linha 2 (Ōdaiko em papparapa) tem notas no compasso 0
+        let (Some(a), Some(b)) = (cell(0, 2, 0, cx), cell(0, 2, 1, cx)) else {
+            println!("PROBE sem geometria de células");
+            let _ = cx.update(|cx| cx.quit());
+            return;
+        };
+        // 1) clique numa célula + Ctrl+C (modo editar)
+        mouse(down(a, none), cx);
+        mouse(up(a, none), cx);
+        wait(cx, 200).await;
+        report("após clique (editar)", cx);
+        key("ctrl-c", cx);
+        wait(cx, 100).await;
+        report("após ctrl-c", cx);
+        // 2) modo editar: arrastar seleciona; Ctrl+C mantém a seleção
+        mouse(down(a, none), cx);
+        mouse(mv(b, none), cx);
+        mouse(up(b, none), cx);
+        wait(cx, 200).await;
+        report("após arrasto (editar)", cx);
+        key("ctrl-c", cx);
+        wait(cx, 100).await;
+        report("após ctrl-c com seleção", cx);
+        // 3) Alt+arrastar a seleção (células 0–1) duas células para a direita = clonar
+        let before = cx.update(|cx| state.read(cx).song().clone());
+        if let (Some(src), Some(dst)) = (cell(0, 2, 0, cx), cell(0, 2, 2, cx)) {
+            mouse(down(src, alt), cx);
+            mouse(mv(dst, alt), cx);
+            mouse(up(dst, alt), cx);
+            wait(cx, 200).await;
+        }
+        let after = cx.update(|cx| state.read(cx).song().clone());
+        let cells = |song: &wadawko_core::Song| (0..4).map(|k| song.cell(2, 0, k).map(str::to_string)).collect::<Vec<_>>();
+        println!("PROBE alt+arrasto clonou: {} · compasso 0 da linha 2 antes={:?} depois={:?}", before != after, cells(&before), cells(&after));
+        key("ctrl-z", cx);
+        wait(cx, 100).await;
+        let undone = cx.update(|cx| state.read(cx).song().clone());
+        println!("PROBE ctrl-z desfez: {}", undone == before);
+        // 4) clique simples (sem Alt) dentro da seleção, no modo editar, só põe o cursor
+        mouse(down(b, none), cx);
+        mouse(up(b, none), cx);
+        wait(cx, 150).await;
+        report("após clique simples na seleção", cx);
+        // 5) barra da seção: clicar no texto "1×" (não é botão) (des)seleciona;
+        //    clicar no botão "+" das repetições NÃO
+        let hint = |id: &str| keys::HINTS.with(|h| h.borrow().targets.get(id).map(|t| t.bounds));
+        if let (Some(rm), Some(rp)) = (hint("s0-rep-"), hint("s0-rep+")) {
+            let txt = gpui_kit::point((rm.right() + rp.left()) / 2.0, rm.center().y);
+            let sel0 = cx.update(|cx| state.read(cx).tp.selected.len());
+            mouse(down(txt, none), cx);
+            wait(cx, 60).await;
+            mouse(up(txt, none), cx);
+            wait(cx, 150).await;
+            let sel1 = cx.update(|cx| state.read(cx).tp.selected.len());
+            println!("PROBE clique no texto 1× da barra: selecionadas {sel0} → {sel1}");
+            mouse(down(txt, none), cx);
+            wait(cx, 60).await;
+            mouse(up(txt, none), cx);
+            wait(cx, 150).await;
+            let rep = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().sections.as_ref().and_then(|v| v.first()).and_then(|s| s.repeat));
+            let (r0, s0) = (rep(cx), cx.update(|cx| state.read(cx).tp.selected.len()));
+            let p = rp.center();
+            mouse(down(p, none), cx);
+            wait(cx, 60).await;
+            mouse(up(p, none), cx);
+            wait(cx, 150).await;
+            let (r1, s1) = (rep(cx), cx.update(|cx| state.read(cx).tp.selected.len()));
+            println!("PROBE clique no + (repetições): repeat {r0:?} → {r1:?} · selecionadas {s0} → {s1}");
+            key("ctrl-z", cx);
+            wait(cx, 100).await;
+        }
+        // calibração: botão do cabeçalho fixo (+ seção) com clique sintético
+        if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("addsec").map(|t| t.bounds.center())) {
+            let n0 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));
+            mouse(down(p, none), cx);
+            wait(cx, 60).await;
+            mouse(up(p, none), cx);
+            wait(cx, 150).await;
+            let n1 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));
+            println!("PROBE calibração + seção: seções {n0} → {n1}");
+            key("ctrl-z", cx);
+            wait(cx, 100).await;
+        }
+        // 6) rolar a área do editor: a barra de contexto (+ seção) deve ficar no lugar
+        let hint_y = |id: &str| keys::HINTS.with(|h| h.borrow().targets.get(id).map(|t| f32::from(t.bounds.origin.y)));
+        let (bar0, grid0) = (hint_y("addsec"), cell(0, 2, 0, cx).map(|p| f32::from(p.y)));
+        if let Some(p) = cell(0, 2, 0, cx) {
+            mouse(
+                PlatformInput::Scroll(gpui_kit::ScrollEvent { position: p, delta: gpui_kit::ScrollDelta::Pixels(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(-600.0))), modifiers: none, touch_phase: gpui_kit::TouchPhase::Moved, source: Default::default() }),
+                cx,
+            );
+        }
+        wait(cx, 400).await;
+        let (bar1, grid1) = (hint_y("addsec"), cell(0, 2, 0, cx).map(|p| f32::from(p.y)));
+        println!("PROBE rolagem: barra y {bar0:?} → {bar1:?} · grade y {grid0:?} → {grid1:?}");
+        key("ctrl-k", cx);
+        wait(cx, 100).await;
+        let pal = cx.update(|cx| shell.read(cx).palette.is_some());
+        println!("PROBE ctrl-k abriu a paleta: {pal}");
+        let _ = cx.update(|cx| cx.quit());
+    })
+    .detach();
+}
+
 /// `--demo modo`: abre a janela num estado específico (screenshots e testes manuais).
 fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App) {
     cx.spawn(async move |cx: &mut AsyncApp| {
@@ -422,6 +578,7 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 "mixer" => window.dispatch_action(Box::new(keys::nav::Mixer), cx),
                 "pessoas" | "people" => window.dispatch_action(Box::new(keys::nav::Pessoas), cx),
                 "kit" => window.dispatch_action(Box::new(keys::nav::Kit), cx),
+                "probe" => {}
                 // Kit com um instrumento custom novo (cartão + editores de zona); use com --read-only
                 "kit-new" => {
                     window.dispatch_action(Box::new(keys::nav::Kit), cx);

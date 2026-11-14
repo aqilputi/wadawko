@@ -448,7 +448,11 @@ impl Shell {
                 if let Some(r) = g.sel_range() {
                     g.yank(r, false, cx)
                 }
-                Self::end_visual(g)
+                // no modo simples a seleção fica (dá para Alt+arrastar / colar em seguida),
+                // como no app web; no vim o y sai do visual
+                if g.vmode != VMode::Simple {
+                    Self::end_visual(g)
+                }
             });
             this.flash("copiado", cx)
         });

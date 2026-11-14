@@ -247,6 +247,8 @@ impl Render for GridView {
             });
             keys::hintable(
                 small_btn(SharedString::from(id.clone()), label, &th, on).on_click(move |_: &ClickEvent, _, cx: &mut App| {
+                    // não deixa o clique chegar à barra da seção (que (des)seleciona)
+                    cx.stop_propagation();
                     let _ = w1.update(cx, |this, cx| op(this, cx));
                 }),
                 id,
@@ -327,6 +329,7 @@ impl Render for GridView {
                 })
             };
             let sid_click = sid.clone();
+            let sid_hint = sid.clone();
             let sid_ren = sid.clone();
             let sec_name = sec.name.clone();
             let key_col = key.clone();
@@ -338,7 +341,16 @@ impl Render for GridView {
                 .items_center()
                 .overflow_hidden()
                 .rounded(px(8.0))
+                .cursor_pointer()
                 .when(is_sel, |d| d.bg(th.accent_wash))
+                .when(!is_sel, |d| d.hover(|st| st.bg(th.paper_hover)))
+                // clique em qualquer ponto da barra (nome, vazios, 𝄆 1× 𝄇…) = (des)seleciona
+                // a seção para tocar; os botões dela param a propagação
+                .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                    if let Some(id) = &sid_click {
+                        this.state.update(cx, |st, cx| st.toggle_section_selected(id, cx));
+                    }
+                }))
                 .when(drop_here, |d| d.border_t_2().border_color(th.accent))
                 .when(dragging_this, |d| d.opacity(0.5))
                 .on_mouse_move(cx.listener(move |this, ev: &MouseMoveEvent, _, cx| {
@@ -380,7 +392,7 @@ impl Render for GridView {
                         )
                         .child({
                             let w = weak.clone();
-                            let sid2 = sid_click.clone();
+                            let sid2 = sid_hint.clone();
                             keys::hintable(
                                 div()
                                     .id(("sec-name", s))
@@ -393,12 +405,7 @@ impl Render for GridView {
                                     .cursor_pointer()
                                     .when(cur_sec || is_sel, |d| d.text_color(th.accent))
                                     .child(SharedString::from(if is_sel { format!("▶ {}", sec.name) } else { sec.name.clone() }))
-                                    .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
-                                        // clique no nome = (des)seleciona a seção para tocar
-                                        if let Some(id) = &sid_click {
-                                            this.state.update(cx, |st, cx| st.toggle_section_selected(id, cx));
-                                        }
-                                    })),
+,
                                 format!("s{s}-name"),
                                 Rc::new(move |_, cx: &mut App| {
                                     let _ = w.update(cx, |this, cx| {
@@ -437,7 +444,7 @@ impl Render for GridView {
                         .child(div().w(px(8.0)))
                         .child(mk(format!("s{s}-m-"), "−", false, meas_op(false)))
                         .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(SharedString::from(format!("{} compasso{}", sec.end - sec.start, if sec.end - sec.start == 1 { "" } else { "s" }))))
-                        .child(mk(format!("s{s}-m+"), "+", false, meas_op(true))),
+                        .child(mk(format!("s{s}-m+"), "+", false, meas_op(true)))
                 )
                 .child({
                     let w1 = weak.clone();
@@ -464,6 +471,7 @@ impl Render for GridView {
                             .hover(|st| st.bg(th.paper_hover))
                             .child("⧉ clonar")
                             .on_click(move |_: &ClickEvent, _, cx: &mut App| {
+                                cx.stop_propagation();
                                 let _ = w1.update(cx, |this, cx| op(this, cx));
                             }),
                         format!("s{s}-clone"),
