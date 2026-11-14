@@ -24,7 +24,7 @@ pub mod nav {
 }
 pub mod keys {
     use gpui_kit::actions;
-    actions!(keys, [TogglePalette, ShowShortcuts, ReloadKeymap, ToggleVim, Cancel, ToggleRootHints, CreateKeymap]);
+    actions!(keys, [TogglePalette, ShowShortcuts, ReloadKeymap, ToggleVim, Cancel, ToggleRootHints, CreateKeymap, PaletteNext, PalettePrev]);
 }
 pub mod hints {
     use gpui_kit::actions;
@@ -64,7 +64,8 @@ pub mod grid {
         LastTrack, HalfRight, HalfLeft, DeleteCell, DeleteCellBack, DeleteMeasureRow, DeleteBeat, DeleteToMeasureEnd,
         DeleteMeasureAll, DeleteSectionRow, YankMeasureRow, YankBeat, YankSectionRow, PasteAfter, PasteBefore, Copy, Cut,
         Paste, DeleteSelection, ToggleSfz, Accent, Unaccent, ToggleSelectMode, ModeEdit, ModeSelect, MoveSelLeft, MoveSelRight,
-        MoveSelUp, MoveSelDown, CloneSelLeft, CloneSelRight, CloneSelUp, CloneSelDown, AssignToPen, NextPen, ToggleKyaiLane
+        MoveSelUp, MoveSelDown, CloneSelLeft, CloneSelRight, CloneSelUp, CloneSelDown, AssignToPen, NextPen, ToggleKyaiLane,
+        NextCell, PrevCell
     ]
 );
 }

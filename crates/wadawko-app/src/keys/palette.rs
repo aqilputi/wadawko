@@ -208,6 +208,20 @@ impl Shell {
                     .key_context("Palette")
                     .track_focus(&self.palette_focus)
                     .on_key_down(cx.listener(Self::palette_key))
+                    // Tab/Shift+Tab: viram ações (senão o Tab do gpui_kit, na raiz, só troca o foco)
+                    .on_action(cx.listener(|this: &mut Shell, _: &keys::keys::PaletteNext, _, cx| {
+                        let n = this.palette_items(cx).len();
+                        if let Some(p) = this.palette.as_mut() {
+                            p.sel = (p.sel + 1).min(n.saturating_sub(1));
+                            cx.notify();
+                        }
+                    }))
+                    .on_action(cx.listener(|this: &mut Shell, _: &keys::keys::PalettePrev, _, cx| {
+                        if let Some(p) = this.palette.as_mut() {
+                            p.sel = p.sel.saturating_sub(1);
+                            cx.notify();
+                        }
+                    }))
                     // Ctrl+K Ctrl+T etc.: fecham a paleta e seguem para o handler da raiz
                     .on_action(cx.listener(|this, _: &keys::view::ToggleTheme, w, cx| {
                         this.close_palette(w, cx);

@@ -48,7 +48,9 @@
       "alt-shift-right": "grid::CloneSelRight",
       "alt-shift-up": "grid::CloneSelUp",
       "alt-shift-down": "grid::CloneSelDown",
-      "ctrl-s": "project::Save"
+      "ctrl-s": "project::Save",
+      "tab": "grid::NextCell",
+      "shift-tab": "grid::PrevCell"
     }
   },
   {
@@ -250,7 +252,9 @@
       "ctrl-v": "keys::ToggleVim",
       "ctrl-l": "transport::ToggleLoop",
       "ctrl-m": "transport::ToggleMetronome",
-      "ctrl-s": "keys::ShowShortcuts"
+      "ctrl-s": "keys::ShowShortcuts",
+      "tab": "keys::PaletteNext",
+      "shift-tab": "keys::PalettePrev"
     }
   }
 ]

@@ -465,10 +465,34 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             wait(cx, 150).await;
             let sel1 = cx.update(|cx| state.read(cx).tp.selected.len());
             println!("PROBE clique no texto 1× da barra: selecionadas {sel0} → {sel1}");
+            // outra seção: clique simples troca (só ela); Ctrl+clique junta
+            let ctrl = Modifiers { control: true, ..Default::default() };
+            if let (Some(rm1), Some(rp1)) = (hint("s1-rep-"), hint("s1-rep+")) {
+                let txt1 = gpui_kit::point((rm1.right() + rp1.left()) / 2.0, rm1.center().y);
+                let sel_ids = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).tp.selected.clone());
+                mouse(down(txt1, none), cx);
+                wait(cx, 60).await;
+                mouse(up(txt1, none), cx);
+                wait(cx, 150).await;
+                let a1 = sel_ids(cx);
+                mouse(down(txt, ctrl), cx);
+                wait(cx, 60).await;
+                mouse(up(txt, ctrl), cx);
+                wait(cx, 150).await;
+                let a2 = sel_ids(cx);
+                mouse(down(txt, none), cx);
+                wait(cx, 60).await;
+                mouse(up(txt, none), cx);
+                wait(cx, 150).await;
+                let a3 = sel_ids(cx);
+                println!("PROBE seções: clique na 2ª → {} selecionada(s) · Ctrl+clique na 1ª → {} · clique simples na 1ª → {}", a1.len(), a2.len(), a3.len());
+            }
+            // limpa: clique na única selecionada
             mouse(down(txt, none), cx);
             wait(cx, 60).await;
             mouse(up(txt, none), cx);
             wait(cx, 150).await;
+            println!("PROBE clique na única selecionada limpa: {} selecionada(s)", cx.update(|cx| state.read(cx).tp.selected.len()));
             let rep = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().sections.as_ref().and_then(|v| v.first()).and_then(|s| s.repeat));
             let (r0, s0) = (rep(cx), cx.update(|cx| state.read(cx).tp.selected.len()));
             let p = rp.center();
@@ -529,10 +553,47 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         wait(cx, 400).await;
         let (bar1, grid1) = (hint_y("addsec"), cell(0, 2, 0, cx).map(|p| f32::from(p.y)));
         println!("PROBE rolagem: barra y {bar0:?} → {bar1:?} · grade y {grid0:?} → {grid1:?}");
+        // (no fim: o Tab move o cursor e a grade rola para o lado, o que mudaria as
+        // posições usadas pelos passos acima)
+        // Tab: digitar "do" + Tab grava e vai para a próxima célula; Tab sozinho avança
+        {
+            let (Some(e2), Some(_)) = (cell(0, 2, 2, cx), cell(0, 2, 3, cx)) else { return };
+            mouse(down(e2, none), cx);
+            mouse(up(e2, none), cx);
+            wait(cx, 100).await;
+            report("Tab: antes (cursor na célula vazia 2)", cx);
+            key("d", cx);
+            key("o", cx);
+            key("tab", cx);
+            wait(cx, 100).await;
+            report("Tab: depois de digitar do + Tab", cx);
+            println!("PROBE Tab: linha 2 = {}", row(cx));
+            key("tab", cx);
+            wait(cx, 100).await;
+            report("Tab: depois de Tab sozinho", cx);
+            key("shift-tab", cx);
+            wait(cx, 100).await;
+            report("Tab: depois de Shift+Tab", cx);
+            key("ctrl-z", cx);
+            wait(cx, 100).await;
+        }
+        report("antes do ctrl-k", cx);
+        let _ = w.update(cx, |_, window, cx| {
+            let ctx = window.context_stack().iter().map(|c| format!("{c:?}")).collect::<Vec<_>>().join(" > ");
+            println!("PROBE contexto de teclas: {ctx}");
+        });
         key("ctrl-k", cx);
         wait(cx, 100).await;
         let pal = cx.update(|cx| shell.read(cx).palette.is_some());
         println!("PROBE ctrl-k abriu a paleta: {pal}");
+        let sel = |cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).palette.as_ref().map(|p| p.sel));
+        let s0 = sel(cx);
+        key("tab", cx);
+        wait(cx, 100).await;
+        let s1 = sel(cx);
+        println!("PROBE Tab na paleta desce a seleção: {s0:?} → {s1:?}");
+        key("escape", cx);
+        wait(cx, 100).await;
         let _ = cx.update(|cx| cx.quit());
     })
     .detach();

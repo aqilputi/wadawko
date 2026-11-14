@@ -189,8 +189,12 @@ pub fn title_for(action_name: &str) -> Option<&'static str> {
         "vim::Digit0" | "vim::Digit1" | "vim::Digit2" | "vim::Digit3" | "vim::Digit4" | "vim::Digit5" | "vim::Digit6"
         | "vim::Digit7" | "vim::Digit8" | "vim::Digit9" => "contagem",
         "keys::Cancel" => "cancelar",
+        "keys::PaletteNext" => "próximo comando",
+        "keys::PalettePrev" => "comando anterior",
         "transport::Straight" => "colcheias retas",
         "transport::SwingOn" => "swing",
+        "grid::NextCell" => "grava e vai para a próxima célula",
+        "grid::PrevCell" => "grava e volta uma célula",
         "grid::Left" => "célula ←",
         "grid::Right" => "célula →",
         "grid::Up" => "linha ↑",

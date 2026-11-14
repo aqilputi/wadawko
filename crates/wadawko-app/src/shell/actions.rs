@@ -379,6 +379,10 @@ impl Shell {
         // movimentos
         let d = on!(d, cx, ga::Left, |this, w, cx| this.mv(M::Left, false, cx));
         let d = on!(d, cx, ga::Right, |this, w, cx| this.mv(M::Right, false, cx));
+        // Tab / Shift+Tab: grava o que está sendo digitado e anda uma célula (no lugar
+        // do Tab do gpui_kit, que só trocava o foco e deixava a grade sem teclado)
+        let d = on!(d, cx, ga::NextCell, |this, w, cx| this.tab_cell(M::Right, cx));
+        let d = on!(d, cx, ga::PrevCell, |this, w, cx| this.tab_cell(M::Left, cx));
         let d = on!(d, cx, ga::Up, |this, w, cx| {
             this.mv(M::Up, false, cx);
             this.reveal_cursor(cx)
@@ -595,6 +599,23 @@ impl Shell {
     }
 
     /// (nº de músicas, índice da atual)
+    /// Tab na grade: grava a edição em andamento e anda uma célula (Shift = volta).
+    /// Fora da grade (outras páginas/abas) não faz nada.
+    fn tab_cell(&mut self, dir: M, cx: &mut Context<Self>) {
+        if self.page != Page::Editor || self.tab != Tab::Grade {
+            return;
+        }
+        self.grid.update(cx, |g, cx| {
+            if let Some(c) = g.commit_edit_in_place(cx) {
+                g.cursor = Some(c);
+            }
+            g.motion(dir, 1, false, cx);
+            g.anchor = None;
+            cx.notify();
+        });
+        self.reveal_cursor(cx);
+    }
+
     pub fn project_pos(&self, cx: &gpui_kit::App) -> (usize, usize) {
         let st = self.state.read(cx);
         let cur = st.store.current_id();

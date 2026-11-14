@@ -343,11 +343,12 @@ impl Render for GridView {
                 .rounded(px(8.0))
                 .cursor_pointer()
                 .when(is_sel, |d| d.bg(th.accent_wash))
-                // clique em qualquer ponto da barra (nome, vazios, 𝄆 1× 𝄇…) = (des)seleciona
-                // a seção para tocar; os botões dela param a propagação
-                .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                // clique em qualquer ponto da barra (nome, vazios, 𝄆 1× 𝄇…) seleciona SÓ esta
+                // seção para tocar; com Ctrl, junta/tira das outras. Os botões param a propagação.
+                .on_click(cx.listener(move |this, ev: &ClickEvent, _, cx| {
                     if let Some(id) = &sid_click {
-                        this.state.update(cx, |st, cx| st.toggle_section_selected(id, cx));
+                        let additive = ev.modifiers().control || ev.modifiers().platform;
+                        this.state.update(cx, |st, cx| st.select_section(id, additive, cx));
                     }
                 }))
                 .when(drop_here, |d| d.border_t_2().border_color(th.accent))
@@ -409,7 +410,7 @@ impl Render for GridView {
                                 Rc::new(move |_, cx: &mut App| {
                                     let _ = w.update(cx, |this, cx| {
                                         if let Some(id) = &sid2 {
-                                            this.state.update(cx, |st, cx| st.toggle_section_selected(id, cx));
+                                            this.state.update(cx, |st, cx| st.select_section(id, false, cx));
                                         }
                                     });
                                 }),

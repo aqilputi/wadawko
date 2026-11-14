@@ -375,14 +375,20 @@ impl AppState {
         cx.notify();
     }
 
-    /// Liga/desliga uma seção na região de playback (clique no nome da seção).
+    /// Liga/desliga uma seção na região de playback, mantendo as outras
+    /// (Ctrl+clique na barra da seção, ação `section::ToggleSelect`).
     pub fn toggle_section_selected(&mut self, id: &str, cx: &mut Context<Self>) {
-        match self.tp.selected.iter().position(|x| x == id) {
-            Some(i) => {
-                self.tp.selected.remove(i);
-            }
-            None => self.tp.selected.push(id.to_string()),
+        self.select_section(id, true, cx);
+    }
+
+    /// Clique na barra da seção: sem `additive` seleciona SÓ ela (clicar de novo
+    /// na única selecionada limpa); com `additive` (Ctrl) liga/desliga mantendo as outras.
+    pub fn select_section(&mut self, id: &str, additive: bool, cx: &mut Context<Self>) {
+        let next = next_selection(&self.tp.selected, id, additive);
+        if next == self.tp.selected {
+            return;
         }
+        self.tp.selected = next;
         let was_playing = self.playing();
         self.sync_audio();
         if was_playing {
@@ -663,5 +669,43 @@ mod tests {
         drop(store);
         let store = ProjectStore::open(Db::open_read_only(&path).unwrap()).unwrap();
         assert_ne!(store.song().title, "outra");
+    }
+}
+
+/// Seleção de seções depois de um clique em `id` (ver [`AppState::select_section`]).
+pub fn next_selection(cur: &[String], id: &str, additive: bool) -> Vec<String> {
+    let has = cur.iter().any(|x| x == id);
+    if additive {
+        if has { cur.iter().filter(|x| *x != id).cloned().collect() } else { cur.iter().cloned().chain([id.to_string()]).collect() }
+    } else if has && cur.len() == 1 {
+        Vec::new()
+    } else {
+        vec![id.to_string()]
+    }
+}
+
+#[cfg(test)]
+mod selection_tests {
+    use super::next_selection;
+
+    fn v(ids: &[&str]) -> Vec<String> {
+        ids.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn plain_click_selects_only_that_section() {
+        assert_eq!(next_selection(&v(&[]), "a", false), v(&["a"]));
+        assert_eq!(next_selection(&v(&["a", "b"]), "c", false), v(&["c"]));
+        // clicar numa já selecionada (entre várias) deixa só ela
+        assert_eq!(next_selection(&v(&["a", "b"]), "b", false), v(&["b"]));
+        // clicar na única selecionada limpa
+        assert_eq!(next_selection(&v(&["a"]), "a", false), v(&[]));
+    }
+
+    #[test]
+    fn ctrl_click_adds_or_removes_keeping_others() {
+        assert_eq!(next_selection(&v(&["a"]), "b", true), v(&["a", "b"]));
+        assert_eq!(next_selection(&v(&["a", "b"]), "a", true), v(&["b"]));
+        assert_eq!(next_selection(&v(&[]), "a", true), v(&["a"]));
     }
 }
