@@ -225,13 +225,31 @@ pub enum Menu {
     Row { t: usize, s: usize },
 }
 
-/// Arrasto de um bloco selecionado (mover; com Alt, clonar).
+/// Arrasto de um bloco (mover; com Alt, clonar): nasce ao apertar sobre uma
+/// nota ou sobre a seleção; só "levanta" depois de [`DRAG_START_PX`] de movimento
+/// (antes disso, soltar = clique normal).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MoveDrag {
     pub from: Cur,
     pub dt: isize,
     pub dg: isize,
     pub clone: bool,
+    /// ponto (janela) onde o bloco foi pego
+    pub grab: (f32, f32),
+    /// já passou do limiar e está arrastando (o bloco flutua)
+    pub started: bool,
+    /// a seleção foi criada por este aperto (clique sem arrastar a desfaz)
+    pub picked: bool,
+}
+
+/// Movimento mínimo (px) para um aperto sobre nota virar arrasto.
+pub const DRAG_START_PX: f32 = 4.0;
+
+/// Uma célula do bloco levantado: retângulo (janela) no instante em que levantou + texto.
+#[derive(Clone, Debug)]
+pub struct GhostCell {
+    pub bounds: Bounds<Pixels>,
+    pub text: Option<SharedString>,
 }
 
 pub type Range4 = (usize, usize, usize, usize);
@@ -269,6 +287,8 @@ pub struct GridView {
     pub insert_log: Vec<String>,
     pub menu: Option<Menu>,
     pub move_drag: Option<MoveDrag>,
+    /// células do bloco que está flutuando (desenhadas pelo Shell, ver `views::drag_ghost`)
+    pub ghost: Rc<Vec<GhostCell>>,
     /// seção sendo arrastada (reordenar) e seção sob o ponteiro
     pub drag_sec: Option<usize>,
     pub drag_over: Option<usize>,
@@ -341,6 +361,7 @@ impl GridView {
             insert_log: Vec::new(),
             menu: None,
             move_drag: None,
+            ghost: Rc::new(Vec::new()),
             drag_sec: None,
             drag_over: None,
             dragging: false,
@@ -1144,13 +1165,23 @@ impl GridView {
                     return;
                 }
                 self.commit_edit_in_place(cx);
-                let selecting = self.mode == Mode::Select || matches!(self.vmode, VMode::Visual | VMode::VLine);
-                // sobre a seleção: arrasta o bloco (modo selecionar/visual) ou, com Alt,
-                // clona em qualquer modo — no modo editar o clique simples só põe o cursor
-                if self.lane == Lane::Cells && (selecting || ev.modifiers.alt) && self.in_selection(c) && !ev.modifiers.shift {
-                    self.move_drag = Some(MoveDrag { from: c, dt: 0, dg: 0, clone: ev.modifiers.alt });
-                    cx.notify();
-                    return;
+                // pegar: apertar sobre a seleção ou sobre uma nota pega o bloco (Alt = copia);
+                // em célula vazia, arrastar seleciona (abaixo). Shift estende a seleção.
+                if !ev.modifiers.shift {
+                    let in_sel = self.lane == Lane::Cells && self.in_selection(c);
+                    let g = self.song.flat(c.m, c.k);
+                    let has_note = self.song.cell_at(c.t, g).is_some();
+                    if in_sel || has_note || ev.modifiers.alt {
+                        if !in_sel {
+                            self.lane = Lane::Cells;
+                            self.anchor = Some(c);
+                            self.cursor = Some(c);
+                        }
+                        let grab = (f32::from(ev.position.x), f32::from(ev.position.y));
+                        self.move_drag = Some(MoveDrag { from: c, dt: 0, dg: 0, clone: ev.modifiers.alt, grab, started: false, picked: !in_sel });
+                        cx.notify();
+                        return;
+                    }
                 }
                 self.lane = Lane::Cells;
                 if ev.modifiers.shift {
@@ -1222,8 +1253,18 @@ impl GridView {
             cx.notify();
             return;
         }
-        if let Some(md) = self.move_drag {
-                if let Some(Hit::Cell(c)) = self.hit(s, ev.position) {
+        if let Some(mut md) = self.move_drag {
+            if !md.started {
+                let (dx, dy) = (f32::from(ev.position.x) - md.grab.0, f32::from(ev.position.y) - md.grab.1);
+                if dx * dx + dy * dy < DRAG_START_PX * DRAG_START_PX {
+                    return;
+                }
+                md.started = true;
+                self.ghost = Rc::new(self.ghost_cells());
+                self.move_drag = Some(md);
+                cx.notify();
+            }
+            if let Some(Hit::Cell(c)) = self.hit(s, ev.position) {
                 let song = &self.song;
                 let dg = song.flat(c.m, c.k) as isize - song.flat(md.from.m, md.from.k) as isize;
                 let dt = c.t as isize - md.from.t as isize;
@@ -1259,13 +1300,43 @@ impl GridView {
         }
     }
 
-    fn mouse_up(&mut self, cx: &mut Context<Self>) {
+    /// Soltou o botão (na grade ou em qualquer lugar da janela — o Shell repassa).
+    pub fn mouse_up(&mut self, cx: &mut Context<Self>) {
         self.dragging = false;
         self.pan = None;
         if let Some(md) = self.move_drag.take() {
-            self.move_selection(md.dt, md.dg, md.clone, cx);
+            self.ghost = Rc::new(Vec::new());
+            if md.started {
+                self.move_selection(md.dt, md.dg, md.clone, cx);
+            } else if md.picked || self.mode != Mode::Select {
+                // foi só um clique: cursor na célula (para digitar), sem seleção
+                self.anchor = None;
+                self.cursor = Some(md.from);
+            }
         }
         cx.notify();
+    }
+
+    /// Esc durante o arrasto: solta o bloco sem mover.
+    pub fn cancel_drag(&mut self) -> bool {
+        self.ghost = Rc::new(Vec::new());
+        self.move_drag.take().is_some()
+    }
+
+    /// Retângulos (janela) e textos das células da seleção, para o bloco flutuante.
+    fn ghost_cells(&self) -> Vec<GhostCell> {
+        let Some((t0, t1, g0, g1)) = self.sel_range() else { return Vec::new() };
+        let song = &self.song;
+        let mut out = Vec::new();
+        for t in t0..=t1 {
+            for g in g0..=g1.min(g0 + 63) {
+                let (m, k) = song.unflat(g);
+                if let Some(bounds) = self.cell_bounds(Cur { m, t, k }) {
+                    out.push(GhostCell { bounds, text: song.cell_at(t, g).map(|w| SharedString::from(w.to_string())) });
+                }
+            }
+        }
+        out
     }
 
     /// Solta a seção arrastada sobre a seção `target` (reordenar).

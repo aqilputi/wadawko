@@ -90,6 +90,8 @@ pub struct Shell {
     pub views: Views,
     pub focus: FocusHandle,
     pub palette_focus: FocusHandle,
+    /// física do balanço do bloco arrastado (notas)
+    pub swing: Rc<RefCell<crate::views::drag_ghost::Swing>>,
     pub hint_focus: FocusHandle,
     pub prompt_focus: FocusHandle,
     pub scroll: ScrollHandle,
@@ -199,6 +201,7 @@ impl Shell {
             views,
             focus,
             palette_focus: cx.focus_handle(),
+            swing: Rc::new(RefCell::new(Default::default())),
             hint_focus: cx.focus_handle(),
             prompt_focus: cx.focus_handle(),
             scroll: ScrollHandle::new(),
@@ -441,7 +444,7 @@ impl Shell {
             g.edit.clear();
             g.anchor = None;
             g.menu = None;
-            g.move_drag = None;
+            g.cancel_drag();
             if matches!(g.vmode, VMode::Visual | VMode::VLine | VMode::Insert) {
                 g.vmode = VMode::Normal;
             }
@@ -771,6 +774,39 @@ impl Shell {
         // ── hints (Ctrl+Space) ──
         if let Some(h) = &self.hints {
             root = root.child(self.hints_view(h, &th, cx));
+        }
+
+        // ── bloco de notas sendo arrastado (balança), por cima de tudo ──
+        let drag = {
+            let g = self.grid.read(cx);
+            g.move_drag.filter(|m| m.started).map(|m| (m, g.ghost.clone()))
+        };
+        match drag {
+            Some((md, cells)) => {
+                window.request_animation_frame();
+                let (swing, grid) = (self.swing.clone(), self.grid.clone());
+                root = root.child(
+                    canvas(
+                        |_, _, _| {},
+                        move |_, _, window, cx| {
+                            let p = window.mouse_position();
+                            let (theta, lift) = swing.borrow_mut().step(md.grab, p, Instant::now());
+                            crate::views::drag_ghost::paint(&cells, md.grab, md.clone, p, theta, lift, &th, window, cx);
+                            window.set_window_cursor_style(gpui_kit::CursorStyle::ClosedHand);
+                            // soltar em QUALQUER lugar da janela larga o bloco (não só sobre a grade)
+                            let grid = grid.clone();
+                            window.on_mouse_event(move |ev: &gpui_kit::MouseUpEvent, phase, _, cx| {
+                                if phase == gpui_kit::DispatchPhase::Capture && ev.button == gpui_kit::MouseButton::Left {
+                                    grid.update(cx, |g, cx| g.mouse_up(cx));
+                                }
+                            });
+                        },
+                    )
+                    .absolute()
+                    .inset_0(),
+                );
+            }
+            None => self.swing.borrow_mut().reset(),
         }
         root
     }

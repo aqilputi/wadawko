@@ -45,7 +45,8 @@ WaDAWko — editor/DAW de taiko
   --bench N            toca com follow e zoom oscilando por N s e imprime o relatório
   --demo MODO          palette | hints | whichkey | roothints | cmdline | config | visual | play | enter |
                        kiai | menu | dyn | simple | mixer | pessoas | kit | kit-new | esteira | lane | partitura |
-                       probe (simula mouse e teclado e imprime o efeito; use com cópia do banco)
+                       probe (simula mouse e teclado e imprime o efeito; use com cópia do banco) |
+                       drag (anima o arrasto com o bloco balançando e sai; use com cópia do banco)
   --selftest           abre, pinta, toca, edita, desfaz/refaz, grava e sai (imprime linhas TESTE)
   --help
 ";
@@ -214,6 +215,8 @@ fn main() {
         }
         if args.demo.as_deref() == Some("probe") {
             run_probe(state.clone(), win.1.clone(), win.0, cx);
+        } else if args.demo.as_deref() == Some("drag") {
+            run_drag_demo(win.1.clone(), win.0, cx);
         } else if let Some(demo) = args.demo.clone() {
             run_demo(demo, state.clone(), win.1.clone(), win.0, cx);
         }
@@ -380,43 +383,75 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             let _ = cx.update(|cx| cx.quit());
             return;
         };
-        // 1) clique numa célula + Ctrl+C (modo editar)
+        let row = |cx: &mut AsyncApp| cx.update(|cx| (0..4).map(|k| state.read(cx).song().cell(2, 0, k).map(str::to_string).unwrap_or("·".into())).collect::<Vec<_>>().join(" "));
+        let drag_state = |cx: &mut AsyncApp| cx.update(|cx| {
+            let g = shell.read(cx).grid.read(cx);
+            (g.move_drag.map(|m| (m.started, m.clone, m.dt, m.dg)), g.ghost.len())
+        });
+        // arrasto com passos intermediários (como a mão), sem soltar
+        let sweep = |from: gpui_kit::Point<Pixels>, to: gpui_kit::Point<Pixels>, m: Modifiers, cx: &mut AsyncApp| {
+            for i in 1..=6 {
+                let t = i as f32 / 6.0;
+                mouse(mv(gpui_kit::point(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t), m), cx);
+            }
+        };
+        println!("PROBE linha 2, compasso 0 no início: {}", row(cx));
+        // 1) clique (sem arrastar) numa NOTA: só põe o cursor, sem seleção; Ctrl+C copia a célula
         mouse(down(a, none), cx);
         mouse(up(a, none), cx);
-        wait(cx, 200).await;
-        report("após clique (editar)", cx);
+        wait(cx, 150).await;
+        report("após clique na nota", cx);
         key("ctrl-c", cx);
         wait(cx, 100).await;
         report("após ctrl-c", cx);
-        // 2) modo editar: arrastar seleciona; Ctrl+C mantém a seleção
-        mouse(down(a, none), cx);
-        mouse(mv(b, none), cx);
-        mouse(up(b, none), cx);
-        wait(cx, 200).await;
-        report("após arrasto (editar)", cx);
-        key("ctrl-c", cx);
+        let (Some(e2), Some(e3)) = (cell(0, 2, 2, cx), cell(0, 2, 3, cx)) else { return };
+        // 2) arrastar a partir de célula VAZIA seleciona; Esc limpa
+        mouse(down(e2, none), cx);
+        mouse(mv(e3, none), cx);
+        mouse(up(e3, none), cx);
+        wait(cx, 150).await;
+        report("após arrasto a partir de célula vazia", cx);
+        key("escape", cx);
         wait(cx, 100).await;
-        report("após ctrl-c com seleção", cx);
-        // 3) Alt+arrastar a seleção (células 0–1) duas células para a direita = clonar
-        let before = cx.update(|cx| state.read(cx).song().clone());
-        if let (Some(src), Some(dst)) = (cell(0, 2, 0, cx), cell(0, 2, 2, cx)) {
-            mouse(down(src, alt), cx);
-            mouse(mv(dst, alt), cx);
-            mouse(up(dst, alt), cx);
-            wait(cx, 200).await;
-        }
-        let after = cx.update(|cx| state.read(cx).song().clone());
-        let cells = |song: &wadawko_core::Song| (0..4).map(|k| song.cell(2, 0, k).map(str::to_string)).collect::<Vec<_>>();
-        println!("PROBE alt+arrasto clonou: {} · compasso 0 da linha 2 antes={:?} depois={:?}", before != after, cells(&before), cells(&after));
+        // 3) Alt+arrastar direto numa nota (sem seleção antes) = copiar
+        mouse(down(a, alt), cx);
+        sweep(a, e2, alt, cx);
+        wait(cx, 120).await;
+        let (md, ghost) = drag_state(cx);
+        println!("PROBE durante alt+arrasto: arrasto={md:?} · células flutuando={ghost}");
+        mouse(up(e2, alt), cx);
+        wait(cx, 150).await;
+        println!("PROBE após alt+arrasto da nota 'do' para a célula 2: {} · arrasto={:?}", row(cx), drag_state(cx));
         key("ctrl-z", cx);
         wait(cx, 100).await;
-        let undone = cx.update(|cx| state.read(cx).song().clone());
-        println!("PROBE ctrl-z desfez: {}", undone == before);
-        // 4) clique simples (sem Alt) dentro da seleção, no modo editar, só põe o cursor
+        // 4) arrastar (sem Alt) uma nota = mover
         mouse(down(b, none), cx);
-        mouse(up(b, none), cx);
+        sweep(b, e2, none, cx);
+        mouse(up(e2, none), cx);
         wait(cx, 150).await;
-        report("após clique simples na seleção", cx);
+        println!("PROBE após arrastar a nota 'ko' (célula 1) para a 2: {}", row(cx));
+        key("ctrl-z", cx);
+        wait(cx, 100).await;
+        // 5) Esc no meio do arrasto cancela
+        mouse(down(a, none), cx);
+        sweep(a, e3, none, cx);
+        key("escape", cx);
+        mouse(up(e3, none), cx);
+        wait(cx, 150).await;
+        println!("PROBE Esc no meio do arrasto: {} · arrasto={:?}", row(cx), drag_state(cx));
+        // 6) soltar FORA da grade (no painel da direita) também larga o bloco
+        let outside = gpui_kit::point(gpui_kit::px(900.0), gpui_kit::px(500.0));
+        mouse(down(b, none), cx);
+        sweep(b, e2, none, cx);
+        wait(cx, 120).await; // como na vida real: a janela desenha frames durante o arrasto
+        mouse(mv(outside, none), cx);
+        wait(cx, 60).await;
+        mouse(up(outside, none), cx);
+        wait(cx, 150).await;
+        println!("PROBE soltar fora da grade: {} · arrasto={:?}", row(cx), drag_state(cx));
+        key("ctrl-z", cx);
+        wait(cx, 100).await;
+        println!("PROBE linha 2 no fim (deve ser igual ao início): {}", row(cx));
         // 5) barra da seção: clicar no texto "1×" (não é botão) (des)seleciona;
         //    clicar no botão "+" das repetições NÃO
         let hint = |id: &str| keys::HINTS.with(|h| h.borrow().targets.get(id).map(|t| t.bounds));
@@ -473,6 +508,54 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         wait(cx, 100).await;
         let pal = cx.update(|cx| shell.read(cx).palette.is_some());
         println!("PROBE ctrl-k abriu a paleta: {pal}");
+        let _ = cx.update(|cx| cx.quit());
+    })
+    .detach();
+}
+
+/// `--demo drag`: pega duas notas com Alt, varre para a direita em
+/// ~1,5 s e fica parado 2,5 s (o bloco balança e assenta); depois solta e sai.
+/// Para ver/gravar a animação. Use com uma cópia do banco.
+fn run_drag_demo(shell: Entity<Shell>, w: Win, cx: &mut App) {
+    use gpui_kit::{Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PlatformInput, point, px};
+    cx.spawn(async move |cx: &mut AsyncApp| {
+        cx.background_executor().timer(Duration::from_millis(1500)).await;
+        let cell = |m, t, k, cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m, t, k }).map(|b| b.center()));
+        let (Some(a), Some(b)) = (cell(0, 2, 0, cx), cell(0, 2, 1, cx)) else {
+            let _ = cx.update(|cx| cx.quit());
+            return;
+        };
+        let alt = Modifiers { alt: true, ..Default::default() };
+        let send = |ev: PlatformInput, cx: &mut AsyncApp| {
+            let _ = w.update(cx, |_, window, cx| {
+                window.dispatch_event(ev, cx);
+            });
+        };
+        let mv = |p, cx: &mut AsyncApp| send(PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: Some(MouseButton::Left), modifiers: alt }), cx);
+        // seleciona as duas notas (arrasto a partir da 1ª com Shift = estende) e pega com Alt
+        send(PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position: a, modifiers: Modifiers::default(), click_count: 1, first_mouse: false }), cx);
+        send(PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: a, modifiers: Modifiers::default(), click_count: 1 }), cx);
+        send(PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position: b, modifiers: Modifiers { shift: true, ..Default::default() }, click_count: 1, first_mouse: false }), cx);
+        send(PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: b, modifiers: Modifiers { shift: true, ..Default::default() }, click_count: 1 }), cx);
+        cx.background_executor().timer(Duration::from_millis(200)).await;
+        send(PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position: a, modifiers: alt, click_count: 1, first_mouse: false }), cx);
+        println!("DEMO pegou");
+        let n = 90;
+        for i in 1..=n {
+            let t = i as f32 / n as f32;
+            let e = t * t * (3.0 - 2.0 * t); // acelera e freia
+            mv(point(a.x + px(280.0 * e), a.y + px(70.0 * e)), cx);
+            cx.background_executor().timer(Duration::from_millis(16)).await;
+        }
+        println!("DEMO parou");
+        let end = point(a.x + px(280.0), a.y + px(70.0));
+        for _ in 0..150 {
+            mv(end, cx);
+            cx.background_executor().timer(Duration::from_millis(16)).await;
+        }
+        send(PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: end, modifiers: alt, click_count: 1 }), cx);
+        println!("DEMO soltou");
+        cx.background_executor().timer(Duration::from_millis(600)).await;
         let _ = cx.update(|cx| cx.quit());
     })
     .detach();
