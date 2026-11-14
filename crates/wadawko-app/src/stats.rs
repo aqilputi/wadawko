@@ -6,14 +6,24 @@ use std::time::{Duration, Instant};
 
 use wadawko_audio::Clock;
 
+/// Amostras guardadas no máximo (≈ 5 min a 60 fps); acima disso descarta as
+/// mais antigas em bloco. O máximo é mantido à parte (O(1) para o HUD).
+const HIST_CAP: usize = 20_000;
+
 #[derive(Default)]
 pub struct Hist {
     ms: Vec<f32>,
+    max: f32,
 }
 
 impl Hist {
     pub fn record(&mut self, d: Duration) {
-        self.ms.push(d.as_secs_f32() * 1000.0);
+        let v = d.as_secs_f32() * 1000.0;
+        if self.ms.len() >= HIST_CAP {
+            self.ms.drain(..HIST_CAP / 2);
+        }
+        self.ms.push(v);
+        self.max = self.max.max(v);
     }
     fn pct_of(v: &[f32], p: f32) -> f32 {
         if v.is_empty() {
@@ -35,7 +45,7 @@ impl Hist {
         self.ms.len()
     }
     pub fn max(&self) -> f32 {
-        self.ms.iter().copied().fold(0.0, f32::max)
+        self.max
     }
     pub fn over(&self, limit: f32) -> usize {
         self.ms.iter().filter(|&&m| m > limit).count()

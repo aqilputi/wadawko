@@ -47,6 +47,12 @@ impl Swing {
         *self = Swing::default();
     }
 
+    /// Parado de verdade: já subiu, sem balanço e sem velocidade (aí não precisa
+    /// pedir frames — só redesenha quando o mouse mexer).
+    pub fn settled(&self) -> bool {
+        self.key.is_some() && self.lift >= 1.0 && self.theta.abs() < 0.002 && self.omega.abs() < 0.01 && self.vx.abs() < 2.0
+    }
+
     /// Avança a física até `now` com o pivô (ponteiro) em `p`. `key` identifica o
     /// arrasto (ponto da pegada): mudou → recomeça. Devolve (inclinação, subida 0..1).
     pub fn step(&mut self, key: (f32, f32), p: Point<Pixels>, now: Instant) -> (f32, f32) {
@@ -218,6 +224,8 @@ mod tests {
         // passa do prumo (balança) e depois assenta
         assert!(still.iter().any(|&a| a < 0.0), "deveria balançar para o outro lado");
         assert!(still.last().unwrap().abs() < 0.01, "assenta: {:?}", still.last());
+        // assentado → o Shell para de pedir frames
+        assert!(sw.settled(), "theta={} omega={} vx={}", sw.theta, sw.omega, sw.vx);
     }
 
     #[test]

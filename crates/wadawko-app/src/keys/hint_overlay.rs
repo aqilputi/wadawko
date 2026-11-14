@@ -19,6 +19,7 @@ impl Shell {
         self.hint_focus.focus(window, cx);
         // a grade fica em cache: força re-render para os botões dela se registrarem
         self.grid.update(cx, |_, cx| cx.notify());
+        self.invalidate_chrome(cx);
         cx.notify();
     }
 

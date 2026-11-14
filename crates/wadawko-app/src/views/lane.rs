@@ -46,7 +46,10 @@ const STRIPE: f32 = 51.2;
 /// duração do pulso do tambor (ms)
 const PULSE_MS: f32 = 240.0;
 const PETAL_COLORS: [u32; 5] = [0xffd7e8, 0xffb7d5, 0xff9ec4, 0xffc9de, 0xfce4ec];
-const MAX_PETALS: usize = 600;
+/// teto de pétalas vivas (cada uma é um path pintado por frame)
+const MAX_PETALS: usize = 150;
+/// passos de rotação do cache de pétalas pré-tesseladas (15° cada)
+const PETAL_ROT_STEPS: usize = 24;
 
 // ───────────────────────────── eventos (puro) ─────────────────────────────
 
@@ -244,7 +247,7 @@ impl Rng {
 }
 
 fn spawn_petals(fx: &mut Fx, rng: &mut Rng, track: usize, at: Instant) {
-    let count = 8 + (rng.unit() * 5.0) as usize; // 8–12 pétalas
+    let count = 4 + (rng.unit() * 3.0) as usize; // 4–6 pétalas
     for _ in 0..count {
         if fx.petals.len() >= MAX_PETALS {
             return;
@@ -443,19 +446,48 @@ fn mul_alpha(c: Hsla, a: f32) -> Hsla {
     Hsla { a: c.a * a, ..c }
 }
 
-/// pétala: folha com dois "bicos" (o `border-radius: 80% 10% 80% 10%` do web)
-fn paint_petal(window: &mut Window, x: f32, y: f32, w: f32, rot: f32, color: Hsla) {
+/// pétala: folha com dois "bicos" (o `border-radius: 80% 10% 80% 10%` do web),
+/// centrada na origem — tesselada uma vez por (rotação, tamanho) e guardada
+fn build_petal(w: f32, rot: f32) -> Option<gpui_kit::Path<Pixels>> {
     let h = w * 0.82;
     let (s, c) = rot.sin_cos();
-    let tr = |px_: f32, py_: f32| point(px(x + px_ * c - py_ * s), px(y + px_ * s + py_ * c));
+    let tr = |px_: f32, py_: f32| point(px(px_ * c - py_ * s), px(px_ * s + py_ * c));
     let mut p = PathBuilder::fill();
     p.move_to(tr(w * 0.5, -h * 0.5));
     p.curve_to(tr(-w * 0.5, h * 0.5), tr(-w * 0.62, -h * 0.62));
     p.curve_to(tr(w * 0.5, -h * 0.5), tr(w * 0.62, h * 0.62));
     p.close();
-    if let Ok(path) = p.build() {
-        window.paint_path(path, color);
+    p.build().ok()
+}
+
+thread_local! {
+    /// pétalas pré-tesseladas: (passo de rotação, largura em px inteiros) → path na origem
+    static PETALS: RefCell<HashMap<(u8, u8), gpui_kit::Path<Pixels>>> = RefCell::new(HashMap::new());
+}
+
+/// Pinta uma pétala copiando a forma pré-tesselada mais próxima (rotação em
+/// passos de 15°, largura em px) e transladando os vértices — sem rodar o
+/// tesselador a cada frame (era o grosso do custo da esteira).
+fn paint_petal(window: &mut Window, x: f32, y: f32, w: f32, rot: f32, color: Hsla) {
+    let turn = std::f32::consts::TAU / PETAL_ROT_STEPS as f32;
+    let step = (rot.rem_euclid(std::f32::consts::TAU) / turn).round() as usize % PETAL_ROT_STEPS;
+    let wpx = w.round().clamp(2.0, 40.0) as u8;
+    let path = PETALS.with(|c| {
+        let mut c = c.borrow_mut();
+        if let Some(p) = c.get(&(step as u8, wpx)) {
+            return Some(p.clone());
+        }
+        let p = build_petal(wpx as f32, step as f32 * turn)?;
+        c.insert((step as u8, wpx), p.clone());
+        Some(p)
+    });
+    let Some(mut path) = path else { return };
+    let d = point(px(x), px(y));
+    for v in &mut path.vertices {
+        v.xy_position = v.xy_position + d;
     }
+    path.bounds.origin = path.bounds.origin + d;
+    window.paint_path(path, color);
 }
 
 fn paint_lane(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: &mut App) {

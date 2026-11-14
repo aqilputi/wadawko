@@ -46,7 +46,8 @@ WaDAWko — editor/DAW de taiko
   --demo MODO          palette | hints | whichkey | roothints | cmdline | config | visual | play | enter |
                        kiai | menu | dyn | simple | mixer | pessoas | kit | kit-new | esteira | lane | partitura |
                        probe (simula mouse e teclado e imprime o efeito; use com cópia do banco) |
-                       drag (anima o arrasto com o bloco balançando e sai; use com cópia do banco)
+                       drag (anima o arrasto com o bloco balançando e sai; use com cópia do banco) |
+                       playstat-grade / playstat-esteira (toca 6 s, imprime frames e tempo de render, sai)
   --selftest           abre, pinta, toca, edita, desfaz/refaz, grava e sai (imprime linhas TESTE)
   --help
 ";
@@ -480,6 +481,30 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             key("ctrl-z", cx);
             wait(cx, 100).await;
         }
+        // moldura em cache: botão "loop" da barra de cima liga/desliga e a barra redesenha
+        if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("loop").map(|t| t.bounds.center())) {
+            let l0 = cx.update(|cx| state.read(cx).tp.looping);
+            let k0 = cx.update(|cx| shell.read(cx).chrome[0].read(cx).key);
+            mouse(down(p, none), cx);
+            wait(cx, 60).await;
+            mouse(up(p, none), cx);
+            wait(cx, 150).await;
+            let l1 = cx.update(|cx| state.read(cx).tp.looping);
+            let k1 = cx.update(|cx| shell.read(cx).chrome[0].read(cx).key);
+            println!("PROBE barra de cima (cache): loop {l0} → {l1} · chave mudou: {}", k0 != k1);
+            key("ctrl-z", cx); // não desfaz loop (não é edição) — só por garantia de estado
+            mouse(down(p, none), cx);
+            wait(cx, 60).await;
+            mouse(up(p, none), cx);
+            wait(cx, 150).await;
+        }
+        // Ctrl+Space precisa achar os botões da moldura em cache como alvos
+        key("ctrl-space", cx);
+        wait(cx, 200).await;
+        let found = keys::HINTS.with(|h| ["hamb", "loop", "title"].iter().map(|id| h.borrow().targets.contains_key(*id)).collect::<Vec<_>>());
+        println!("PROBE Ctrl+Space acha alvos da barra de cima (hamb, loop, title): {found:?}");
+        key("escape", cx);
+        wait(cx, 100).await;
         // calibração: botão do cabeçalho fixo (+ seção) com clique sintético
         if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("addsec").map(|t| t.bounds.center())) {
             let n0 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));
@@ -539,6 +564,9 @@ fn run_drag_demo(shell: Entity<Shell>, w: Win, cx: &mut App) {
         send(PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: b, modifiers: Modifiers { shift: true, ..Default::default() }, click_count: 1 }), cx);
         cx.background_executor().timer(Duration::from_millis(200)).await;
         send(PlatformInput::MouseDown(MouseDownEvent { button: MouseButton::Left, position: a, modifiers: alt, click_count: 1, first_mouse: false }), cx);
+        let frames = || (RENDERS.load(Ordering::Relaxed), shell::RENDER_US.load(Ordering::Relaxed));
+        let (r0, u0) = frames();
+        let t0 = Instant::now();
         println!("DEMO pegou");
         let n = 90;
         for i in 1..=n {
@@ -547,14 +575,15 @@ fn run_drag_demo(shell: Entity<Shell>, w: Win, cx: &mut App) {
             mv(point(a.x + px(280.0 * e), a.y + px(70.0 * e)), cx);
             cx.background_executor().timer(Duration::from_millis(16)).await;
         }
-        println!("DEMO parou");
+        let (r1, u1) = frames();
+        let t1 = Instant::now();
+        println!("DEMO parou · movendo: {} frames em {:.1} s · render() média {:.2} ms", r1 - r0, (t1 - t0).as_secs_f32(), (u1 - u0) as f64 / (r1 - r0).max(1) as f64 / 1000.0);
+        // parado de verdade: nenhum evento de mouse (como a mão parada)
         let end = point(a.x + px(280.0), a.y + px(70.0));
-        for _ in 0..150 {
-            mv(end, cx);
-            cx.background_executor().timer(Duration::from_millis(16)).await;
-        }
+        cx.background_executor().timer(Duration::from_millis(2400)).await;
         send(PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: end, modifiers: alt, click_count: 1 }), cx);
-        println!("DEMO soltou");
+        let (r2, u2) = frames();
+        println!("DEMO soltou · parado: {} frames em {:.1} s · render() média {:.2} ms", r2 - r1, t1.elapsed().as_secs_f32(), (u2 - u1) as f64 / (r2 - r1).max(1) as f64 / 1000.0);
         cx.background_executor().timer(Duration::from_millis(600)).await;
         let _ = cx.update(|cx| cx.quit());
     })
@@ -593,6 +622,24 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 shell::DBG_FOLLOW_V.load(Ordering::Relaxed),
                 shell::DBG_GRID_RENDERS.load(Ordering::Relaxed)
             );
+            let _ = cx.update(|cx| cx.quit());
+            return;
+        }
+        // `playstat-grade` / `playstat-esteira`: toca, mede 6 s (frames + render) e sai
+        if let Some(tab) = demo.strip_prefix("playstat-") {
+            wait_audio(&state, cx, 20.0).await;
+            let _ = w.update(cx, |_, window, cx| {
+                if tab == "esteira" {
+                    window.dispatch_action(Box::new(keys::view::Esteira), cx);
+                }
+                let _ = shell.update(cx, |s: &mut Shell, cx| s.toggle_play(false, cx));
+            });
+            cx.background_executor().timer(Duration::from_millis(2000)).await;
+            let (r0, u0, t0) = (RENDERS.load(Ordering::Relaxed), shell::RENDER_US.load(Ordering::Relaxed), Instant::now());
+            println!("STAT início");
+            cx.background_executor().timer(Duration::from_millis(6000)).await;
+            let (r1, u1, secs) = (RENDERS.load(Ordering::Relaxed), shell::RENDER_US.load(Ordering::Relaxed), t0.elapsed().as_secs_f32());
+            println!("STAT fim · {} frames em {secs:.1} s ({:.0} fps) · Shell::render média {:.2} ms", r1 - r0, (r1 - r0) as f32 / secs, (u1 - u0) as f64 / (r1 - r0).max(1) as f64 / 1000.0);
             let _ = cx.update(|cx| cx.quit());
             return;
         }

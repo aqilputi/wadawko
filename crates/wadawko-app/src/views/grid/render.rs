@@ -343,7 +343,6 @@ impl Render for GridView {
                 .rounded(px(8.0))
                 .cursor_pointer()
                 .when(is_sel, |d| d.bg(th.accent_wash))
-                .when(!is_sel, |d| d.hover(|st| st.bg(th.paper_hover)))
                 // clique em qualquer ponto da barra (nome, vazios, 𝄆 1× 𝄇…) = (des)seleciona
                 // a seção para tocar; os botões dela param a propagação
                 .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {

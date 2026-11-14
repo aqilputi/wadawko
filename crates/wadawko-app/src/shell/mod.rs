@@ -7,6 +7,7 @@
 //! `Entity<AppState>` (`state.rs`).
 
 mod actions;
+pub mod chrome;
 pub mod io;
 
 use std::cell::{Cell, RefCell};
@@ -90,6 +91,8 @@ pub struct Shell {
     pub views: Views,
     pub focus: FocusHandle,
     pub palette_focus: FocusHandle,
+    /// moldura em cache (barra de cima, lateral, painel de músicas) — ver `chrome.rs`
+    pub chrome: [Entity<chrome::Chrome>; 3],
     /// física do balanço do bloco arrastado (notas)
     pub swing: Rc<RefCell<crate::views::drag_ghost::Swing>>,
     pub hint_focus: FocusHandle,
@@ -202,6 +205,10 @@ impl Shell {
             focus,
             palette_focus: cx.focus_handle(),
             swing: Rc::new(RefCell::new(Default::default())),
+            chrome: {
+                let me = cx.weak_entity();
+                [chrome::Part::Top, chrome::Part::Nav, chrome::Part::Panel].map(|p| cx.new(|_| chrome::Chrome::new(me.clone(), p)))
+            },
             hint_focus: cx.focus_handle(),
             prompt_focus: cx.focus_handle(),
             scroll: ScrollHandle::new(),
@@ -234,6 +241,49 @@ impl Shell {
 
     pub fn song(&self, cx: &App) -> Arc<Song> {
         self.state.read(cx).song().clone()
+    }
+
+    /// Calcula a chave de cada peça da moldura (tudo que ela mostra) e notifica
+    /// só as que mudaram — o resto é reaproveitado do frame anterior.
+    fn refresh_chrome(&mut self, playing: bool, cx: &mut Context<Self>) {
+        use chrome::hash_into as h;
+        let st = self.state.read(cx);
+        let dark = st.theme.dark;
+        let rev = st.revision;
+        let current = st.store.current_id().to_string();
+        let export = st.export_label();
+        let keys = [
+            chrome::key(|k| {
+                h(k, &(dark, playing, rev, &current, st.playback_bpm.to_bits()));
+                h(k, &format!("{:?}", st.tp));
+            }),
+            chrome::key(|k| h(k, &(dark, format!("{:?}", self.page)))),
+            chrome::key(|k| {
+                h(k, &(dark, rev, &current, &export));
+                for p in st.store.projects() {
+                    h(k, &(&p.id, &p.title, p.updated_at));
+                }
+            }),
+        ];
+        for (view, key) in self.chrome.iter().zip(keys) {
+            view.update(cx, |c, cx| {
+                if c.key != key {
+                    c.key = key;
+                    cx.notify();
+                }
+            });
+        }
+    }
+
+    /// Força a moldura a re-renderizar (ex.: Ctrl+Space precisa que os botões
+    /// dela se registrem de novo como alvos de salto).
+    pub fn invalidate_chrome(&mut self, cx: &mut Context<Self>) {
+        for view in &self.chrome {
+            view.update(cx, |c, cx| {
+                c.key = 0;
+                cx.notify();
+            });
+        }
     }
 
     pub fn theme(&self, cx: &App) -> Theme {
@@ -476,14 +526,19 @@ impl Shell {
         }
         let s = song.section_of(m);
         let (a, _) = song.section_range(s);
-        let g = self.grid.read(cx).geom.clone();
+        let grid = self.grid.read(cx);
+        // offset ATUAL da grade: o `geom.offset` só é escrito quando a grade
+        // re-renderiza (um frame depois), e usar ele fazia o follow aplicar o
+        // deslocamento duas vezes (pulo duplo + 3 re-renders por virada de página)
+        let offset = grid.offset;
+        let g = grid.geom.clone();
         let g = g.borrow();
         let b = *g.sections.get(s)?;
         if f32::from(b.size.width) <= 0.0 {
             return None;
         }
         let xs = grid::measure_xs(song, s, g.cw);
-        let x = f32::from(b.origin.x) + xs.get(m.checked_sub(a)?)? + frac * song.mlen(m) as f32 * g.cw - g.offset;
+        let x = f32::from(b.origin.x) + xs.get(m.checked_sub(a)?)? + frac * song.mlen(m) as f32 * g.cw - offset;
         Some((x, b))
     }
 
@@ -648,8 +703,10 @@ impl Shell {
         }
 
         let th = self.theme(cx);
-        let nav = self.nav_rail(&th);
-        let topbar = self.topbar(&th, playing, cx);
+        // moldura em cache: só re-renderiza quando a chave dela muda
+        self.refresh_chrome(playing, cx);
+        let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(200.0)).h_full().flex_none());
+        let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(57.0)).flex_none());
 
         // ── página ──
         // No editor, abas + barra de contexto ficam FIXAS no topo (fora da rolagem):
@@ -728,7 +785,7 @@ impl Shell {
             .when_some(header, |d, h| d.child(div().flex_none().px(px(20.0)).pt(px(16.0)).pb(px(8.0)).border_b_1().border_color(th.line).child(h)))
             .child(scroll_area);
 
-        let panel = self.right_panel(&th, cx);
+        let panel = self.chrome[2].clone().cached(gpui_kit::StyleRefinement::default().w(px(260.0)).h_full().flex_none());
         let status = self.status_bar(&th, playing, play_pos, cx);
 
         // ── workspace (contexto de teclas da grade) ──
@@ -783,8 +840,11 @@ impl Shell {
         };
         match drag {
             Some((md, cells)) => {
-                window.request_animation_frame();
-                let (swing, grid) = (self.swing.clone(), self.grid.clone());
+                // frames só enquanto balança/sobe; parado, só o movimento do mouse redesenha
+                if !self.swing.borrow().settled() {
+                    window.request_animation_frame();
+                }
+                let (swing, grid, me) = (self.swing.clone(), self.grid.clone(), cx.entity().downgrade());
                 root = root.child(
                     canvas(
                         |_, _, _| {},
@@ -793,6 +853,14 @@ impl Shell {
                             let (theta, lift) = swing.borrow_mut().step(md.grab, p, Instant::now());
                             crate::views::drag_ghost::paint(&cells, md.grab, md.clone, p, theta, lift, &th, window, cx);
                             window.set_window_cursor_style(gpui_kit::CursorStyle::ClosedHand);
+                            // mouse mexeu → redesenha o Shell (NÃO `window.refresh()`: refresh
+                            // invalida os caches e reconstruía a grade inteira a cada movimento)
+                            let me = me.clone();
+                            window.on_mouse_event(move |_: &gpui_kit::MouseMoveEvent, phase, _, cx| {
+                                if phase == gpui_kit::DispatchPhase::Bubble {
+                                    let _ = me.update(cx, |_, cx| cx.notify());
+                                }
+                            });
                             // soltar em QUALQUER lugar da janela larga o bloco (não só sobre a grade)
                             let grid = grid.clone();
                             window.on_mouse_event(move |ev: &gpui_kit::MouseUpEvent, phase, _, cx| {

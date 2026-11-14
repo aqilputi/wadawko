@@ -155,3 +155,18 @@ Views pesadas seguem a grade: um `canvas` com culling, textos modelados em cache
 (`shape_line`), geometria do último frame guardada num `Rc<RefCell<…>>` para
 overlays sem re-render. A grade fica em `Entity::cached(...)` e o
 playhead/flash é um `canvas` irmão sem cache, no Shell.
+
+## Moldura em cache e animação (desempenho)
+
+- Barra de cima, barra lateral e painel de músicas são views `cached` (`shell/chrome.rs`).
+  O Shell calcula uma **chave por peça** a cada frame (`Shell::refresh_chrome`) e só
+  notifica a peça quando a chave muda. **Mostrou algo novo numa dessas peças? Inclua
+  na chave**, senão ela fica velha até outra coisa mudar.
+- Nunca use `window.refresh()` para pedir redesenho durante animação/arrasto: ele
+  invalida TODOS os caches (a grade inteira é reconstruída). Notifique a entidade
+  que mudou (`cx.notify()` / `entity.update(cx, |_, cx| cx.notify())`).
+- Só peça `request_animation_frame` enquanto algo realmente anima (ex.: o bloco
+  arrastado para de pedir frames quando assenta — `drag_ghost::Swing::settled`).
+- Medir: `--demo playstat-grade|playstat-esteira` (frames e render em 6 s tocando),
+  `--demo drag`, `--demo probe`. Compare **ms de CPU por frame**, não CPU% — janela
+  escondida recebe menos frames do compositor e distorce o CPU%.
