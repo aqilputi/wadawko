@@ -1,6 +1,6 @@
 # WaDAWko — Planejamento para deixar o repositório completo
 
-Data: 2026-11-16 · Status: planejamento · Repositório: `github.com/aqilputi/taiko-fu` (privado)
+Data: 2026-11-16 · Status: planejamento · Repositório: `github.com/aqilputi/wadawko` (privado)
 
 "Completo" aqui = **alguém clona, compila, roda e contribui sem ajuda; o app sai
 empacotado em releases; o código web antigo fica arquivado; licenças em ordem; CI
