@@ -28,6 +28,7 @@ FOLDERS = {
     "desenvolvimento": ("Desenvolvimento", "Testes, depuração, desempenho e como contribuir."),
     "planejamento": ("Planejamento", "Os planos do projeto, do app web ao porte nativo e ao repositório completo."),
     "material": ("Material de referência", "Arquivos externos usados no projeto (PDFs)."),
+    "imagens": ("Imagens", "Capturas de tela do app usadas no README e nos guias."),
 }
 FIRST = ["visao-geral", "uso", "instalar-e-compilar", "atalhos", "workspace", "app", "repo", "gpui", "teclado"]
 ROOT_HEADINGS = ("Comece aqui", "Pastas")
@@ -78,7 +79,8 @@ def build_index(root, d):
             fm = fm or {}
             docs.append(f"* [{fm.get('title', p.stem)}]({p.name}) - {fm.get('description', '')}".rstrip(" -"))
         elif p.is_file() and p.suffix != ".md":
-            docs.append(f"* [{p.name}]({p.name}) - arquivo de material de referência")
+            kind = "captura de tela" if p.suffix in (".png", ".jpg", ".webp", ".gif") else "arquivo de material de referência"
+            docs.append(f"* [{p.name}]({p.name}) - {kind}")
     is_root = d == root
     out = []
     if is_root:

@@ -15,3 +15,4 @@ okf_version: "0.2"
 * [Desenvolvimento](desenvolvimento/) - Testes, depuração, desempenho e como contribuir.
 * [Planejamento](planejamento/) - Os planos do projeto, do app web ao porte nativo e ao repositório completo.
 * [Material de referência](material/) - Arquivos externos usados no projeto (PDFs).
+* [Imagens](imagens/) - Capturas de tela do app usadas no README e nos guias.

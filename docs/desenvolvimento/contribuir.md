@@ -30,6 +30,14 @@ generated:
    - mexeu em `docs/`? `python3 tools/okf-check.py docs`.
 5. **Mensagens de commit** em português, título curto + corpo explicando o porquê (veja o
    `git log`).
+6. **CI** (`.github/workflows/ci.yml`): todo push/PR roda a checagem de `docs/` e dos atalhos,
+   `cargo test --workspace --release`, o build release e gera o pacote como artefato da
+   execução (aba Actions). A primeira execução sem cache leva bem mais (o GPUI é grande).
+7. **Release**: atualize o `CHANGELOG.md` (seção `## [x.y.z] - data`), suba a versão no
+   `Cargo.toml` do workspace e envie a tag — o `release.yml` testa, empacota e publica:
+   ```sh
+   git tag v0.2.0 && git push origin v0.2.0
+   ```
 
 # Documentação
 

@@ -1,0 +1,66 @@
+# Build reutilizável: dependências de sistema, testes, binários release e pacote .tar.gz.
+# Chamado pelo ci.yml (todo push/PR) e pelo release.yml (tags v*).
+name: build
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "versão no nome do pacote (padrão: a do Cargo.toml)"
+        type: string
+        default: ""
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # o .cargo/config.toml manda os artefatos para spike/target
+  CARGO_TARGET_DIR: spike/target
+
+jobs:
+  linux:
+    name: Linux x86_64 (testes + release)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+
+      # o GPUI gera um target/ grande (debug + release passariam do disco do runner)
+      - name: Liberar disco
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Dependências de sistema
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            pkg-config cmake clang \
+            libasound2-dev libfontconfig-dev libfreetype-dev \
+            libwayland-dev libxkbcommon-dev libxkbcommon-x11-dev \
+            libx11-dev libx11-xcb-dev libxcb1-dev libxcb-xkb-dev libvulkan-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ". -> spike/target"
+          shared-key: linux-release
+
+      # testes em --release: reaproveita os artefatos do build abaixo (um perfil só)
+      - name: Testes
+        run: cargo test --workspace --release
+
+      - name: Build release
+        run: cargo build --release -p wadawko-app -p wadawko-cli -p wadawko-export
+
+      - name: Empacotar
+        run: tools/package.sh "${{ inputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wadawko-linux-x86_64
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+          if-no-files-found: error
+          retention-days: 14

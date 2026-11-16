@@ -11,8 +11,18 @@ generated:
 
 # Instalar e compilar
 
-Ainda não há pacote pronto (AppImage/Flatpak estão na [fase E do plano](/planejamento/repo.md));
-por enquanto o app é compilado do código.
+# Pacote pronto (Linux x86_64)
+
+Cada versão publica um `.tar.gz` em
+[Releases](https://github.com/aqilputi/wadawko/releases) (gerado pela CI com `tools/package.sh`):
+
+```sh
+tar xzf wadawko-*-linux-x86_64.tar.gz
+cd wadawko-*-linux-x86_64 && ./install.sh      # binários em ~/.local/bin + atalho no menu
+```
+
+O pacote é compilado no Ubuntu 24.04: precisa de **glibc ≥ 2.39**. AppImage/Flatpak estão na
+[fase E do plano](/planejamento/repo.md). Para compilar do código, siga abaixo.
 
 # Requisitos
 

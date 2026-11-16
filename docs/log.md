@@ -2,6 +2,11 @@
 
 ## 2026-11-16
 
+**Atualização**: capturas de tela em `imagens/` (usadas no README), pacote de release e CI
+documentados em [instalar e compilar](/guias/instalar-e-compilar.md) e
+[contribuir](/desenvolvimento/contribuir.md); quadro de andamento no
+[plano do repositório](/planejamento/repo.md).
+
 **Criação** do bundle OKF v0.2 em `docs/`: os planos (`PLANEJAMENTO-*.md`) foram para
 `planejamento/` e a arquitetura do app (`crates/wadawko-app/ARQUITETURA.md`) para
 `arquitetura/app.md`, todos com frontmatter; caminhos absolutos trocados por caminhos do repo.

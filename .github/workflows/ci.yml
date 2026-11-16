@@ -1,0 +1,29 @@
+# CI: documentação (rápido) + build/testes/pacote do app em todo push e PR.
+# O pacote fica como artefato da execução (aba Actions → a execução → Artifacts).
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags-ignore: ["v*"]   # tags de versão vão para o release.yml
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    name: Documentação (OKF + atalhos)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bundle OKF v0.2 conforme
+        run: python3 tools/okf-check.py docs
+      - name: Página de atalhos em dia com o keymap
+        run: python3 tools/gen-atalhos.py --check
+
+  build:
+    uses: ./.github/workflows/build.yml

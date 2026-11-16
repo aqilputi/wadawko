@@ -1,0 +1,66 @@
+# Release: ao enviar uma tag v* (ex.: v0.1.0), compila, testa, empacota e publica o
+# GitHub Release com o .tar.gz e as notas da versão tiradas do CHANGELOG.md.
+#   git tag v0.2.0 && git push origin v0.2.0
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "tag existente para (re)publicar, ex.: v0.1.0"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ github.event.inputs.tag || github.ref_name }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: wadawko-linux-x86_64
+          path: dist
+      - name: Notas da versão (seção do CHANGELOG.md)
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          V="${TAG#v}"
+          awk -v v="$V" '
+            $0 ~ "^## \\[" v "\\]" { on=1; next }
+            on && /^## \[/ { exit }
+            on && /^\[[^]]+\]: / { next }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "Versão $V." > notes.md
+          cat >> notes.md <<'EOF'
+
+          ### Instalar (Linux x86_64)
+          ```sh
+          tar xzf wadawko-*-linux-x86_64.tar.gz
+          cd wadawko-*-linux-x86_64 && ./install.sh     # copia para ~/.local
+          ```
+          Requer GPU com Vulkan (Mesa serve), PipeWire/ALSA e glibc ≥ 2.39 (Ubuntu 24.04+, Fedora 40+, Arch…).
+          Exportar MP3 precisa do `ffmpeg`. Guia: docs/guias/instalar-e-compilar.md
+          EOF
+          cat notes.md
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+            gh release edit "$TAG" --notes-file notes.md
+          else
+            gh release create "$TAG" dist/* --title "WaDAWko ${TAG}" --notes-file notes.md
+          fi

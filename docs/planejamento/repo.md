@@ -17,7 +17,17 @@ verde a cada PR; documentação de uso e de arquitetura; backlog organizado.**
 
 ---
 
-## 0. Onde estamos (2026-11-16)
+## Andamento (atualizado em 2026-11-16, fim do dia)
+
+| Fase | Situação |
+|---|---|
+| A — Consolidar | **feita**: branch de trabalho juntado no `main` (fast-forward), `main` padrão no GitHub, release `v0.1.0` |
+| B — Limpar a raiz | parcial: planos/arquitetura já em `docs/`; falta tirar web, `spike/`, mover samples e fixtures |
+| C — Qualidade e CI | parcial: **CI no ar** (`ci.yml` + `build.yml`: docs, `cargo test --workspace --release`, build, pacote); falta fmt/clippy, avisos e testes de GUI headless |
+| D — Documentação | quase: README com capturas, `docs/` OKF, `CHANGELOG.md`; falta `LICENSE` (D1) e templates de issue/PR |
+| E — Distribuição | parcial: **release automático** por tag (`release.yml`) com `.tar.gz` + `install.sh` + `.desktop`; falta ícone, AppImage, Flatpak |
+
+## 0. Onde estamos (2026-11-16, início do dia)
 
 - **App nativo (Rust + GPUI) em uso diário** desde 13/11: workspace `crates/wadawko-*`
   (core, store, samples, audio, export, draw, notation, cli, app). Grade, partitura,
