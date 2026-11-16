@@ -1,0 +1,155 @@
+# WaDAWko — Planejamento para deixar o repositório completo
+
+Data: 2026-11-16 · Status: planejamento · Repositório: `github.com/aqilputi/taiko-fu` (privado)
+
+"Completo" aqui = **alguém clona, compila, roda e contribui sem ajuda; o app sai
+empacotado em releases; o código web antigo fica arquivado; licenças em ordem; CI
+verde a cada PR; documentação de uso e de arquitetura; backlog organizado.**
+
+---
+
+## 0. Onde estamos (2026-11-16)
+
+- **App nativo (Rust + GPUI) em uso diário** desde 13/11: workspace `crates/wadawko-*`
+  (core, store, samples, audio, export, draw, notation, cli, app). Grade, partitura,
+  esteira, Pessoas, Mixer, Kit e Config portados. Banco em `~/.local/share/wadawko/`.
+- **Testes:** ~74 unitários no app + suítes por crate (core: round-trip JSON com as
+  fixtures; audio: render com hash estável; store; cli). `--selftest` e `--demo probe`
+  exercitam a janela de verdade (precisam de display).
+- **Repositório:** `main` (estado inicial, 13/11), `web-legacy` (mesmo ponto, guarda o
+  app Svelte), branch de trabalho `worktree-fix-topbar-sections-shortcuts` com 5 commits
+  ainda **não juntados no `main`**.
+- **Ainda misturado na raiz:** app web (`src/`, `server/`, `index.html`, `package*.json`,
+  `vite/svelte/tsconfig`, `node_modules/` ignorado), `spike/` (protótipo GPUI — e o
+  `target/` compartilhado mora nele), `samples-antigos/`, `scripts/`, `f2-new.png`,
+  6 arquivos `PLANEJAMENTO-*.md`.
+- **Faltam:** `README`, `LICENSE`, CI, empacotamento, ícone, CHANGELOG, templates de
+  issue/PR. Avisos de compilação: 2 de código morto + API depreciada na partitura.
+
+---
+
+## 1. Decisões que precisam do Fernando (bloqueiam partes do plano)
+
+| # | Decisão | Opções | Recomendação |
+|---|---|---|---|
+| D1 | Licença do código | MIT/Apache-2.0 (dupla) · GPL-3.0 · proprietária | **MIT OR Apache-2.0** (padrão Rust; samples e fontes ficam com as licenças deles) |
+| D2 | Repo público ou privado | manter privado · abrir | Privado até a Fase B; abrir quando README/licença/limpeza de dados pessoais estiverem prontos |
+| D3 | ID do app (Flatpak/desktop) | `io.github.aqilputi.WaDAWko` · outro domínio | `io.github.aqilputi.WaDAWko` (não exige domínio próprio) |
+| D4 | O que fazer com o app web | apagar do `main` (fica no `web-legacy`) · manter | **Apagar do `main`** + tag `web-final` |
+| D5 | `spike/` | apagar · mover para `archive/` | Apagar (as conclusões estão no `PLANEJAMENTO-gpui.md` §8.0) |
+| D6 | Músicas pessoais no repo (`data/backup-localstorage-*.json`) | manter como fixture · trocar por fixtures sintéticas | Manter enquanto privado; antes de abrir, trocar por fixtures geradas |
+
+---
+
+## 2. Fases
+
+### Fase A — Consolidar (1 dia) · *pré-requisito de tudo*
+1. Juntar o branch de trabalho no `main` (`git merge worktree-fix-topbar-sections-shortcuts`) e
+   publicar o `main`. Proteger o `main` no GitHub (PR obrigatório, CI obrigatório quando existir).
+2. Tag `v0.1.0-alpha` no `main` = "primeira versão nativa usável".
+3. Apagar o branch de trabalho depois do merge.
+
+**Pronto quando:** `main` no GitHub contém todo o trabalho; app instalado é compilado do `main`.
+
+### Fase B — Limpar a raiz (1–2 dias) · depende de D4, D5
+1. **Web:** `git tag web-final web-legacy`; remover do `main`: `src/`, `server/`, `index.html`,
+   `package.json`, `package-lock.json`, `vite.config.ts`, `svelte.config.js`, `tsconfig.json`,
+   `dist/`, `f2-new.png`, `samples-antigos/`, `scripts/` (revisar antes — algum script pode
+   servir ao nativo).
+2. **Samples:** mover `public/samples/` → `assets/samples/` e ajustar os `include_bytes!`/
+   `include_str!` de `crates/wadawko-samples/src/embedded.rs` (hoje apontam para `public/`).
+3. **Spike:** apagar `spike/` e trocar `.cargo/config.toml` para `target-dir = "target"`
+   (custa **uma** build fria de ~20 min). Atualizar `~/.local/bin/wadawko` para o novo caminho.
+4. **Docs:** `PLANEJAMENTO-*.md` → `docs/planejamento/`; `crates/wadawko-app/ARQUITETURA.md`
+   fica onde está e ganha um índice em `docs/ARQUITETURA.md` (visão do workspace).
+5. Trocar caminhos absolutos (`/home/fakio/...`) nos planos por caminhos do repo.
+6. Fixtures: `data/backup-localstorage-*.json` → `crates/wadawko-core/tests/fixtures/`
+   (ajustar `store`/`cli`/`core` tests e `golden/gen.mjs`); `data/` some do repo.
+
+**Pronto quando:** a raiz tem só `crates/`, `assets/`, `docs/`, `Cargo.*`, `.cargo/`, arquivos
+de projeto; `cargo test --workspace` passa num clone limpo.
+
+### Fase C — Qualidade e CI (2–3 dias)
+1. Zerar avisos: código morto (`people::owner_count`, `score/surface.rs` `clear/len`),
+   `ScrollWheelEvent`/`on_scroll_wheel` → `ScrollEvent`/`on_scroll` (partitura).
+2. `rustfmt.toml` com o estilo atual (linhas longas, `max_width ≈ 200`) + `cargo fmt` uma vez;
+   `cargo clippy --workspace -D warnings` (resolver ou permitir lints explicitamente).
+3. **GitHub Actions** (`.github/workflows/ci.yml`), Linux:
+   - `fmt` + `clippy` + `cargo test --workspace` (com `Swatinem/rust-cache` — sem cache a
+     build do gpui passa de 20 min);
+   - testes que precisam de janela (`--selftest`, `--demo probe`) num job separado com
+     compositor headless (`weston --backend=headless` ou `sway` headless) + Mesa **lavapipe**
+     (Vulkan por software). Marcar como "pode falhar" até estabilizar.
+   - build de release como artefato.
+   - macOS/Windows: job manual (`workflow_dispatch`), melhor esforço.
+4. Transformar o `--demo probe` em teste de regressão: sair com código ≠ 0 quando uma
+   checagem falhar (hoje só imprime), para o job de GUI acusar.
+
+**Pronto quando:** todo PR roda CI; `main` sempre verde.
+
+### Fase D — Documentação (1–2 dias) · depende de D1
+1. `README.md`: o que é (editor de partituras de taiko com kuchi shōga), screenshot/GIF,
+   instalar (release/AppImage), compilar (`cargo build --release -p wadawko-app`, dependências
+   de sistema: Vulkan/Mesa, ALSA/PipeWire, `ffmpeg` para MP3), onde ficam os dados, atalhos
+   principais, créditos.
+2. `LICENSE-MIT` + `LICENSE-APACHE` (D1); `LICENSES/` ou `NOTICE` com fontes (OFL) e samples
+   (`CREDITS.md`, CC BY / CC BY-SA); `license` nos `Cargo.toml`.
+3. `docs/MANUAL.md`: guia de uso. **Gerar a tabela de atalhos do registro** (`keys/registry.rs`
+   + `keymap-default.json`) com um subcomando (`wadawko-cli shortcuts --markdown`) para nunca
+   desatualizar.
+4. `CONTRIBUTING.md` (build com cache, `CARGO_TARGET_DIR`, testes, `--demo probe` com cópia do
+   banco, regras de desempenho do `ARQUITETURA.md`), `CHANGELOG.md` (Keep a Changelog).
+5. Templates: `.github/ISSUE_TEMPLATE/{bug,feature}.md`, `PULL_REQUEST_TEMPLATE.md`.
+
+### Fase E — Distribuição (Fase 7 do `PLANEJAMENTO-gpui.md`) (3–5 dias) · depende de D3
+1. Ícone próprio (SVG + PNGs 48–512) no lugar do `audio-x-generic`; `.desktop` e
+   AppStream `metainfo.xml` no repo (`assets/linux/`).
+2. **AppImage** (linuxdeploy) — o binário já embute samples e fontes; checar Vulkan/Mesa e
+   PipeWire numa instalação limpa (critério do plano original).
+3. **Flatpak** (`io.github.aqilputi.WaDAWko.yml`, runtime freedesktop, permissões: áudio
+   PipeWire, `xdg-download`, portal de arquivos) — publicar no Flathub é opcional.
+4. Workflow de release: tag `v*` → build → AppImage + Flatpak bundle + tarball como assets
+   do GitHub Release, com o trecho do CHANGELOG.
+5. Primeira execução: migrar automaticamente um banco legado (hoje só com `--migrate-from`)
+   e mostrar os créditos dos samples (obrigação CC BY-SA) em lugar visível.
+
+**Pronto quando:** baixar o AppImage de um Release numa máquina limpa e tocar uma música.
+
+### Fase F — Backlog do produto (contínuo)
+Abrir como **issues** com milestones, em vez de listas em markdown:
+- **Verificações manuais** que faltam: fps em X11, sincronia som × imagem a olho, 10 min tocando
+  sem xrun, Ctrl+C para fora do app (área de transferência do Wayland).
+- **Desempenho:** barra de contexto e status bar ainda redesenham a cada frame (~4,7 ms/frame
+  tocando); grade re-renderizada em hover de botões (~2.500 elementos) — virtualizar por seção.
+- **Fase 6 (bonecos)** — adiada; rig, estações, lane de movimentos, export de vídeo.
+- Itens "só planejados" do `PLANEJAMENTO-gpui.md` §1.2: vocabulário editável, dinâmica por
+  célula, export MIDI/TJA/PDF, MIDI input, i18n, compartilhar por URL.
+- Organização: labels (`bug`, `ux`, `perf`, `áudio`, `notação`, `distribuição`), milestones
+  `v0.2 — distribuível` (Fases B–E) e `v1.0 — completo` (paridade + bonecos + docs).
+
+---
+
+## 3. Ordem sugerida e esforço
+
+| Ordem | Fase | Esforço | Depende de |
+|---|---|---|---|
+| 1 | A — Consolidar | 1 dia | — |
+| 2 | B — Limpar a raiz | 1–2 dias | D4, D5 |
+| 3 | C — Qualidade e CI | 2–3 dias | B |
+| 4 | D — Documentação | 1–2 dias | D1 (e B para os caminhos) |
+| 5 | E — Distribuição | 3–5 dias | C (CI), D3 |
+| — | F — Backlog | contínuo | A (issues) |
+
+Total até "v0.2 distribuível": **~8–13 dias de trabalho**. Abrir o repositório (D2) faz
+sentido ao fim da Fase D, depois de resolver D6.
+
+## 4. Riscos
+
+- **Build fria de ~20 min** (gpui): pesa na CI e ao apagar o `spike/` (target compartilhado).
+  Mitigação: `rust-cache` na CI; trocar o `target-dir` uma vez só, num momento combinado.
+- **Testes de GUI na CI** dependem de compositor headless + lavapipe; podem ser instáveis.
+  Mitigação: job separado, não obrigatório até estabilizar; a lógica fica coberta por testes puros.
+- **Samples CC BY-SA**: a share-alike vale para os samples, não para o código; precisa ficar
+  explícito no README/NOTICE para não "contaminar" a escolha de licença.
+- **Pin `gpui-kit =0.9.1`**: atualizar o gpui pode quebrar APIs (já mudaram `ScrollEvent` e
+  `Tab` global). Atualizar em PR próprio, com o `--demo probe` como rede de segurança.
