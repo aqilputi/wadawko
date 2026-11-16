@@ -2,6 +2,17 @@
 
 Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões: [SemVer](https://semver.org/lang/pt-BR/).
 
+## [Não lançado]
+
+### Adicionado
+- **Fórmula de compasso por compasso** (ex.: 4/4 → 5/4): `compasso − 4/4 +` na barra de
+  ferramentas e "Compasso: ±1 tempo" na paleta, no compasso do cursor ou nos selecionados.
+
+### Mudado
+- Cada compasso passa a durar os seus `beats` tempos no áudio, metrônomo, kiai, esteira e
+  playhead. Antes todo compasso ocupava 4 tempos (herança do app web): um 5/4 sobrepunha o
+  compasso seguinte e um 3/4 deixava um tempo de silêncio. Músicas só em 4/4 não mudam.
+
 ## [0.1.0] - 2026-11-16
 
 Primeira versão do **app nativo** (Rust + GPUI), em uso diário desde 2026-11-13. Substitui o

@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::{App, BorderStyle, Bounds, Context, Entity, FontWeight, Hsla, PathBuilder, Pixels, Render, ShapedLine, SharedString, TextAlign, Window, canvas, div, fill, point, prelude::*, px, quad, rgb, size};
-use wadawko_audio::{BAR_TICKS, PPQ};
+use wadawko_audio::PPQ;
 use wadawko_core::ops::people::{cell_owner_of, person_audible, rails_for_tracks};
 use wadawko_core::ops::sections::selected_region;
 use wadawko_core::phrase::resolve_cell;
@@ -109,6 +109,8 @@ pub fn note_events(song: &Song, order: &[usize]) -> LaneData {
         acc += m.cell_count();
     }
     let mut by_track: Vec<Vec<NoteEvent>> = vec![Vec::new(); song.tracks.len()];
+    // início de cada compasso tocado, em tempos (compassos de fórmulas diferentes)
+    let starts = wadawko_core::ops::measures::bar_beat_starts(song, order);
     for (u, &mi) in order.iter().enumerate() {
         let Some(meas) = song.measures.get(mi) else { continue };
         let sub = meas.subdivision.max(1);
@@ -134,7 +136,7 @@ pub fn note_events(song: &Song, order: &[usize]) -> LaneData {
                     let beat_frac = swing_warp(cell_frac + first.offset / sub as f64, swing);
                     by_track[ti].push(NoteEvent {
                         track: ti,
-                        tick: (u as f64 * 4.0 + beat as f64 + beat_frac) * PPQ,
+                        tick: (starts[u] + beat as f64 + beat_frac) * PPQ,
                         cell: cell_start[mi] + ci,
                         hit: g[0],
                         zone: first.zone,
@@ -153,7 +155,7 @@ pub fn note_events(song: &Song, order: &[usize]) -> LaneData {
     for v in &mut by_track {
         v.sort_by(|a, b| a.tick.total_cmp(&b.tick));
     }
-    LaneData { by_track, len_ticks: order.len() as f64 * BAR_TICKS }
+    LaneData { by_track, len_ticks: starts[order.len()] * PPQ }
 }
 
 /// Posição x (px, relativa à linha de julgamento) de um evento em `tick` quando
@@ -691,6 +693,7 @@ pub fn bind(d: gpui_kit::Stateful<gpui_kit::Div>, _cx: &mut Context<Shell>) -> g
 #[cfg(test)]
 mod tests {
     use super::*;
+    use wadawko_audio::BAR_TICKS;
     use wadawko_core::demo::demo_song;
     use wadawko_core::ops;
 

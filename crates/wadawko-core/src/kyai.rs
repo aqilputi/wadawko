@@ -203,7 +203,8 @@ pub struct KyaiEvent {
     pub beat: usize,
     /// fração do tempo (já com swing)
     pub frac: f64,
-    /// posição absoluta em tempos desde o início da execução (`u * 4 + beat + frac`)
+    /// posição absoluta em tempos desde o início da execução (início do compasso tocado `u`
+    /// — soma dos tempos dos anteriores, ver `ops::measures::bar_beat_starts` — + `beat + frac`)
     pub beats: f64,
     pub syl: String,
     /// posição da sílaba dentro da palavra e tamanho da palavra
@@ -220,6 +221,7 @@ pub struct KyaiEvent {
 /// Saída agrupada por linha (na ordem em que cada linha aparece pela 1ª vez).
 pub fn kyai_events(song: &Song, order: &[usize], swing_warp: impl Fn(f64) -> f64) -> Vec<KyaiEvent> {
     let mut by_track: Vec<(usize, Vec<KyaiEvent>)> = Vec::new();
+    let starts = crate::ops::measures::bar_beat_starts(song, order);
     for (u, &mi) in order.iter().enumerate() {
         let Some(meas) = song.measures.get(mi) else { continue };
         let Some(kyai) = meas.kyai.as_ref() else { continue };
@@ -237,7 +239,7 @@ pub fn kyai_events(song: &Song, order: &[usize], swing_warp: impl Fn(f64) -> f64
                     ci,
                     beat,
                     frac,
-                    beats: (u * 4 + beat) as f64 + frac,
+                    beats: starts[u] + beat as f64 + frac,
                     syl: syl.to_string(),
                     idx: 0,
                     n: 1,

@@ -453,3 +453,67 @@ fn yagyo_swing_and_repeat() {
     assert!(off.iter().all(|f| (f - 480.0).abs() > 1.0), "golpe reto numa música com swing");
     assert!(off.iter().any(|f| (f - 640.0).abs() < 1e-6));
 }
+
+// ───────────────────────────── fórmulas de compasso diferentes ─────────────────────────────
+
+/// demo com os 3 primeiros compassos em 4/4, 5/4 e 3/4, uma nota no ÚLTIMO
+/// tempo de cada um e só esses 3 compassos tocando
+fn mixed_meters() -> Song {
+    let mut s = demo_song();
+    s.measures.truncate(3);
+    s.sections = None;
+    wadawko_core::ops::measures::set_measure_beats(&mut s, 1, 5);
+    wadawko_core::ops::measures::set_measure_beats(&mut s, 2, 3);
+    for m in &mut s.measures {
+        for row in m.cells.values_mut() {
+            row.iter_mut().for_each(|c| *c = None);
+        }
+        m.kyai = None;
+    }
+    let t = s.tracks[0].id.clone();
+    for mi in 0..3 {
+        let last_beat_first_cell = (s.measures[mi].beats - 1) * s.measures[mi].subdivision;
+        set_cell(&mut s, &t, mi, last_beat_first_cell, Some("don"), None);
+    }
+    s
+}
+
+#[test]
+fn compassos_de_formulas_diferentes_tem_duracoes_diferentes() {
+    let song = mixed_meters();
+    let s = live(&song);
+    // duração = 4 + 5 + 3 tempos
+    assert_eq!(s.len_ticks, 12.0 * PPQ);
+    assert_eq!(s.time.len_ticks(), 12.0 * PPQ);
+    assert_eq!((s.time.bar_tick(0), s.time.bar_tick(1), s.time.bar_tick(2), s.time.bar_tick(3)), (0.0, 4.0 * PPQ, 9.0 * PPQ, 12.0 * PPQ));
+    // a nota do último tempo de cada compasso: tempos 3, 8 e 11 (sem sobrepor o compasso seguinte)
+    let ticks: Vec<f64> = hits_of(&s, 0).iter().map(|(t, _)| *t).collect();
+    assert_eq!(ticks, vec![3.0 * PPQ, 8.0 * PPQ, 11.0 * PPQ]);
+    // metrônomo: 12 cliques, acento no 1º tempo de cada compasso (tempos 0, 4 e 9)
+    let clicks: Vec<(f64, bool)> =
+        s.events.iter().filter_map(|e| if let EventKind::Click { accent } = e.kind { Some((e.tick / PPQ, accent)) } else { None }).collect();
+    assert_eq!(clicks.len(), 12);
+    let accents: Vec<f64> = clicks.iter().filter(|(_, a)| *a).map(|(t, _)| *t).collect();
+    assert_eq!(accents, vec![0.0, 4.0, 9.0]);
+    // cursor ↔ tempo batem em todas as células, e o compasso tocado sai certo
+    let total_cells: usize = song.measures.iter().map(|m| m.cell_count()).sum();
+    for g in 0..total_cells {
+        assert_eq!(s.time.cell_at(s.time.cell_tick(g)), Some(g), "célula {g}");
+    }
+    assert_eq!(s.time.bar_at(8.9 * PPQ), Some(1));
+    assert_eq!(s.time.bar_at(9.0 * PPQ), Some(2));
+    assert_eq!(s.time.bar_at(12.0 * PPQ), None);
+}
+
+#[test]
+fn formula_diferente_com_ritornello_dobra_o_playhead() {
+    let mut song = mixed_meters();
+    // seção única cobrindo os 3 compassos, tocada 2×
+    song.sections = Some(vec![Section { id: "s".into(), name: "S".into(), start: 0, repeat: Some(2), ..Default::default() }]);
+    let s = live(&song);
+    assert_eq!(s.time.order, vec![0, 1, 2, 0, 1, 2]);
+    assert_eq!(s.len_ticks, 24.0 * PPQ);
+    // na 2ª volta, o 1º tempo do compasso de 5/4 (tick 16) dobra para o tick 4 da música escrita
+    assert_eq!(s.time.fold_tick(16.0 * PPQ), 4.0 * PPQ);
+    assert_eq!(hits_of(&s, 0).len(), 6);
+}

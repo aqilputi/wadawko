@@ -40,6 +40,10 @@ colcheia, semicolcheia ou fusa — vale para a música toda e fica na barra de f
 - **Apagar**: botão direito na célula, `Backspace` (anterior) ou `Delete` (seleção).
 - **Frases e kiai prontos**: paleta → "Inserir frase: cavalinho", "Inserir kiai: sei!" —
   escrevem a partir do cursor.
+- **Fórmula de compasso**: na barra de ferramentas, `compasso − 4/4 +` muda o compasso do cursor
+  (ou todos os compassos selecionados) — ex.: 4/4 → 5/4. Aumentar acrescenta tempos vazios no fim;
+  diminuir corta os últimos tempos (`Ctrl+Z` desfaz). Cada compasso toca com a sua duração
+  (metrônomo, esteira e partitura acompanham). Também pela paleta: "Compasso: +1 tempo".
 - **Modos** (barra de ferramentas, ou `Ctrl+Shift+S`): **editar** (padrão: digitar) e
   **selecionar**. Com o **vim** ligado (Config), a grade usa normal/inserção/visual.
 

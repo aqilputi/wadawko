@@ -49,7 +49,7 @@ fazem round-trip** (preservados intactos), então arquivos de versões futuras n
 
 | Campo | Tipo | Notas |
 |---|---|---|
-| `beats` | número | tempos do compasso |
+| `beats` | número | tempos do compasso — a fórmula `beats`/4 (4 = 4/4, 5 = 5/4); o compasso dura `beats` tempos |
 | `subdivision` | número | células por tempo (2, 4, 8) |
 | `cells` | `{ trackId: (texto\|null)[] }` | a sílaba de cada célula, por linha |
 | `cellOwners` | igual a `cells`? | dona (pessoa) de cada nota em linha compartilhada |

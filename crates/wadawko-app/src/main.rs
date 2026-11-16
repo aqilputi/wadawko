@@ -331,6 +331,8 @@ fn selftest(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App)
 
 /// `--demo probe`: simula mouse e teclado PELO CAMINHO REAL (hitboxes, foco,
 /// keymap) e imprime o efeito de cada passo. Use com uma cópia do banco.
+const PPQ_PROBE: f64 = 960.0;
+
 fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App) {
     use gpui_kit::{Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PlatformInput, Pixels, Point};
     fn wait(cx: &mut AsyncApp, ms: u64) -> impl std::future::Future<Output = ()> {
@@ -540,6 +542,28 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         println!("PROBE Ctrl+Space acha alvos da barra de cima (hamb, loop, title): {found:?}");
         key("escape", cx);
         wait(cx, 100).await;
+        // fórmula de compasso: "+" da barra (4/4 → 5/4 no compasso do cursor), Ctrl+Z volta
+        if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("beats+").map(|t| t.bounds.center())) {
+            let beats = |cx: &mut AsyncApp| {
+                cx.update(|cx| {
+                    let m = shell.read(cx).grid.read(cx).cursor.map_or(0, |c| c.m);
+                    let song = state.read(cx).song().clone();
+                    (m, song.measures[m].beats, song.measures[m].cell_count())
+                })
+            };
+            let (m, b0, n0) = beats(cx);
+            mouse(down(p, none), cx);
+            wait(cx, 60).await;
+            mouse(up(p, none), cx);
+            wait(cx, 150).await;
+            let (_, b1, n1) = beats(cx);
+            let len = cx.update(|cx| state.read(cx).schedule.len_ticks / PPQ_PROBE);
+            println!("PROBE compasso {}: {b0}/4 ({n0} células) → {b1}/4 ({n1} células) · duração tocada {len:.0} tempos", m + 1);
+            key("ctrl-z", cx);
+            wait(cx, 100).await;
+            let (_, b2, _) = beats(cx);
+            println!("PROBE ctrl-z na fórmula: volta a {b2}/4");
+        }
         // calibração: botão do cabeçalho fixo (+ seção) com clique sintético
         if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("addsec").map(|t| t.bounds.center())) {
             let n0 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));

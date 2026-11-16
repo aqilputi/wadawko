@@ -327,6 +327,8 @@ impl Shell {
         }));
         let d = on!(d, cx, measure::ToggleCresc, |this, w, cx| this.hairpin(Hairpin::Cresc, cx));
         let d = on!(d, cx, measure::ToggleDim, |this, w, cx| this.hairpin(Hairpin::Dim, cx));
+        let d = on!(d, cx, measure::BeatsUp, |this, w, cx| this.g(cx, |g, cx, _| g.change_beats(1, cx)));
+        let d = on!(d, cx, measure::BeatsDown, |this, w, cx| this.g(cx, |g, cx, _| g.change_beats(-1, cx)));
 
         let d = on!(d, cx, track::Add, |this, w, cx| {
             let def = this.add_instrument.clone();

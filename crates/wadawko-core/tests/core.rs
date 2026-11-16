@@ -483,3 +483,54 @@ fn kiai_silabacao_e_contorno() {
     let q = kyai::kyai_profile("person-1", &track);
     assert!((q.pitch - p.pitch - 3.0).abs() < 1e-12 && q.vary == 0.1);
 }
+
+// ───────────────────────────── fórmula de compasso ─────────────────────────────
+
+#[test]
+fn formula_de_compasso_muda_sem_mexer_nas_notas() {
+    let mut s = demo::demo_song();
+    let t = s.tracks[0].id.clone();
+    let sub = s.measures[0].subdivision;
+    let antes: Vec<Option<String>> = s.measures[0].cells[&t].clone();
+    assert_eq!(s.measures[0].beats, 4);
+
+    // 4/4 → 5/4: um tempo vazio no fim, notas no lugar
+    assert!(measures::set_measure_beats(&mut s, 0, 5));
+    assert_eq!(s.measures[0].beats, 5);
+    assert_eq!(s.measures[0].cell_count(), 5 * sub);
+    for row in s.measures[0].cells.values() {
+        assert_eq!(row.len(), 5 * sub);
+    }
+    assert_eq!(&s.measures[0].cells[&t][..4 * sub], &antes[..]);
+    assert!(s.measures[0].cells[&t][4 * sub..].iter().all(Option::is_none));
+
+    // 5/4 → 3/4: corta os últimos tempos
+    assert!(measures::set_measure_beats(&mut s, 0, 3));
+    assert_eq!(&s.measures[0].cells[&t][..], &antes[..3 * sub]);
+    // kiai acompanha
+    cells::set_kyai(&mut s, &t, 0, 0, Some("sa!"));
+    assert!(measures::set_measure_beats(&mut s, 0, 6));
+    assert_eq!(s.measures[0].kyai.as_ref().unwrap()[&t].len(), 6 * sub);
+
+    // mesma fórmula / compasso inexistente: nada muda; limites
+    assert!(!measures::set_measure_beats(&mut s, 0, 6));
+    assert!(!measures::set_measure_beats(&mut s, 999, 5));
+    assert!(measures::set_measure_beats(&mut s, 0, 99));
+    assert_eq!(s.measures[0].beats, measures::MAX_BEATS);
+    assert!(measures::set_measure_beats(&mut s, 0, 0));
+    assert_eq!(s.measures[0].beats, measures::MIN_BEATS);
+    // a música continua válida e faz round-trip
+    assert_eq!(Song::from_json(&s.to_json()).unwrap(), s);
+}
+
+#[test]
+fn inicio_dos_compassos_soma_os_tempos() {
+    let mut s = demo::demo_song();
+    measures::set_measure_beats(&mut s, 1, 5);
+    measures::set_measure_beats(&mut s, 2, 3);
+    let b: Vec<usize> = s.measures.iter().map(|m| m.beats).collect();
+    assert_eq!(&b[..3], &[4, 5, 3]);
+    // ordem com repetição: 0 1 2 1
+    assert_eq!(measures::bar_beat_starts(&s, &[0, 1, 2, 1]), vec![0.0, 4.0, 9.0, 12.0, 17.0]);
+    assert_eq!(measures::bar_beat_starts(&s, &[]), vec![0.0]);
+}

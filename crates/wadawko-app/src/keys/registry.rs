@@ -119,6 +119,8 @@ pub static SPECS: &[Spec] = &[
     spec!("track::Settings", "Editar linha (nome, instrumento, pessoas…)", "Estrutura", "popover engrenagem"),
     spec!("measure::ToggleCresc", "Crescendo no compasso", "Estrutura", "hairpin <"),
     spec!("measure::ToggleDim", "Diminuendo no compasso", "Estrutura", "hairpin >"),
+    spec!("measure::BeatsUp", "Compasso: +1 tempo (ex.: 4/4 → 5/4)", "Estrutura", "fórmula de compasso tempos 5/4 time signature"),
+    spec!("measure::BeatsDown", "Compasso: −1 tempo (ex.: 4/4 → 3/4)", "Estrutura", "fórmula de compasso tempos 3/4 time signature"),
     spec!("grid::MoveSelLeft", "Mover seleção ←", "Edição", "bloco"),
     spec!("grid::MoveSelRight", "Mover seleção →", "Edição", "bloco"),
     spec!("grid::MoveSelUp", "Mover seleção ↑", "Edição", "bloco"),

@@ -114,6 +114,54 @@ pub fn set_subdivision(song: &mut Song, sub: usize) {
     }
 }
 
+/// Menor e maior número de tempos por compasso aceitos pela UI.
+pub const MIN_BEATS: usize = 1;
+pub const MAX_BEATS: usize = 16;
+
+/// Muda a fórmula do compasso `mi` para `beats`/4 (ex.: 4 → 5 = 5/4). As notas
+/// ficam nas MESMAS células: aumentar acrescenta tempos vazios no fim; diminuir
+/// corta os últimos tempos (as notas deles somem — o desfazer recupera).
+/// `cells`, `cellOwners` e `kyai` são ajustados juntos. Retorna `false` se nada
+/// mudou (compasso inexistente ou mesma fórmula).
+pub fn set_measure_beats(song: &mut Song, mi: usize, beats: usize) -> bool {
+    let beats = beats.clamp(MIN_BEATS, MAX_BEATS);
+    let Some(meas) = song.measures.get_mut(mi) else { return false };
+    if meas.beats == beats {
+        return false;
+    }
+    let new_n = beats * meas.subdivision.max(1);
+    let fit = |rows: &mut CellRows| {
+        for row in rows.values_mut() {
+            row.resize(new_n, None);
+        }
+    };
+    fit(&mut meas.cells);
+    if let Some(owners) = meas.cell_owners.as_mut() {
+        fit(owners);
+    }
+    if let Some(kyai) = meas.kyai.as_mut() {
+        fit(kyai);
+    }
+    meas.beats = beats;
+    true
+}
+
+/// Início de cada compasso TOCADO, em tempos, para a ordem de execução `order`
+/// (compassos-fonte, saída de `play_order`): `starts[u]` = soma dos tempos dos
+/// compassos tocados antes de `u`. Tem `order.len() + 1` entradas — a última é a
+/// duração total. Com compassos de fórmulas diferentes (4/4, 5/4, 3/4…) é o
+/// que posiciona cada um no tempo; um compasso-fonte inexistente conta 4.
+pub fn bar_beat_starts(song: &Song, order: &[usize]) -> Vec<f64> {
+    let mut starts = Vec::with_capacity(order.len() + 1);
+    let mut acc = 0.0;
+    for &mi in order {
+        starts.push(acc);
+        acc += song.measures.get(mi).map_or(4, |m| m.beats) as f64;
+    }
+    starts.push(acc);
+    starts
+}
+
 // ───────────────────────────── dinâmicas ─────────────────────────────
 
 /// remove a entrada do instrumento se ficou vazia (não suja o JSON)

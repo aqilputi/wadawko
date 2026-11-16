@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::{Context, EventEmitter};
-use wadawko_audio::{Audio, AudioConfig, BAR_TICKS, CompileOptions, EngineEvent, PPQ, PlayOptions, Schedule, TrainerOptions};
+use wadawko_audio::{Audio, AudioConfig, CompileOptions, EngineEvent, PPQ, PlayOptions, Schedule, TrainerOptions};
 use wadawko_core::Song;
 use wadawko_core::ops::sections::selected_region;
 use wadawko_export::{ExportJob, ExportOptions, ExportStage};
@@ -410,7 +410,7 @@ impl AppState {
         let u = tm.bar_at(tick)?;
         let mi = *tm.order.get(u)?;
         let (beats, _) = *tm.shape.get(mi)?;
-        let q = (tick - u as f64 * BAR_TICKS) / PPQ;
+        let q = (tick - tm.bar_tick(u)) / PPQ;
         let frac = if beats == 0 { 0.0 } else { (q / beats as f64).clamp(0.0, 1.0) as f32 };
         Some(Playhead { mi, frac, cell: tm.cell_at(tick), tick })
     }

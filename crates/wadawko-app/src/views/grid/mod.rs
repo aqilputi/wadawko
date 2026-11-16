@@ -1129,6 +1129,45 @@ impl GridView {
         self.edit(cx, |s| ops::measures::toggle_measure_hairpin(s, m, h, tid.as_deref()));
     }
 
+    /// Compassos alvo de uma mudança de fórmula: os da seleção (se houver) ou o do cursor.
+    pub fn target_measures(&self) -> Vec<usize> {
+        match (self.anchor, self.sel_range()) {
+            (Some(_), Some((_, _, g0, g1))) => {
+                let (m0, _) = self.song.unflat(g0);
+                let (m1, _) = self.song.unflat(g1);
+                (m0.min(m1)..=m0.max(m1)).collect()
+            }
+            _ => self.cursor.map(|c| vec![c.m]).unwrap_or_default(),
+        }
+    }
+
+    /// Soma `delta` tempos à fórmula dos compassos alvo (ex.: +1 = 4/4 → 5/4).
+    pub fn change_beats(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let targets = self.target_measures();
+        if targets.is_empty() {
+            self.flash("ponha o cursor num compasso", cx);
+            return;
+        }
+        let song = self.song.clone();
+        let mut changed = Vec::new();
+        self.edit(cx, |s| {
+            for &mi in &targets {
+                let Some(m) = song.measures.get(mi) else { continue };
+                let beats = (m.beats as isize + delta).clamp(ops::measures::MIN_BEATS as isize, ops::measures::MAX_BEATS as isize) as usize;
+                if ops::measures::set_measure_beats(s, mi, beats) {
+                    changed.push((mi, beats));
+                }
+            }
+        });
+        match changed.as_slice() {
+            [] => self.flash(format!("limite: de {} a {} tempos por compasso", ops::measures::MIN_BEATS, ops::measures::MAX_BEATS), cx),
+            [(mi, b)] => self.flash(format!("compasso {}: {b}/4", mi + 1), cx),
+            many => self.flash(format!("{} compassos: {}/4", many.len(), many[0].1), cx),
+        }
+        self.clamp_cursor();
+        cx.notify();
+    }
+
     /// Atalho de teclado: pp → p → … → ff → (sem marcação).
     pub fn cycle_dynamic(&mut self, m: usize, cx: &mut Context<Self>) {
         let Some(meas) = self.song.measures.get(m) else { return };

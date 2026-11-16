@@ -4,7 +4,7 @@
 
 use std::rc::Rc;
 
-use gpui_kit::{App, ClickEvent, Context, SharedString, div, prelude::*, px};
+use gpui_kit::{App, ClickEvent, Context, FontWeight, SharedString, div, prelude::*, px};
 use wadawko_core::ops;
 
 use super::grid::Mode;
@@ -20,9 +20,10 @@ impl Shell {
         let song = st.song().clone();
         let pen = st.pen.clone();
         let selected = st.tp.selected.clone();
-        let (mode, zoom_pct, has_sel) = {
+        let (mode, zoom_pct, has_sel, beats) = {
             let g = self.grid.read(cx);
-            (g.mode, g.zoom_pct(), g.anchor.is_some())
+            let beats = g.cursor.and_then(|c| song.measures.get(c.m)).map_or(4, |m| m.beats);
+            (g.mode, g.zoom_pct(), g.anchor.is_some(), beats)
         };
         let inst_name = ops::kit::instrument_by_id(&song, Some(&self.add_instrument)).map(|d| d.name.clone()).unwrap_or_else(|| "Chū-daiko".into());
         let mut toolbar = div().flex().flex_wrap().items_center().gap(px(8.0)).p(px(7.0)).rounded(px(10.0)).bg(th.paper).border_1().border_color(th.line);
@@ -47,6 +48,17 @@ impl Shell {
                 },
                 false,
             ))
+            // fórmula do compasso do cursor (ou dos selecionados): − 4/4 +
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(4.0))
+                    .child(div().text_size(px(11.0)).text_color(th.ink_faint).child("compasso"))
+                    .child(abtn("beats-", th, keys::measure::BeatsDown).w(px(30.0)).px(px(0.0)).child("−"))
+                    .child(div().w(px(34.0)).flex().justify_center().text_size(px(13.0)).font_weight(FontWeight::BOLD).text_color(th.ink).child(SharedString::from(format!("{beats}/4"))))
+                    .child(abtn("beats+", th, keys::measure::BeatsUp).w(px(30.0)).px(px(0.0)).child("+")),
+            )
             .child(abtn("addsec", th, keys::section::Add).child("+ seção"))
             .child(abtn("inst", th, keys::track::CycleInstrument).w(px(150.0)).justify_between().child(SharedString::from(inst_name)).child(div().text_color(th.ink_faint).child("▾")))
             .child(abtn("addline", th, keys::track::Add).child("+ linha"))
