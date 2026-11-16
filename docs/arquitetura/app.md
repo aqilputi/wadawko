@@ -1,4 +1,15 @@
+---
+type: Architecture
+title: "Arquitetura do app (wadawko-app)"
+description: "Estrutura do app desktop: estado compartilhado, como editar a música, relógio do playback, comandos, como plugar uma view e regras de pintura e desempenho."
+tags: [arquitetura, app, gpui]
+status: stable
+codigo: crates/wadawko-app
+---
+
 # wadawko-app — arquitetura e como plugar uma view
+
+> Caminhos nesta página são relativos a `crates/wadawko-app/`.
 
 Binário `wadawko` (GPUI via `gpui-kit = "=0.9.1"`, `extern crate gpui_kit as gpui`).
 Porte modularizado do `spike/`, com o modelo/áudio/persistência trocados pelos

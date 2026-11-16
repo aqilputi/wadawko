@@ -1,5 +1,5 @@
 //! Testes de tabela escritos à mão (os casos pedidos na Fase 1 do
-//! PLANEJAMENTO-gpui.md). A conferência exaustiva contra o TS está em `golden.rs`.
+//! docs/planejamento/gpui.md). A conferência exaustiva contra o TS está em `golden.rs`.
 
 use wadawko_core::model::{Dynamic, DynamicMark, Hairpin, Measure, Section, Song, Zone};
 use wadawko_core::ops::{CellPos, cells, kit, measures, people, sections, tracks};

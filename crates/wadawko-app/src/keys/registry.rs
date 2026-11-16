@@ -1,5 +1,5 @@
 //! Registro único de comandos: paleta, which-key, hints e a página de atalhos
-//! leem daqui (PLANEJAMENTO-teclado.md §2.1).
+//! leem daqui (docs/planejamento/teclado.md §2.1).
 
 // ───────────────────────────── registro (fonte única) ─────────────────────────────
 

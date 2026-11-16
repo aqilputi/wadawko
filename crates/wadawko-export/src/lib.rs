@@ -1,6 +1,6 @@
 //! # wadawko-export
 //!
-//! Export de áudio do WaDAWko (PLANEJAMENTO-gpui.md §3.5) — porte de
+//! Export de áudio do WaDAWko (docs/planejamento/gpui.md §3.5) — porte de
 //! `src/lib/exportAudio.ts`: render offline com o MESMO engine do playback
 //! ([`wadawko_audio::offline`]), normalização de pico em 0,98 como a web, e
 //! gravação em WAV (16/24-bit) ou MP3 192 kbps (via `ffmpeg`/libmp3lame, com o

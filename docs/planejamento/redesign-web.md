@@ -1,3 +1,12 @@
+---
+type: Plan
+title: "Redesign do app web (IA, sidebars, multi-música, tema)"
+description: "Redesign da interface do app web: navegação, painéis laterais, várias músicas, tema claro/escuro e arquitetura."
+tags: [planejamento, web, ux, histórico]
+status: stable
+estado: "histórico — implementado no web e portado para o nativo"
+---
+
 # WaDAWko — Planejamento de Redesign (IA, sidebars, multi-música, tema, arquitetura)
 
 > Evolução do protótipo `taiko-fu` para um app tipo DAW de taiko. Rename para **WaDAWko**
@@ -53,7 +62,7 @@ Referência de DAW: **Bitwig Studio** e **Renoise**. Este doc é o mapa; a imple
 - Refs: [NN/g vertical nav](https://www.nngroup.com/articles/vertical-nav/), [Adobe Spectrum side-nav](https://spectrum.adobe.com/page/side-navigation/), [UX Planet sidebar](https://uxplanet.org/best-ux-practices-for-designing-a-sidebar-9174ee0ecaa2).
 
 ### 2.4 Editores de taiko / kuchi shōga
-- Confirmado no `PLANEJAMENTO.md`: não há concorrente que junte grade + sílabas nativas + multi-instrumento +
+- Confirmado no `/planejamento/inicial.md`: não há concorrente que junte grade + sílabas nativas + multi-instrumento +
   playback. Nosso diferencial = **prática de ensemble** (loop de seção, tempo, mão D/E). Feature-âncora:
   **Practice Trainer** (loop de seção com rampa de tempo) — nenhum editor de taiko tem.
 
@@ -330,4 +339,4 @@ Cada fase fecha com `npm run check` + build verdes e é usável ponta-a-ponta.
 - Bitwig: [Window Anatomy](https://www.bitwig.com/userguide/latest/anatomy_of_the_bitwig_studio_window/), [Window Body](https://www.bitwig.com/userguide/latest/the_window_body/), [Transport](https://www.bitwig.com/userguide/latest/the_window_menus_transport_area/)
 - Renoise: [Pattern Editor](https://tutorials.renoise.com/wiki/Pattern_Editor), [Disk Browser](https://tutorials.renoise.com/wiki/Disk_Browser), [Shortcuts](https://tutorials.renoise.com/wiki/Keyboard_Shortcuts)
 - Sidebar/nav: [NN/g](https://www.nngroup.com/articles/vertical-nav/), [Adobe Spectrum](https://spectrum.adobe.com/page/side-navigation/), [UX Planet](https://uxplanet.org/best-ux-practices-for-designing-a-sidebar-9174ee0ecaa2)
-- Base do produto: `PLANEJAMENTO.md` (visão, domínio, engine)
+- Base do produto: `/planejamento/inicial.md` (visão, domínio, engine)

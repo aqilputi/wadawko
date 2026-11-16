@@ -1,4 +1,4 @@
-//! Vim além do básico (PLANEJAMENTO-teclado.md §3.4–3.7, K4): repetição `.`,
+//! Vim além do básico (docs/planejamento/teclado.md §3.4–3.7, K4): repetição `.`,
 //! registradores `"x`, marcas `m`/`'`, busca `/` `?` `n` `N`, linha de comando `:`
 //! e o prompt de texto (também usado para renomear seção/linha/música e BPM).
 

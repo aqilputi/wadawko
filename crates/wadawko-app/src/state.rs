@@ -1,7 +1,7 @@
 //! Estado compartilhado do app: UMA entidade GPUI (`Entity<AppState>`) que é
 //! dona do `ProjectStore` (banco + autosave), do histórico (desfazer/refazer),
 //! do áudio e do estado do transporte. Todas as views recebem um clone do
-//! `Entity<AppState>` — ver `ARQUITETURA.md`.
+//! `Entity<AppState>` — ver `docs/arquitetura/app.md`.
 //!
 //! Regra de ouro: NINGUÉM muda a música fora de [`AppState::edit`].
 

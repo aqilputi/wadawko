@@ -1,6 +1,6 @@
 //! # wadawko-draw
 //!
-//! Camada de desenho 2D do WaDAWko, independente de backend (PLANEJAMENTO-gpui.md §3.1, §5).
+//! Camada de desenho 2D do WaDAWko, independente de backend (docs/planejamento/gpui.md §3.1, §5).
 //!
 //! - [`Canvas2D`]: o trait contra o qual a notação (`wadawko-notation`), a esteira e os
 //!   bonecos pintam. Quads, linhas, caminhos, texto, glifos por codepoint, recorte e

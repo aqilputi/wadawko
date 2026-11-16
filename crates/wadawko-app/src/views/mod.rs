@@ -1,4 +1,4 @@
-//! Views do app. PONTO DE EXTENSÃO (ver `ARQUITETURA.md`):
+//! Views do app. PONTO DE EXTENSÃO (ver `docs/arquitetura/app.md`):
 //!
 //! - [`Page`] = páginas do NavRail; [`Tab`] = abas do Editor.
 //! - Cada página/aba vive no SEU arquivo (`mixer.rs`, `people.rs`, `kit.rs`,

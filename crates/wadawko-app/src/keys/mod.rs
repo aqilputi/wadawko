@@ -1,4 +1,4 @@
-//! Teclado (PLANEJAMENTO-teclado.md, K0–K4): ações GPUI, registro único de
+//! Teclado (docs/planejamento/teclado.md, K0–K4): ações GPUI, registro único de
 //! comandos, keymap em JSON, fuzzy, rótulos de salto e o registro de alvos dos
 //! hints. A paleta de comandos (`palette`), o which-key (`whichkey`), o overlay de
 //! hints (`hint_overlay`) e o vim além do básico (`modal`: `.`, registradores,

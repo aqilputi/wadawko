@@ -1,5 +1,5 @@
-//! WaDAWko — app desktop (Rust + GPUI). Fase 3 de PLANEJAMENTO-gpui.md + trilha
-//! de teclado de PLANEJAMENTO-teclado.md. Arquitetura: ver `ARQUITETURA.md`.
+//! WaDAWko — app desktop (Rust + GPUI). Fase 3 de docs/planejamento/gpui.md + trilha
+//! de teclado de docs/planejamento/teclado.md. Arquitetura: ver `docs/arquitetura/app.md`.
 //!
 //! Uso: `wadawko [--db caminho] [--read-only] [--samples-dir pasta] [--dark]
 //! [--mute] [--song "título"] [--bench N] [--demo modo] [--selftest]`

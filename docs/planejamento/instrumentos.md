@@ -1,3 +1,12 @@
+---
+type: Plan
+title: "Criador de instrumentos (Kit)"
+description: "Instrumentos custom sobre um sample base, com ajustes separados de couro e borda (pitch, ganho, decaimento, timbre)."
+tags: [planejamento, kit, áudio]
+status: stable
+estado: "implementado (web e nativo)"
+---
+
 # Planejamento — Criador de Instrumentos (Kit)
 
 ## Objetivo

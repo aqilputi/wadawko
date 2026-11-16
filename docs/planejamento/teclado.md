@@ -1,8 +1,17 @@
+---
+type: Plan
+title: "UX por teclado (paleta, which-key, hints, vim)"
+description: "Trilha de teclado do app nativo: registro único de comandos, keymap em JSON, paleta Ctrl+K, which-key, saltos por rótulo e modo vim."
+tags: [planejamento, teclado, ux]
+status: stable
+estado: "implementado (K0–K4)"
+---
+
 # WaDAWko nativo — Planejamento de UX por teclado
 
-> Trilha transversal do app Rust + GPUI: bindings modais estilo Vim na grade, paleta de comandos `Ctrl+K`, comandos em sequência (chords) com *command hint* (which-key) e *jump* por rótulos (*element hints*) com `Ctrl+Espaço`. Complementa `PLANEJAMENTO-gpui.md` (Fases 3–4) e os itens "teclado-first", "command palette `Ctrl+K`" e "mapa de atalhos" do `PLANEJAMENTO-WaDAWko.md` (§66, §276).
+> Trilha transversal do app Rust + GPUI: bindings modais estilo Vim na grade, paleta de comandos `Ctrl+K`, comandos em sequência (chords) com *command hint* (which-key) e *jump* por rótulos (*element hints*) com `Ctrl+Espaço`. Complementa `/planejamento/gpui.md` (Fases 3–4) e os itens "teclado-first", "command palette `Ctrl+K`" e "mapa de atalhos" do `/planejamento/redesign-web.md` (§66, §276).
 
-Data: 2026-11-10 · Status: planejamento, pré-código · Base lida: `spike/src/{main,grid,model}.rs`, `src/App.svelte`, `src/lib/{CommandPalette,Grid,StatusBar,ContextToolbar}.svelte`, `PLANEJAMENTO-gpui.md` (§8.0) e o código-fonte de `gpui-pre 0.3.12`, `gpui-component 0.9.1`, `gpui-base 0.9.1`, `gpui-kit 0.9.1` em `~/.cargo/registry`.
+Data: 2026-11-10 · Status: planejamento, pré-código · Base lida: `spike/src/{main,grid,model}.rs`, `src/App.svelte`, `src/lib/{CommandPalette,Grid,StatusBar,ContextToolbar}.svelte`, `/planejamento/gpui.md` (§8.0) e o código-fonte de `gpui-pre 0.3.12`, `gpui-component 0.9.1`, `gpui-base 0.9.1`, `gpui-kit 0.9.1` em `~/.cargo/registry`.
 
 > **Status 2026-11-10 — implementado no protótipo (`spike/`):** K0 (registro único `spike/src/keys.rs` + `spike/assets/keymap-default.json` no formato do Zed + `~/.config/wadawko/keymap.json` com recarga automática por mtime + `settings.json` com `vim`), K1 (paleta Ctrl+K/Ctrl+P própria, fuzzy sem acento, atalho de cada comando, ✓ nos toggles, músicas na lista, chords `Ctrl+K Ctrl+T/V/L/M`), K2 (which-key via `observe_pending_input` + `possible_bindings_for_input`, 250 ms, grupos com título; showcmd na status bar), K3 (Ctrl+Space / Alt+F / `space j` = UI + inícios de tempo; `f` = células da linha; `F` = todas as células; rótulos balanceados ≤ 2 letras) e um vim-lite de K4 (normal/insert/visual/V-compasso, hjkl w b e W B 0 $ _ ( ) gg G gj gk Ctrl+D/U, contagem, x X dd dw d$ D dam dis cc cw s yy yw yis Y p P, gu gU !, i a I A, v V o, u Ctrl+R, Enter toca do cursor, zi zo z0 za zR zM, leader `space …` da §8.5). Vim desligado = modo simples (letras digitam, Shift+setas selecionam, Ctrl+C/X/V, Ctrl+Z/Y). Testes: rótulos (prefix-free, ≤2 letras até 676 alvos), fuzzy, todo binding padrão tem título. **Depois (mesmo dia):** registradores nomeados (`"a`–`"z`, `"0` último yank, `""`, `"+` área de transferência em TSV), repetição `.` (inclui o texto digitado no insert), marcas `m{x}`/`'{x}`, busca `/` `?` `n` `N` (Ctrl+F no modo simples), linha de comando `:` (`:12`, `:s 2`, `:bpm`, `:sub`, `:set [no]vim|dark|loop|metro|swing`, `:e título`, `:new`, `:reg`, `:marks`, `:u`, `:redo`, `:q`, ou nome de qualquer comando da paleta; ↑/↓ histórico), **Ctrl+/** = dica de atalhos na raiz (tudo o que dá para apertar no contexto atual), página **Configurações** (Ctrl+, / `space ,` / F1: vim, recarregar/criar keymap.json, testar tecla via `observe_keystrokes`, conflitos, mapa completo de atalhos por contexto) e verificador de conflitos com teste garantindo que o keymap padrão não tem nenhum. **Ainda não:** `EntityInputHandler` (IME/compose), objetos `i`/`a` genéricos além de `dam`/`dis`/`yis`.
 
@@ -520,7 +529,7 @@ Lista de músicas: um item por projeto (`project::Select(i)`), com `keywords` = 
 
 ## 10. Fases, entregáveis, estimativas
 
-Trilha **K**, dentro de um dev em tempo integral. K0–K2 não dependem do `GridElement` final e podem começar hoje no `spike/`; K3–K4 precisam do `GridView` da Fase 3; K5 anda com a Fase 4. Inserir em `PLANEJAMENTO-gpui.md §8` como "Fase 3-K" (≈ +5–6 semanas ao total; ~4,5 k LOC + 1,5 k de testes).
+Trilha **K**, dentro de um dev em tempo integral. K0–K2 não dependem do `GridElement` final e podem começar hoje no `spike/`; K3–K4 precisam do `GridView` da Fase 3; K5 anda com a Fase 4. Inserir em `/planejamento/gpui.md §8` como "Fase 3-K" (≈ +5–6 semanas ao total; ~4,5 k LOC + 1,5 k de testes).
 
 | Fase | Entregáveis | Estimativa |
 |---|---|---|
@@ -576,10 +585,10 @@ Dependências: K0 → K1 → K2; K3 depende de K0; K4 depende de K0 e do `GridVi
 ---
 
 ### Critical Files for Implementation
-- /home/fakio/dev/taiko-fu/spike/src/main.rs — Shell: `on_key` (232-285) vira ações/keymap; helpers `btn/toggle/segmented` (364-429) passam a despachar ações e registrar alvos de hint; overlay do playhead (760-801) é o modelo das camadas de hints/which-key; status bar (914-938) recebe o indicador de modo.
-- /home/fakio/dev/taiko-fu/spike/src/grid.rs — `GridView` recebe `VimState`, `key_context` dinâmico, `on_action` das ações `grid::/vim::`, `EntityInputHandler` no insert, `visible_cells()` a partir de `Geom`/`measure_xs`/culling (47-57, 76-81, 873-912) e os bounds dos botões de cabeçalho/linha.
-- /home/fakio/dev/taiko-fu/spike/src/model.rs — `Song`/`Cur` e operações (`add_measure`, `clone_section`, `set_subdivision`, 268-367) sobre as quais `vim::{motions, objects, ops}` são escritos e testados.
-- /home/fakio/dev/taiko-fu/src/App.svelte — os 18 comandos da paleta (39-57) e os atalhos globais (192-208) que o registro precisa cobrir com paridade de títulos.
-- /home/fakio/dev/taiko-fu/PLANEJAMENTO-gpui.md — onde a trilha K entra (§8, Fases 3–4) e cujo §2/§8.0 deve ganhar os itens "verificado" da §1.1 deste plano (keymap, pending input, `Command`, `Kbd`, test-support).
+- spike/src/main.rs — Shell: `on_key` (232-285) vira ações/keymap; helpers `btn/toggle/segmented` (364-429) passam a despachar ações e registrar alvos de hint; overlay do playhead (760-801) é o modelo das camadas de hints/which-key; status bar (914-938) recebe o indicador de modo.
+- spike/src/grid.rs — `GridView` recebe `VimState`, `key_context` dinâmico, `on_action` das ações `grid::/vim::`, `EntityInputHandler` no insert, `visible_cells()` a partir de `Geom`/`measure_xs`/culling (47-57, 76-81, 873-912) e os bounds dos botões de cabeçalho/linha.
+- spike/src/model.rs — `Song`/`Cur` e operações (`add_measure`, `clone_section`, `set_subdivision`, 268-367) sobre as quais `vim::{motions, objects, ops}` são escritos e testados.
+- src/App.svelte — os 18 comandos da paleta (39-57) e os atalhos globais (192-208) que o registro precisa cobrir com paridade de títulos.
+- /planejamento/gpui.md — onde a trilha K entra (§8, Fases 3–4) e cujo §2/§8.0 deve ganhar os itens "verificado" da §1.1 deste plano (keymap, pending input, `Command`, `Kbd`, test-support).
 
 Fontes do GPUI consultadas (para o "dia de pin"): `~/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/gpui-pre-0.3.12/src/{action.rs, keymap.rs, keymap/binding.rs, keymap/context.rs, key_dispatch.rs, window.rs, app.rs, app/context.rs, app/test_context.rs, platform/keystroke.rs, input.rs, elements/div.rs, elements/deferred.rs}`, `gpui-component-0.9.1/src/{command/, kbd.rs, window_ext.rs, status_bar.rs}`, `gpui-base-0.9.1/src/{root.rs, popup.rs, actions.rs}`, `gpui-kit-0.9.1/{Cargo.toml, src/lib.rs, src/test.rs}`, `gpui-pre-macros-0.3.12/src/derive_action.rs`, `gpui-pre-linux-0.3.12/src/linux/wayland/client.rs`.

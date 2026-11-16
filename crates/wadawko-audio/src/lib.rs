@@ -1,6 +1,6 @@
 //! # wadawko-audio
 //!
-//! Engine de áudio do WaDAWko (PLANEJAMENTO-gpui.md §3.2–3.5) — porte de
+//! Engine de áudio do WaDAWko (docs/planejamento/gpui.md §3.2–3.5) — porte de
 //! `src/lib/audio.ts` (Tone.js) e da síntese de `src/lib/kyai.ts`.
 //!
 //! | módulo | o que tem |

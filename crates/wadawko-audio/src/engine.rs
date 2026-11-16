@@ -1,4 +1,4 @@
-//! Engine de áudio em tempo real (PLANEJAMENTO-gpui.md §3.2). O MESMO
+//! Engine de áudio em tempo real (docs/planejamento/gpui.md §3.2). O MESMO
 //! `process()` roda no callback do cpal e no render offline.
 //!
 //! Regras do `process()`/`drain_commands()`: sem alocação, sem locks, sem log,

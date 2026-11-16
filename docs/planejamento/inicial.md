@@ -1,3 +1,12 @@
+---
+type: Plan
+title: "Taiko-fu — planejamento inicial"
+description: "Plano original do app web (Svelte): grade de kuchi shōga, dinâmicas por compasso e engines de playback."
+tags: [planejamento, web, histórico]
+status: stable
+estado: "histórico — app web, substituído pelo app nativo"
+---
+
 # Taiko-fu — Planejamento Inicial
 
 > Editor web de músicas de taiko em notação de grade (kuchi shōga), com playback.

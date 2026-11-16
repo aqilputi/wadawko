@@ -1,5 +1,5 @@
 //! Pintura do canvas de uma seção: O(células visíveis), com culling por
-//! compasso/coluna e cache de texto modelado (PLANEJAMENTO-gpui.md §4.1).
+//! compasso/coluna e cache de texto modelado (docs/planejamento/gpui.md §4.1).
 
 use std::collections::HashMap;
 use std::sync::Arc;

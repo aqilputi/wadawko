@@ -350,7 +350,7 @@ pub struct SmuflGlyph {
     pub codepoint: char,
 }
 
-/// Subconjunto de glifos SMuFL usado pela partitura (PLANEJAMENTO-gpui.md §5).
+/// Subconjunto de glifos SMuFL usado pela partitura (docs/planejamento/gpui.md §5).
 /// Os nomes/codepoints são conferidos contra a Bravura nos testes do crate.
 pub mod glyphs {
     use super::SmuflGlyph;

@@ -1,6 +1,6 @@
 //! # wadawko-notation
 //!
-//! Engraving da partitura de taiko do WaDAWko (PLANEJAMENTO-gpui.md §5): substituto do
+//! Engraving da partitura de taiko do WaDAWko (docs/planejamento/gpui.md §5): substituto do
 //! VexFlow de `src/lib/score.ts`, escrito contra [`wadawko_draw::Canvas2D`] — o mesmo código
 //! pinta na tela (GPUI), em SVG e em PNG.
 //!

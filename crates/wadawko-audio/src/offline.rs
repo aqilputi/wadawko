@@ -1,4 +1,4 @@
-//! Render offline (PLANEJAMENTO-gpui.md §3.5): o MESMO engine do playback, sem
+//! Render offline (docs/planejamento/gpui.md §3.5): o MESMO engine do playback, sem
 //! dispositivo, processando em blocos até o fim da música + cauda — porte de
 //! `renderOffline` (`audio.ts`), sem as janelas de 2 s (aqui o custo já é linear).
 

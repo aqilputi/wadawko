@@ -1,4 +1,4 @@
-//! `GpuiCanvas`: o backend GPUI do trait [`Canvas2D`] (PLANEJAMENTO-gpui.md §5).
+//! `GpuiCanvas`: o backend GPUI do trait [`Canvas2D`] (docs/planejamento/gpui.md §5).
 //!
 //! O GPUI não tem transformação nem pilha de estado na API de pintura, então tudo é
 //! resolvido aqui na CPU com um [`StateStack`]: cada comando chega em coordenadas do

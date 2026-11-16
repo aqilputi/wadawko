@@ -1,3 +1,12 @@
+---
+type: Plan
+title: "Repositório completo"
+description: "Fases para deixar o repositório completo: consolidar, limpar a raiz, CI, documentação, distribuição e backlog."
+tags: [planejamento, repositório, ci, distribuição]
+status: draft
+estado: "em andamento"
+---
+
 # WaDAWko — Planejamento para deixar o repositório completo
 
 Data: 2026-11-16 · Status: planejamento · Repositório: `github.com/aqilputi/wadawko` (privado)
@@ -21,9 +30,9 @@ verde a cada PR; documentação de uso e de arquitetura; backlog organizado.**
   ainda **não juntados no `main`**.
 - **Ainda misturado na raiz:** app web (`src/`, `server/`, `index.html`, `package*.json`,
   `vite/svelte/tsconfig`, `node_modules/` ignorado), `spike/` (protótipo GPUI — e o
-  `target/` compartilhado mora nele), `samples-antigos/`, `scripts/`, `f2-new.png`,
-  6 arquivos `PLANEJAMENTO-*.md`.
-- **Faltam:** `README`, `LICENSE`, CI, empacotamento, ícone, CHANGELOG, templates de
+  `target/` compartilhado mora nele), `samples-antigos/`, `scripts/`, `f2-new.png`.
+  (Os planos e a arquitetura já foram para `docs/` — bundle OKF v0.2, 2026-11-16.)
+- **Faltam:** `LICENSE`, CI, empacotamento, ícone, CHANGELOG, templates de
   issue/PR. Avisos de compilação: 2 de código morto + API depreciada na partitura.
 
 ---
@@ -36,7 +45,7 @@ verde a cada PR; documentação de uso e de arquitetura; backlog organizado.**
 | D2 | Repo público ou privado | manter privado · abrir | Privado até a Fase B; abrir quando README/licença/limpeza de dados pessoais estiverem prontos |
 | D3 | ID do app (Flatpak/desktop) | `io.github.aqilputi.WaDAWko` · outro domínio | `io.github.aqilputi.WaDAWko` (não exige domínio próprio) |
 | D4 | O que fazer com o app web | apagar do `main` (fica no `web-legacy`) · manter | **Apagar do `main`** + tag `web-final` |
-| D5 | `spike/` | apagar · mover para `archive/` | Apagar (as conclusões estão no `PLANEJAMENTO-gpui.md` §8.0) |
+| D5 | `spike/` | apagar · mover para `archive/` | Apagar (as conclusões estão no `/planejamento/gpui.md` §8.0) |
 | D6 | Músicas pessoais no repo (`data/backup-localstorage-*.json`) | manter como fixture · trocar por fixtures sintéticas | Manter enquanto privado; antes de abrir, trocar por fixtures geradas |
 
 ---
@@ -60,9 +69,9 @@ verde a cada PR; documentação de uso e de arquitetura; backlog organizado.**
    `include_str!` de `crates/wadawko-samples/src/embedded.rs` (hoje apontam para `public/`).
 3. **Spike:** apagar `spike/` e trocar `.cargo/config.toml` para `target-dir = "target"`
    (custa **uma** build fria de ~20 min). Atualizar `~/.local/bin/wadawko` para o novo caminho.
-4. **Docs:** `PLANEJAMENTO-*.md` → `docs/planejamento/`; `crates/wadawko-app/ARQUITETURA.md`
-   fica onde está e ganha um índice em `docs/ARQUITETURA.md` (visão do workspace).
-5. Trocar caminhos absolutos (`/home/fakio/...`) nos planos por caminhos do repo.
+4. ~~**Docs:** planos e arquitetura para `docs/`~~ — **feito em 2026-11-16**: `docs/` é um bundle
+   [OKF v0.2](https://github.com/GoogleCloudPlatform/open-knowledge-format) (ver `/index.md`).
+5. ~~Trocar caminhos absolutos nos planos por caminhos do repo~~ — **feito em 2026-11-16**.
 6. Fixtures: `data/backup-localstorage-*.json` → `crates/wadawko-core/tests/fixtures/`
    (ajustar `store`/`cli`/`core` tests e `golden/gen.mjs`); `data/` some do repo.
 
@@ -87,21 +96,22 @@ de projeto; `cargo test --workspace` passa num clone limpo.
 
 **Pronto quando:** todo PR roda CI; `main` sempre verde.
 
-### Fase D — Documentação (1–2 dias) · depende de D1
-1. `README.md`: o que é (editor de partituras de taiko com kuchi shōga), screenshot/GIF,
-   instalar (release/AppImage), compilar (`cargo build --release -p wadawko-app`, dependências
-   de sistema: Vulkan/Mesa, ALSA/PipeWire, `ffmpeg` para MP3), onde ficam os dados, atalhos
-   principais, créditos.
-2. `LICENSE-MIT` + `LICENSE-APACHE` (D1); `LICENSES/` ou `NOTICE` com fontes (OFL) e samples
-   (`CREDITS.md`, CC BY / CC BY-SA); `license` nos `Cargo.toml`.
-3. `docs/MANUAL.md`: guia de uso. **Gerar a tabela de atalhos do registro** (`keys/registry.rs`
-   + `keymap-default.json`) com um subcomando (`wadawko-cli shortcuts --markdown`) para nunca
-   desatualizar.
-4. `CONTRIBUTING.md` (build com cache, `CARGO_TARGET_DIR`, testes, `--demo probe` com cópia do
-   banco, regras de desempenho do `ARQUITETURA.md`), `CHANGELOG.md` (Keep a Changelog).
-5. Templates: `.github/ISSUE_TEMPLATE/{bug,feature}.md`, `PULL_REQUEST_TEMPLATE.md`.
+### Fase D — Documentação · **quase toda feita em 2026-11-16** · falta o que depende de D1
+`docs/` virou um bundle OKF v0.2 com visão geral, guias, referência, arquitetura e
+desenvolvimento (ver `/index.md` e `/log.md`); `tools/okf-check.py` confere a conformidade e
+gera os índices.
+1. ~~`README.md`~~ — feito (raiz do repo, aponta para `docs/`). Falta screenshot/GIF.
+2. `LICENSE-MIT` + `LICENSE-APACHE` (D1); `NOTICE` com fontes (OFL) e samples (`CREDITS.md`,
+   CC BY / CC BY-SA); `license` nos `Cargo.toml`. **(pendente — decisão D1)**; os créditos já
+   estão em `/creditos.md`.
+3. ~~Guia de uso e tabela de atalhos gerada~~ — feito: `/guias/uso.md` e `/referencia/atalhos.md`,
+   gerada do keymap + registro por `tools/gen-atalhos.py` (`--check` para a CI).
+4. ~~Guia de contribuição~~ — feito: `/desenvolvimento/contribuir.md` (+ testes e desempenho).
+   Falta `CHANGELOG.md` (Keep a Changelog).
+5. Templates: `.github/ISSUE_TEMPLATE/{bug,feature}.md`, `PULL_REQUEST_TEMPLATE.md`. **(pendente)**
+6. Na CI (fase C): `python3 tools/okf-check.py docs` e `python3 tools/gen-atalhos.py --check`.
 
-### Fase E — Distribuição (Fase 7 do `PLANEJAMENTO-gpui.md`) (3–5 dias) · depende de D3
+### Fase E — Distribuição (Fase 7 do `/planejamento/gpui.md`) (3–5 dias) · depende de D3
 1. Ícone próprio (SVG + PNGs 48–512) no lugar do `audio-x-generic`; `.desktop` e
    AppStream `metainfo.xml` no repo (`assets/linux/`).
 2. **AppImage** (linuxdeploy) — o binário já embute samples e fontes; checar Vulkan/Mesa e
@@ -122,7 +132,7 @@ Abrir como **issues** com milestones, em vez de listas em markdown:
 - **Desempenho:** barra de contexto e status bar ainda redesenham a cada frame (~4,7 ms/frame
   tocando); grade re-renderizada em hover de botões (~2.500 elementos) — virtualizar por seção.
 - **Fase 6 (bonecos)** — adiada; rig, estações, lane de movimentos, export de vídeo.
-- Itens "só planejados" do `PLANEJAMENTO-gpui.md` §1.2: vocabulário editável, dinâmica por
+- Itens "só planejados" do `/planejamento/gpui.md` §1.2: vocabulário editável, dinâmica por
   célula, export MIDI/TJA/PDF, MIDI input, i18n, compartilhar por URL.
 - Organização: labels (`bug`, `ux`, `perf`, `áudio`, `notação`, `distribuição`), milestones
   `v0.2 — distribuível` (Fases B–E) e `v1.0 — completo` (paridade + bonecos + docs).

@@ -1,8 +1,17 @@
+---
+type: Plan
+title: "App nativo em Rust + GPUI"
+description: "Plano do porte nativo: inventário do app web, arquitetura de crates, áudio em tempo real, desempenho de UI, notação, fases e riscos."
+tags: [planejamento, nativo, gpui, arquitetura]
+status: stable
+estado: "fases 0–5 implementadas; fase 6 (bonecos) adiada; fase 7 em aberto"
+---
+
 # WaDAWko nativo — Planejamento Rust + GPUI
 
 > Reescrita do **WaDAWko** (hoje Svelte 5 + Vite + TypeScript, Tone.js, VexFlow, @breezystack/lamejs e um `server/` de persistência) como app desktop nativo em Rust, com **GPUI** (framework de UI do Zed) e áudio em **thread de tempo real** via cpal. Inclui o escopo novo de **bonecos animados** (personagens 2D por Pessoa, estilo Sukeroku) sincronizados à música.
 
-Data: 2026-11-10 · Status: planejamento, pré-código · Plataforma-alvo: Linux (CachyOS), cross-platform desejável · Base: `PLANEJAMENTO.md`, `PLANEJAMENTO-WaDAWko.md`, `PLANEJAMENTO-instrumentos.md`, `PLANEJAMENTO-pessoas.md` + leitura de `src/`, `server/`, `data/`, `scripts/`, `public/`.
+Data: 2026-11-10 · Status: planejamento, pré-código · Plataforma-alvo: Linux (CachyOS), cross-platform desejável · Base: `/planejamento/inicial.md`, `/planejamento/redesign-web.md`, `/planejamento/instrumentos.md`, `/planejamento/pessoas.md` + leitura de `src/`, `server/`, `data/`, `scripts/`, `public/`.
 
 > **Atualização 2026-11-10:** bonecos animados (§6, Fase 6) **adiados** a pedido — fora do escopo por enquanto; a seção fica como referência. Spike da Fase 0 implementado em `spike/` (ver §8.0).
 
@@ -46,7 +55,7 @@ Data: 2026-11-10 · Status: planejamento, pré-código · Plataforma-alvo: Linux
 
 ### 1.2 Só planejado (não implementado)
 
-Share por URL (deflate+base64), PWA/offline, CSS de impressão, export MIDI/TJA/SVG/PNG/PDF, MIDI input, painéis destacáveis, presets de layout, i18n, histórico visual, arranger, seções por referência (matriz Renoise), Inspector contextual (o painel direito só lista músicas), página Config (slot inativo no NavRail), **vocabulário editável por grupo** (`VOCABULARY` é constante), dinâmica/hairpin por célula (hoje só por compasso), mão D/E colorida na grade, gravar os taikos do grupo, e **anotação de movimento/kata** (backlog da Fase 5 do `PLANEJAMENTO.md`) — que vira a feature de bonecos da seção 6.
+Share por URL (deflate+base64), PWA/offline, CSS de impressão, export MIDI/TJA/SVG/PNG/PDF, MIDI input, painéis destacáveis, presets de layout, i18n, histórico visual, arranger, seções por referência (matriz Renoise), Inspector contextual (o painel direito só lista músicas), página Config (slot inativo no NavRail), **vocabulário editável por grupo** (`VOCABULARY` é constante), dinâmica/hairpin por célula (hoje só por compasso), mão D/E colorida na grade, gravar os taikos do grupo, e **anotação de movimento/kata** (backlog da Fase 5 do `/planejamento/inicial.md`) — que vira a feature de bonecos da seção 6.
 
 ### 1.3 Mapa feature → equivalente Rust
 
@@ -223,7 +232,7 @@ O que a partitura atual exige (`score.ts`) é um **subconjunto pequeno**: pauta 
 
 | Opção | Esforço | Qualidade | Observações |
 |---|---|---|---|
-| **A. Engraving próprio (subconjunto) com SMuFL/Bravura** | ~1,5–2 k linhas | Alta (glifos profissionais, OFL) | Glifos: `noteheadBlack` U+E0A4, `noteheadXBlack` U+E0A9, bandeirolas U+E240+, pausas U+E4E5–E4E8, acento U+E4A0, dinâmicas U+E520+, número de quiáltera U+E883, barras de repetição U+E040/E041. Beams, hastes, hairpins e colchetes são retângulos/paths. `bravura_metadata.json` dá as âncoras de haste. Mesmo código pinta na tela (GPUI), em SVG (impressão A4 paisagem, pedido antigo do `PLANEJAMENTO.md`) e em PNG via o trait `Canvas2D`. |
+| **A. Engraving próprio (subconjunto) com SMuFL/Bravura** | ~1,5–2 k linhas | Alta (glifos profissionais, OFL) | Glifos: `noteheadBlack` U+E0A4, `noteheadXBlack` U+E0A9, bandeirolas U+E240+, pausas U+E4E5–E4E8, acento U+E4A0, dinâmicas U+E520+, número de quiáltera U+E883, barras de repetição U+E040/E041. Beams, hastes, hairpins e colchetes são retângulos/paths. `bravura_metadata.json` dá as âncoras de haste. Mesmo código pinta na tela (GPUI), em SVG (impressão A4 paisagem, pedido antigo do `/planejamento/inicial.md`) e em PNG via o trait `Canvas2D`. |
 | B. Gerar SVG por um crate | — | — | **Não existe** engraver de partitura em Rust. "Via crate" só seria: (B1) o nosso engraving emitindo SVG e rasterizando com `resvg` (GPUI já embute resvg para o elemento `svg`) — perde highlight por nota barato e vira a opção A com um passo a mais; (B2) embutir o VexFlow num runtime JS (QuickJS/Boa) → SVG → resvg: pesado, lento, frágil; (B3) Verovio (C++ LGPL, MEI) ou LilyPond CLI: mapeamento de percussão doloroso, só faria sentido para um "export de impressão de luxo" futuro. |
 | C. Remover a feature | 0 | — | A partitura é read-only e secundária (serve a percussionistas de formação ocidental e impressão). Aceitável como estado temporário, não como destino. |
 
@@ -326,7 +335,7 @@ Pipeline offline, sem depender do GPUI: (1) `offline::render` → WAV (Fase 2); 
 
 1. Durante a transição (Fases 1–6), os dois apps podem apontar para o mesmo `data/wadawko.db` (um de cada vez — WAL permite leitura concorrente, mas evitar edições simultâneas). O `wadawko-cli` serve para conferir que o Rust lê/escreve o que o web app gravou.
 2. No cutover (Fase 7): apagar `server/`, `src/lib/db.ts`, o plugin de `vite.config.ts` e todo o stack web (ou arquivar num branch `web-legacy`). O banco migra para `$XDG_DATA_HOME/wadawko/` (cópia na primeira execução, com checkpoint do WAL). `data/backup-localstorage-*.json` vira fixture de teste e fonte do `import-backup`.
-3. O "backend" que o `PLANEJAMENTO.md` §6.1 considerou para render de MP3 continua desnecessário: o render offline é local e mais rápido que tempo real.
+3. O "backend" que o `/planejamento/inicial.md` §6.1 considerou para render de MP3 continua desnecessário: o render offline é local e mais rápido que tempo real.
 
 ---
 
@@ -463,8 +472,8 @@ Para uma pessoa experiente em Rust, dedicação integral (dobrar para meio perí
 ---
 
 ### Critical Files for Implementation
-- /home/fakio/dev/taiko-fu/src/lib/audio.ts — engine Tone.js a portar 1:1 (layers/RR, choke, EQ, TAIL, canais/barramentos, transport, trainer, renderOffline, lookaheadLimit)
-- /home/fakio/dev/taiko-fu/src/lib/store.svelte.ts — todas as operações de domínio e o esquema de persistência (`wadawko:workspace`, `wadawko:project:<id>`)
-- /home/fakio/dev/taiko-fu/src/lib/types.ts — modelo `Song` v1 que o serde deve espelhar byte a byte
-- /home/fakio/dev/taiko-fu/src/lib/Grid.svelte — comportamento completo da grade (teclado, seleção, seções, dinâmicas, kiai, playhead) a reproduzir no `GridElement`
-- /home/fakio/dev/taiko-fu/src/lib/score.ts — define o subconjunto exato de engraving que a notação própria precisa cobrir (junto com `phrase.ts`/`timeline.ts` para o schedule e os bonecos)
+- src/lib/audio.ts — engine Tone.js a portar 1:1 (layers/RR, choke, EQ, TAIL, canais/barramentos, transport, trainer, renderOffline, lookaheadLimit)
+- src/lib/store.svelte.ts — todas as operações de domínio e o esquema de persistência (`wadawko:workspace`, `wadawko:project:<id>`)
+- src/lib/types.ts — modelo `Song` v1 que o serde deve espelhar byte a byte
+- src/lib/Grid.svelte — comportamento completo da grade (teclado, seleção, seções, dinâmicas, kiai, playhead) a reproduzir no `GridElement`
+- src/lib/score.ts — define o subconjunto exato de engraving que a notação própria precisa cobrir (junto com `phrase.ts`/`timeline.ts` para o schedule e os bonecos)

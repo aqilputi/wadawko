@@ -1,4 +1,4 @@
-//! wadawko-samples — banco de samples do WaDAWko (PLANEJAMENTO-gpui.md §3.4).
+//! wadawko-samples — banco de samples do WaDAWko (docs/planejamento/gpui.md §3.4).
 //!
 //! * [`manifest`]: tabelas estáticas portadas de `src/lib/audio.ts`
 //!   (`SAMPLE_FILES`, `TUNING`, `TAIL`, `EQ`) e a regra de seleção de camada.

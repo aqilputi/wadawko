@@ -1,3 +1,12 @@
+---
+type: Plan
+title: "Entidade Pessoa (agrupamento de instrumentos)"
+description: "Pessoas que tocam um ou mais instrumentos: cor, caneta, barramento de mixagem e linhas compartilhadas."
+tags: [planejamento, pessoas, mixer]
+status: stable
+estado: "implementado (web e nativo)"
+---
+
 # Planejamento — Entidade "Pessoa" (agrupamento de instrumentos)
 
 ## Objetivo

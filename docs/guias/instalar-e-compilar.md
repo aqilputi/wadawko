@@ -1,0 +1,86 @@
+---
+type: Playbook
+title: "Instalar e compilar"
+description: "Dependências de sistema, como compilar o app e a CLI, instalar o atalho no menu e migrar o banco do app web."
+tags: [guia, build, instalação, linux]
+status: stable
+generated:
+  by: claude-code/claude-opus-5-5
+  at: 2026-11-16T13:10:00Z
+---
+
+# Instalar e compilar
+
+Ainda não há pacote pronto (AppImage/Flatpak estão na [fase E do plano](/planejamento/repo.md));
+por enquanto o app é compilado do código.
+
+# Requisitos
+
+- **Linux** com Wayland ou X11 (desenvolvido em CachyOS + niri/Wayland). macOS/Windows: não testados.
+- **GPU com Vulkan** (Mesa serve — Intel Iris Xe é a máquina de referência).
+- **Áudio**: ALSA/PipeWire (via `cpal`).
+- **Rust** estável recente (edition 2024) — `rustup`.
+- Pacotes de compilação: `cmake`, `pkg-config`, headers de `alsa-lib`, `libxkbcommon`,
+  `wayland`, `fontconfig`/`freetype` (os nomes variam por distro).
+- **`ffmpeg`** no `PATH`, só para exportar **MP3** (WAV não precisa).
+
+# Compilar
+
+```sh
+git clone https://github.com/aqilputi/wadawko.git
+cd wadawko
+cargo build --release -p wadawko-app      # o app (binário `wadawko`)
+cargo build --release -p wadawko-cli      # a linha de comando (opcional)
+```
+
+A **primeira** compilação demora (~20 min numa máquina de notebook: o GPUI é grande); as
+seguintes levam de segundos a ~2 min. O `.cargo/config.toml` manda os artefatos para
+`spike/target/` (herança do protótipo — muda na fase B do plano), então o binário fica em
+`spike/target/release/wadawko`.
+
+> Trabalhando em outro checkout (worktree) do mesmo repositório, reaproveite o cache com
+> `CARGO_TARGET_DIR=<repo>/spike/target` — e leia as armadilhas em
+> [desempenho](/desenvolvimento/desempenho.md#armadilhas-de-build).
+
+# Instalar para uso diário
+
+```sh
+ln -sfn "$PWD/spike/target/release/wadawko" ~/.local/bin/wadawko
+```
+
+Entrada no menu de aplicativos (`~/.local/share/applications/wadawko.desktop`):
+
+```ini
+[Desktop Entry]
+Type=Application
+Name=WaDAWko
+Comment=Editor de partituras de taiko
+Exec=wadawko
+Icon=audio-x-generic
+Terminal=false
+Categories=AudioVideo;Audio;Music;
+```
+
+Com o link simbólico, cada `cargo build --release` atualiza o app instalado (feche e abra).
+
+# Primeira execução e migração do banco
+
+O banco fica em `~/.local/share/wadawko/wadawko.db` ([dados e arquivos](/referencia/dados-e-arquivos.md)).
+Sem banco, o app não abre. Para trazer as músicas do app web (o banco `data/wadawko.db` dele):
+
+```sh
+wadawko --migrate-from data/wadawko.db --read-only
+```
+
+A origem é só lida (cópia consolidada com `VACUUM INTO`); depois disso abra normalmente com
+`wadawko`. Um backup do `localStorage` do navegador entra pela CLI:
+`wadawko-cli import-backup arquivo.json` ([linha de comando](/referencia/linha-de-comando.md)).
+
+# Conferir
+
+```sh
+wadawko --db /tmp/copia.db --mute --selftest
+```
+
+abre a janela, toca, edita, desfaz/refaz e grava, imprimindo linhas `TESTE …` — sempre numa
+**cópia** do banco (ver [testes e depuração](/desenvolvimento/testes-e-depuracao.md)).
