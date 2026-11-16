@@ -216,12 +216,19 @@ fn loads_song_files_and_backups() {
     assert_eq!(load_song_file(&path, None).unwrap(), demo_song());
     // backup do localStorage: precisa escolher o projeto
     let err = load_song_file(Path::new(BACKUP), None).unwrap_err().to_string();
-    assert!(err.contains("--project") && err.contains("papparapa"), "{err}");
-    let p = load_song_file(Path::new(BACKUP), Some("papparapa")).unwrap();
-    assert_eq!((p.title.as_str(), p.tempo, p.measures.len()), ("papparapa", 123.0, 18));
-    // 3 projetos chamam "Renshū": pelo título é ambíguo, pelo id funciona
-    let err = load_song_file(Path::new(BACKUP), Some("Renshū")).unwrap_err().to_string();
+    assert!(err.contains("--project") && err.contains("yagyo"), "{err}");
+    let p = load_song_file(Path::new(BACKUP), Some("yagyo")).unwrap();
+    assert_eq!((p.title.as_str(), p.tempo, p.measures.len()), ("yagyo", 123.0, 18));
+    assert_eq!(load_song_file(Path::new(BACKUP), Some("Sample music")).unwrap().measures.len(), 131);
+    // dois projetos com o mesmo título: pelo título é ambíguo, pelo id funciona
+    let mut dup: serde_json::Map<String, serde_json::Value> = serde_json::from_str(&std::fs::read_to_string(BACKUP).unwrap()).unwrap();
+    let yagyo = dup["wadawko:project:p-muplamne-1"].clone();
+    dup.insert("wadawko:project:p-copia-1".into(), yagyo);
+    let dup_path = tmp("duplicado.json");
+    std::fs::write(&dup_path, serde_json::Value::Object(dup).to_string()).unwrap();
+    let err = load_song_file(&dup_path, Some("yagyo")).unwrap_err().to_string();
     assert!(err.contains("mais de um"), "{err}");
+    assert_eq!(load_song_file(&dup_path, Some("p-copia-1")).unwrap().title, "yagyo");
     assert_eq!(load_song_file(Path::new(BACKUP), Some("p-muog58u1-1")).unwrap().measures.len(), 131);
     assert!(load_song_file(Path::new(BACKUP), Some("nada")).is_err());
     // arquivo que não é música

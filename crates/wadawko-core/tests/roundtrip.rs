@@ -32,7 +32,7 @@ fn assert_round_trip(label: &str, original_json: &str) -> Song {
 fn projetos_do_backup_fazem_round_trip() {
     let backup = backup();
     let projects: Vec<(&String, &Value)> = backup.iter().filter(|(k, _)| k.starts_with(PROJECT_KEY_PREFIX)).collect();
-    assert_eq!(projects.len(), 4, "o backup tem 4 projetos");
+    assert_eq!(projects.len(), 2, "o backup tem 2 projetos");
     let mut titles = Vec::new();
     for (key, raw) in projects {
         let song = assert_round_trip(key, raw.as_str().expect("valor do backup é string JSON"));
@@ -42,7 +42,7 @@ fn projetos_do_backup_fazem_round_trip() {
     titles.sort_by(|a, b| a.partial_cmp(b).unwrap());
     assert_eq!(
         titles,
-        vec![("Renshū".to_string(), 4, 3), ("Renshū".to_string(), 4, 3), ("Renshū".to_string(), 131, 4), ("papparapa".to_string(), 18, 4)]
+        vec![("Sample music".to_string(), 131, 4), ("yagyo".to_string(), 18, 4)]
     );
 }
 
@@ -65,21 +65,18 @@ fn conteudo_dos_projetos_do_backup() {
     assert!(big.measures.iter().all(|m| m.cells.values().all(|row| row.len() == m.cell_count())));
 
     let pap = Song::from_json(backup[&project_key("p-muplamne-1")].as_str().unwrap()).unwrap();
-    assert_eq!((pap.title.as_str(), pap.tempo, pap.swing), ("papparapa", 123.0, Some(1.0)));
+    assert_eq!((pap.title.as_str(), pap.tempo, pap.swing), ("yagyo", 123.0, Some(1.0)));
     assert_eq!(pap.instruments()[0].base, InstrumentId::Nagado);
     assert_eq!(pap.instruments()[0].builtin, None);
-    assert_eq!(pap.slug(), "papparapa");
-    assert_eq!(pap.export_file_name(), "papparapa.taiko.json");
+    assert_eq!(pap.slug(), "yagyo");
+    assert_eq!(pap.export_file_name(), "yagyo.taiko.json");
 }
 
 #[test]
-fn demo_faz_round_trip_e_e_igual_ao_projeto_demo_do_backup() {
+fn demo_faz_round_trip() {
+    // (a conferência da demo contra o TypeScript do app web fica no golden.rs: caso base-demo)
     let demo = demo::demo_song();
     assert_round_trip("demo", &demo.to_json());
-    // dois projetos do backup são a demo intocada
-    let backup = backup();
-    let saved: Value = serde_json::from_str(backup[&project_key("p-muoro6i9-1")].as_str().unwrap()).unwrap();
-    assert_eq!(demo.to_value(), saved);
     assert_eq!(demo.title, "Renshū");
     assert_eq!(demo.slug(), "renshū");
 }
@@ -90,8 +87,8 @@ fn workspace_do_backup_faz_round_trip() {
     let raw = backup[WORKSPACE_KEY].as_str().unwrap();
     let ws = Workspace::from_json(raw).unwrap();
     assert_eq!(ws.version, 2);
-    assert_eq!(ws.projects.len(), 4);
-    assert_eq!(ws.projects[3].title, "papparapa");
+    assert_eq!(ws.projects.len(), 2);
+    assert_eq!(ws.projects[1].title, "yagyo");
     assert_eq!(ws.projects[0].updated_at, 1790862502440);
     assert!(ws.current_id.is_some());
     for p in &ws.projects {

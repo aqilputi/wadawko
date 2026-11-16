@@ -19,7 +19,7 @@ fn fixture_songs() -> Vec<Song> {
     let backup: serde_json::Map<String, serde_json::Value> = serde_json::from_str(BACKUP).unwrap();
     let songs: Vec<Song> =
         backup.iter().filter(|(k, _)| k.starts_with(PROJECT_KEY_PREFIX)).map(|(_, raw)| Song::from_json(raw.as_str().unwrap()).unwrap()).collect();
-    assert_eq!(songs.len(), 4);
+    assert_eq!(songs.len(), 2);
     songs
 }
 

@@ -193,17 +193,17 @@ fn import_adds_a_new_song() {
 fn import_backup_then_list_and_export() {
     let tmp = TempDir::new("backup");
     let out = ok(&tmp.0, &["--db", "w.db", "import-backup", &backup_fixture()]);
-    assert_eq!(out.lines().filter(|l| l.starts_with("+ p-")).count(), 4, "{out}");
+    assert_eq!(out.lines().filter(|l| l.starts_with("+ p-")).count(), 2, "{out}");
     assert!(out.contains("+ wadawko:theme"));
-    assert!(out.contains("4 acrescentada(s), 0 substituída(s), 0 igual(is), 0 mantida(s), 0 inválida(s)"), "{out}");
+    assert!(out.contains("2 acrescentada(s), 0 substituída(s), 0 igual(is), 0 mantida(s), 0 inválida(s)"), "{out}");
 
     let list = ok(&tmp.0, &["--db", "w.db", "list"]);
-    assert!(list.contains("4 música(s)") && !list.contains("ILEGÍVEL"), "{list}");
+    assert!(list.contains("2 música(s)") && !list.contains("ILEGÍVEL"), "{list}");
     assert_eq!(list.lines().filter(|l| l.starts_with('*')).count(), 1);
 
     // de novo: nada muda
     let out = ok(&tmp.0, &["--db", "w.db", "import-backup", &backup_fixture(), "--overwrite"]);
-    assert!(out.contains("0 acrescentada(s), 0 substituída(s), 4 igual(is)"), "{out}");
+    assert!(out.contains("0 acrescentada(s), 0 substituída(s), 2 igual(is)"), "{out}");
 
     // o que sai do export é a música do backup
     let dict: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(backup_fixture()).unwrap()).unwrap();

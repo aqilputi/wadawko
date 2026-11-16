@@ -2,6 +2,9 @@
 
 ## 2026-11-16
 
+**Atualização**: fixtures de teste reduzidas a duas músicas — "yagyo" e "Sample music" —, e
+capturas de tela refeitas só com elas.
+
 **Atualização**: capturas de tela em `imagens/` (usadas no README), pacote de release e CI
 documentados em [instalar e compilar](/guias/instalar-e-compilar.md) e
 [contribuir](/desenvolvimento/contribuir.md); quadro de andamento no

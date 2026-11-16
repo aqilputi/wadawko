@@ -619,7 +619,7 @@ fn backup_dict() -> serde_json::Map<String, Value> {
 fn import_backup_into_empty_db_is_exact() {
     let db = Db::open_in_memory().unwrap();
     let report = import_backup_file(&db, backup_fixture(), BackupOptions::default()).unwrap();
-    assert_eq!(report.added.len(), 4);
+    assert_eq!(report.added.len(), 2);
     assert!(report.workspace_created && report.changed());
     assert!(report.invalid.is_empty() && report.kept_existing.is_empty() && report.ignored.is_empty(), "{report:?}");
     assert_eq!(report.other_set, [THEME_KEY]);
@@ -640,7 +640,7 @@ fn import_backup_into_empty_db_is_exact() {
     let store = ProjectStore::open(db.clone()).unwrap();
     let backup_ws = Workspace::from_json(dict[WORKSPACE_KEY].as_str().unwrap()).unwrap();
     assert_eq!(*store.workspace(), backup_ws);
-    assert_eq!(store.projects().len(), 4);
+    assert_eq!(store.projects().len(), 2);
     for p in store.projects() {
         store.read_song(&p.id).unwrap();
     }
@@ -649,7 +649,7 @@ fn import_backup_into_empty_db_is_exact() {
 
     // importar de novo não muda nada
     let again = import_backup_file(&db, backup_fixture(), BackupOptions { overwrite: true }).unwrap();
-    assert_eq!(again.unchanged.len(), 4);
+    assert_eq!(again.unchanged.len(), 2);
     assert!(!again.changed(), "{again:?}");
     assert_eq!(db.all().unwrap(), all);
 }
@@ -671,14 +671,14 @@ fn import_backup_merges_without_destroying() {
     db.set(THEME_KEY, "dark").unwrap();
 
     let report = import_backup_file(&db, backup_fixture(), BackupOptions::default()).unwrap();
-    assert_eq!(report.added.len(), 3);
+    assert_eq!(report.added.len(), 1);
     assert_eq!(report.kept_existing, [clash.clone()]);
     assert!(report.other_set.is_empty() && !report.workspace_created);
     assert_eq!(read_song(&db, &clash).unwrap(), newer, "a existente não foi tocada");
     assert_eq!(db.get(THEME_KEY).unwrap().as_deref(), Some("dark"));
     let ws = read_workspace(&db).unwrap().unwrap();
     assert_eq!(ws.current_id.as_deref(), Some(mine.as_str()), "a música aberta continua a mesma");
-    assert_eq!(ws.projects.len(), 5);
+    assert_eq!(ws.projects.len(), 3);
     assert_eq!(ws.projects[0].id, mine);
     assert_eq!(ws.projects[1].updated_at, 5);
     // as novas entram na ordem do backup, com a entrada (título/data) do backup
@@ -688,12 +688,12 @@ fn import_backup_merges_without_destroying() {
     // --overwrite substitui a que difere e o tema
     let report = import_backup_file(&db, backup_fixture(), BackupOptions { overwrite: true }).unwrap();
     assert_eq!(report.overwritten.len(), 1);
-    assert_eq!(report.unchanged.len(), 3);
+    assert_eq!(report.unchanged.len(), 1);
     assert_eq!(db.get(&project_key(&clash)).unwrap().as_deref(), dict[&project_key(&clash)].as_str());
     assert_eq!(db.get(THEME_KEY).unwrap().as_deref(), Some("light"));
     let ws = read_workspace(&db).unwrap().unwrap();
     assert_eq!(ws.projects[1], backup_ws.projects[0], "entrada da lista volta a ser a do backup");
-    assert_eq!(ws.projects.len(), 5);
+    assert_eq!(ws.projects.len(), 3);
     assert!(read_song(&db, &mine).is_ok());
 }
 
@@ -796,7 +796,7 @@ fn migration_copies_db_including_wal_without_touching_source() {
     let expected = holder.all().unwrap();
 
     let Migration::Copied { keys, bytes } = migrate_db_if_missing(&src, &dst).unwrap() else { panic!("deveria copiar") };
-    assert_eq!(keys, 6);
+    assert_eq!(keys, 4);
     assert!(bytes > 40_000);
     assert_eq!(std::fs::read(&src).unwrap(), src_main, "origem intacta");
     assert_eq!(std::fs::read(wal_path(&src)).unwrap(), src_wal, "WAL da origem intacto");

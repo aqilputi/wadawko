@@ -378,7 +378,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         let mv = |p, m: Modifiers| PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: Some(MouseButton::Left), modifiers: m });
 
         report("início", cx);
-        // linha 2 (Ōdaiko em papparapa) tem notas no compasso 0
+        // linha 2 da música aberta (use uma com notas no compasso 0 dessa linha)
         let (Some(a), Some(b)) = (cell(0, 2, 0, cx), cell(0, 2, 1, cx)) else {
             println!("PROBE sem geometria de células");
             let _ = cx.update(|cx| cx.quit());

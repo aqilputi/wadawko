@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::{bank, big_song, fixtures, papparapa};
+use common::{bank, big_song, fixtures, yagyo};
 use wadawko_audio::schedule::{PREVIEW_KYAI_SLOT, channel_key, zone_chain};
 use wadawko_audio::{BAR_TICKS, CompileOptions, Compiler, EventKind, HitEv, PPQ, Region, Schedule, compile, sfz_dyn, vel_gain};
 use wadawko_core::demo::demo_song;
@@ -412,7 +412,7 @@ fn kyai_events_are_scheduled_and_deterministic() {
 #[test]
 fn fixtures_compile() {
     let all = fixtures();
-    assert_eq!(all.len(), 4);
+    assert_eq!(all.len(), 2);
     for (key, song) in &all {
         let s = live(song);
         assert_well_formed(key, song, &s);
@@ -442,8 +442,8 @@ fn big_fixture_ritornellos_dynamics_and_kit() {
 }
 
 #[test]
-fn papparapa_swing_and_repeat() {
-    let song = papparapa();
+fn yagyo_swing_and_repeat() {
+    let song = yagyo();
     assert_eq!(song.swing(), 1.0);
     let s = live(&song);
     assert_eq!(s.time.order.len(), 18 + 2 * 2);

@@ -6,7 +6,7 @@ mod common;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use common::{bank, hash, papparapa, peak, rms};
+use common::{bank, hash, yagyo, peak, rms};
 use wadawko_audio::{Cancelled, MasterMode, Region, RenderOptions, Rendered, SampleSet, render, render_with};
 use wadawko_core::demo::demo_song;
 use wadawko_core::model::Person;
@@ -141,21 +141,21 @@ fn other_sample_rates_and_kyai() {
 }
 
 #[test]
-fn fixture_papparapa_renders() {
-    let song = papparapa();
+fn fixture_yagyo_renders() {
+    let song = yagyo();
     let r = render(&song, bank(), &opts());
-    assert_sane("papparapa", &r);
+    assert_sane("yagyo", &r);
     // 22 compassos tocados (18 + ritornello ×3 de 2 compassos) a 123 BPM
     let secs = 0.1 + 22.0 * 4.0 * 60.0 / 123.0 + 3.0;
     assert_eq!(r.frames(), (secs * 48_000.0f64).ceil() as usize);
     assert!(r.hits > 100);
     assert_eq!(hash(&r.samples), hash(&render(&song, bank(), &opts()).samples), "determinístico");
-    println!("papparapa: {:.2} s, {} golpes, pico {:.4}, rms {:.4}, hash {:016x}", r.seconds(), r.hits, r.peak(), r.rms(), hash(&r.samples));
+    println!("yagyo: {:.2} s, {} golpes, pico {:.4}, rms {:.4}, hash {:016x}", r.seconds(), r.hits, r.peak(), r.rms(), hash(&r.samples));
 }
 
 #[test]
 fn progress_and_cancel() {
-    let song = papparapa();
+    let song = yagyo();
     let samples = SampleSet::from_bank(bank());
     let mut seen = Vec::new();
     let r = render_with(&song, bank(), &samples, &opts(), &mut |p| seen.push(p), &AtomicBool::new(false)).unwrap();

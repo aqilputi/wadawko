@@ -12,7 +12,7 @@ pub fn bank() -> &'static SampleBank {
 
 const BACKUP: &str = include_str!("../../../wadawko-core/tests/fixtures/backup-localstorage-2026-10-02.json");
 
-/// as 4 músicas do backup do localStorage (fixtures do wadawko-core), por (chave, música)
+/// as 2 músicas do backup do localStorage (fixtures do wadawko-core), por (chave, música)
 pub fn fixtures() -> Vec<(String, Song)> {
     let map: serde_json::Map<String, serde_json::Value> = serde_json::from_str(BACKUP).unwrap();
     map.iter()
@@ -26,9 +26,9 @@ pub fn big_song() -> Song {
     fixtures().into_iter().map(|(_, s)| s).find(|s| s.measures.len() == 131).unwrap()
 }
 
-/// "papparapa" (123 BPM, swing 1, ritornello ×3, 3 instrumentos custom)
-pub fn papparapa() -> Song {
-    fixtures().into_iter().map(|(_, s)| s).find(|s| s.title == "papparapa").unwrap()
+/// "yagyo" (123 BPM, swing 1, ritornello ×3, 3 instrumentos custom)
+pub fn yagyo() -> Song {
+    fixtures().into_iter().map(|(_, s)| s).find(|s| s.title == "yagyo").unwrap()
 }
 
 /// FNV-1a 64 sobre os bits dos samples
