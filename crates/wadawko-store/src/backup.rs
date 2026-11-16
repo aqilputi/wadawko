@@ -81,7 +81,13 @@ pub fn import_backup(db: &Db, json: &str, options: BackupOptions) -> Result<Back
     let mut present: Vec<(String, String)> = Vec::new();
     let mut retitle: Vec<(String, String)> = Vec::new();
 
-    for (key, value) in &dict {
+    // ordem das chaves: alfabética, sempre. O `serde_json::Map` é BTreeMap (ordenado) ou
+    // IndexMap (ordem do arquivo) conforme a feature `preserve_order` — que outro crate do
+    // workspace liga por unificação de features; sem ordenar, o relatório mudava de ordem
+    // entre `cargo test -p wadawko-store` e `cargo test --workspace`.
+    let mut entries: Vec<(&String, &Value)> = dict.iter().collect();
+    entries.sort_by(|a, b| a.0.cmp(b.0));
+    for (key, value) in entries {
         if let Some(id) = key.strip_prefix(PROJECT_KEY_PREFIX) {
             let Some(raw) = value.as_str() else {
                 report.invalid.push((key.clone(), "o valor não é texto".into()));
