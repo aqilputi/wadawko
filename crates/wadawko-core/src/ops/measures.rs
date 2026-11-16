@@ -1,7 +1,7 @@
 //! Compassos: criar/remover, subdivisão (reamostrando), dinâmicas e a
 //! conversão coluna global ↔ (compasso, célula).
 
-use crate::model::{CellRows, Dynamic, DynamicMark, Hairpin, Measure, Song};
+use crate::model::{CellRows, Dynamic, DynamicMark, Hairpin, Measure, Song, TempoMark};
 use crate::ops::CellPos;
 use crate::ops::sections::section_ranges;
 
@@ -160,6 +160,126 @@ pub fn bar_beat_starts(song: &Song, order: &[usize]) -> Vec<f64> {
     }
     starts.push(acc);
     starts
+}
+
+// ───────────────────────────── andamento (rallentando / accelerando) ─────────────────────────────
+
+/// Limites aceitos para o BPM alvo e para a duração (em compassos) de uma mudança.
+pub const MIN_TEMPO: f64 = 20.0;
+pub const MAX_TEMPO: f64 = 400.0;
+pub const MAX_TEMPO_SPAN: usize = 64;
+
+/// Põe (ou tira, com `None`) a mudança de andamento que começa no compasso `mi`.
+/// O alvo é preso em [`MIN_TEMPO`, `MAX_TEMPO`] e a duração em `0..=MAX_TEMPO_SPAN`.
+/// Retorna `false` se nada mudou.
+pub fn set_tempo_mark(song: &mut Song, mi: usize, mark: Option<TempoMark>) -> bool {
+    let Some(meas) = song.measures.get_mut(mi) else { return false };
+    let mark = mark.map(|m| TempoMark { target: m.target.clamp(MIN_TEMPO, MAX_TEMPO).round(), span: m.span.min(MAX_TEMPO_SPAN) });
+    if meas.tempo == mark {
+        return false;
+    }
+    meas.tempo = mark;
+    true
+}
+
+/// Trecho do mapa de andamento: de `start` a `end` (em tempos desde o início da
+/// execução) o BPM vai linearmente de `bpm0` a `bpm1`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TempoSegment {
+    pub start: f64,
+    pub end: f64,
+    pub bpm0: f64,
+    pub bpm1: f64,
+}
+
+impl TempoSegment {
+    pub fn bpm_at(&self, beat: f64) -> f64 {
+        if self.end <= self.start {
+            return self.bpm1;
+        }
+        let f = ((beat - self.start) / (self.end - self.start)).clamp(0.0, 1.0);
+        self.bpm0 + (self.bpm1 - self.bpm0) * f
+    }
+}
+
+/// Mapa de andamento da execução `order` (compassos-fonte na ordem tocada),
+/// começando em `song.tempo`: trechos contíguos que cobrem `0..duração` (em tempos).
+/// Uma marcação que começa no meio de uma rampa ainda em curso a interrompe no
+/// BPM daquele ponto. Sem marcações: um trecho só, constante.
+pub fn tempo_segments(song: &Song, order: &[usize]) -> Vec<TempoSegment> {
+    tempo_segments_from(song, order, song.tempo)
+}
+
+/// Como [`tempo_segments`], mas começando em `start_bpm` — para tocar só um trecho
+/// (região) com o andamento que vale no início dele.
+pub fn tempo_segments_from(song: &Song, order: &[usize], start_bpm: f64) -> Vec<TempoSegment> {
+    let starts = bar_beat_starts(song, order);
+    let total = *starts.last().unwrap_or(&0.0);
+    let mut segs: Vec<TempoSegment> = Vec::new();
+    let mut cur = start_bpm;
+    let mut t = 0.0; // onde o trecho constante atual começou
+    for (u, &mi) in order.iter().enumerate() {
+        let Some(mark) = song.measures.get(mi).and_then(|m| m.tempo.as_ref()) else { continue };
+        let b0 = starts[u];
+        // rampa anterior ainda em curso: corta no BPM deste ponto
+        if let Some(last) = segs.last_mut()
+            && last.end > b0
+        {
+            cur = last.bpm_at(b0);
+            last.bpm1 = cur;
+            last.end = b0;
+            t = b0;
+        }
+        if b0 > t {
+            segs.push(TempoSegment { start: t, end: b0, bpm0: cur, bpm1: cur });
+        }
+        if mark.span == 0 {
+            t = b0;
+        } else {
+            let b1 = starts[(u + mark.span).min(order.len())];
+            if b1 > b0 {
+                segs.push(TempoSegment { start: b0, end: b1, bpm0: cur, bpm1: mark.target });
+            }
+            t = b1;
+        }
+        cur = mark.target;
+    }
+    if total > t || segs.is_empty() {
+        segs.push(TempoSegment { start: t, end: total.max(t), bpm0: cur, bpm1: cur });
+    }
+    segs
+}
+
+/// BPM que vinha soando logo ANTES do início de cada compasso ESCRITO (ordem da
+/// partitura, sem repetições; o 1º compasso parte de `song.tempo`) — o ponto de
+/// partida de uma marcação ali: rotula "rall." quando o alvo é menor, "accel." quando maior.
+pub fn tempo_at_measure_starts(song: &Song) -> Vec<f64> {
+    let order: Vec<usize> = (0..song.measures.len()).collect();
+    let segs = tempo_segments(song, &order);
+    let starts = bar_beat_starts(song, &order);
+    starts[..order.len()]
+        .iter()
+        .map(|&b| {
+            if b <= 0.0 {
+                return song.tempo;
+            }
+            // trecho que termina em b ou passa por ele (limite à esquerda)
+            segs.iter().find(|s| b > s.start && b <= s.end).map_or(song.tempo, |s| s.bpm_at(b))
+        })
+        .collect()
+}
+
+/// Rótulo curto de uma marcação de andamento: `rall. → 90`, `accel. → 130` ou `♩ = 90`
+/// (troca imediata ou alvo igual ao andamento de antes).
+pub fn tempo_mark_label(mark: &TempoMark, bpm_before: f64) -> String {
+    let t = mark.target.round();
+    if mark.span == 0 || (t - bpm_before.round()).abs() < 0.5 {
+        format!("♩ = {t:.0}")
+    } else if t < bpm_before {
+        format!("rall. → {t:.0}")
+    } else {
+        format!("accel. → {t:.0}")
+    }
 }
 
 // ───────────────────────────── dinâmicas ─────────────────────────────

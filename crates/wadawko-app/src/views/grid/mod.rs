@@ -18,7 +18,7 @@ use std::sync::Arc;
 
 use gpui_kit::{Bounds, ClipboardItem, Context, Entity, EventEmitter, MouseButton, MouseDownEvent, MouseMoveEvent, Pixels, Point, ShapedLine, SharedString, point, px, size};
 use wadawko_core::ops::{self, CellPos};
-use wadawko_core::{Dynamic, Hairpin, Song, kyai, phrase};
+use wadawko_core::{Dynamic, Hairpin, Song, TempoMark, kyai, phrase};
 
 use crate::song_ext::{Sec, SongExt};
 use crate::state::{AppState, StateEvent};
@@ -38,6 +38,18 @@ pub const SEC_GAP: f32 = 34.0;
 pub const CELL_X0: f32 = 16.0;
 pub const MEASURE_GAP: f32 = 16.0;
 pub const BASE_CW: f32 = 54.0;
+/// chip de andamento na faixa de dinâmica da seção: começa em `TEMPO_X` do compasso
+pub const TEMPO_X: f32 = 62.0;
+
+/// largura do chip de andamento (com marcação mostra o rótulo; sem, só "♩")
+pub fn tempo_chip_w(marked: bool) -> f32 {
+    if marked { 122.0 } else { 24.0 }
+}
+
+/// o chip de andamento cabe no compasso de largura `mw` (sem cobrir os botões de hairpin)?
+pub fn tempo_chip_fits(mw: f32, marked: bool) -> bool {
+    mw - 48.0 > TEMPO_X + tempo_chip_w(marked)
+}
 
 /// Posição vertical de cada linha dentro do corpo de uma seção (a partir do topo
 /// das células). Linhas com dinâmica própria e/ou kiai são mais altas.
@@ -221,6 +233,8 @@ pub enum GridEvent {
 pub enum Menu {
     /// escolher a dinâmica do compasso `m` (geral, ou da linha `track`)
     Dyn { m: usize, track: Option<usize>, x: f32, y: f32 },
+    /// mudança de andamento que começa no compasso `m`
+    Tempo { m: usize, x: f32, y: f32 },
     /// edição da linha `t` (aberto no bloco da seção `s`)
     Row { t: usize, s: usize },
 }
@@ -313,6 +327,8 @@ pub(crate) enum DynPart {
     Chip,
     Cresc,
     Dim,
+    /// marcação de andamento (só na faixa geral da seção)
+    Tempo,
     None,
 }
 
@@ -541,7 +557,11 @@ impl GridView {
             }
         }
         if y < SEC_DYN_H {
-            return cell.map(|(m, _, dx, w)| Hit::SecDyn(m, Self::dyn_part(dx, w), pos));
+            return cell.map(|(m, _, dx, w)| {
+                let marked = song.measures[m].tempo.is_some();
+                let part = if tempo_chip_fits(w, marked) && (TEMPO_X..TEMPO_X + tempo_chip_w(marked)).contains(&dx) { DynPart::Tempo } else { Self::dyn_part(dx, w) };
+                Hit::SecDyn(m, part, pos)
+            });
         }
         if y < SEC_DYN_H + TIMELINE_H {
             return Some(Hit::Timeline(cell.map(|(m, k, _, _)| (m, k))));
@@ -1168,6 +1188,62 @@ impl GridView {
         cx.notify();
     }
 
+    /// Põe/tira a mudança de andamento que começa no compasso `m`.
+    pub fn set_tempo(&mut self, m: usize, mark: Option<TempoMark>, cx: &mut Context<Self>) {
+        if !self.edit(cx, |s| {
+            ops::measures::set_tempo_mark(s, m, mark.clone());
+        }) {
+            return;
+        }
+        let before = ops::measures::tempo_at_measure_starts(&self.song).get(m).copied().unwrap_or(self.song.tempo);
+        match self.song.measures.get(m).and_then(|x| x.tempo.as_ref()) {
+            Some(t) => {
+                let span = match t.span {
+                    0 => String::new(),
+                    1 => " em 1 compasso".into(),
+                    n => format!(" em {n} compassos"),
+                };
+                self.flash(format!("compasso {}: {}{span}", m + 1, ops::measures::tempo_mark_label(t, before)), cx)
+            }
+            None => self.flash(format!("compasso {}: sem mudança de andamento", m + 1), cx),
+        }
+        cx.notify();
+    }
+
+    /// Paleta: marcação no 1º compasso alvo (cursor ou seleção), durando os compassos
+    /// selecionados. `delta` = BPM a somar ao andamento de antes (rall. < 0 < accel.);
+    /// `None` = "a tempo" (volta ao andamento da música, de uma vez).
+    pub fn tempo_preset(&mut self, delta: Option<f64>, cx: &mut Context<Self>) {
+        let targets = self.target_measures();
+        let Some(&m) = targets.first() else {
+            self.flash("ponha o cursor num compasso", cx);
+            return;
+        };
+        let before = ops::measures::tempo_at_measure_starts(&self.song).get(m).copied().unwrap_or(self.song.tempo);
+        let mark = match delta {
+            Some(d) => TempoMark { target: (before + d).round(), span: targets.len().max(1) },
+            None => TempoMark { target: self.song.tempo, span: 0 },
+        };
+        self.set_tempo(m, Some(mark), cx);
+    }
+
+    /// Paleta: tira a marcação de andamento do compasso do cursor (ou dos selecionados).
+    pub fn clear_tempo(&mut self, cx: &mut Context<Self>) {
+        let targets = self.target_measures();
+        let n = targets.iter().filter(|&&m| self.song.measures.get(m).is_some_and(|x| x.tempo.is_some())).count();
+        if n == 0 {
+            self.flash("nenhuma mudança de andamento aqui", cx);
+            return;
+        }
+        self.edit(cx, |s| {
+            for &m in &targets {
+                ops::measures::set_tempo_mark(s, m, None);
+            }
+        });
+        self.flash(if n == 1 { "mudança de andamento removida".to_string() } else { format!("{n} mudanças de andamento removidas") }, cx);
+        cx.notify();
+    }
+
     /// Atalho de teclado: pp → p → … → ff → (sem marcação).
     pub fn cycle_dynamic(&mut self, m: usize, cx: &mut Context<Self>) {
         let Some(meas) = self.song.measures.get(m) else { return };
@@ -1274,6 +1350,10 @@ impl GridView {
             DynPart::Chip => {
                 let root = self.geom.borrow().root;
                 self.menu = Some(Menu::Dyn { m, track, x: f32::from(pos.x - root.origin.x) - 20.0, y: f32::from(pos.y - root.origin.y) + 12.0 });
+            }
+            DynPart::Tempo => {
+                let root = self.geom.borrow().root;
+                self.menu = Some(Menu::Tempo { m, x: f32::from(pos.x - root.origin.x) - 20.0, y: f32::from(pos.y - root.origin.y) + 12.0 });
             }
             DynPart::Cresc => self.toggle_hairpin(m, track, Hairpin::Cresc, cx),
             DynPart::Dim => self.toggle_hairpin(m, track, Hairpin::Dim, cx),

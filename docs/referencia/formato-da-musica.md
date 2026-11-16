@@ -56,6 +56,7 @@ fazem round-trip** (preservados intactos), então arquivos de versões futuras n
 | `dynamic` | `pp…ff`? | dinâmica geral |
 | `hairpin` | `cresc`/`dim`? | |
 | `trackDynamics` | mapa por linha? | dinâmica/hairpin por linha |
+| `tempo` | objeto? | mudança de andamento que começa no compasso: `{ "target": 90, "span": 2 }` = ir em linha reta do BPM atual até `target` ao fim de `span` compassos tocados (`span` 0 = na hora, ausente = 1); depois fica em `target` até a próxima marcação |
 | `kyai` | igual a `cells`? | textos de kiai por célula |
 
 ## Seção, pessoa e instrumento

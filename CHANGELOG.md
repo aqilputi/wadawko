@@ -7,6 +7,12 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ### Adicionado
 - **Fórmula de compasso por compasso** (ex.: 4/4 → 5/4): `compasso − 4/4 +` na barra de
   ferramentas e "Compasso: ±1 tempo" na paleta, no compasso do cursor ou nos selecionados.
+- **Mudança de andamento por compasso** (rallentando, accelerando, "a tempo"): chip `♩` na
+  faixa de dinâmica de cada compasso abre o ajuste do BPM alvo (±1/±5) e de em quantos
+  compassos chegar lá (ou na hora). Pela paleta: "Andamento: rallentando/accelerando" (±10 BPM,
+  ao longo dos compassos selecionados), "a tempo" e "remover". O áudio, o metrônomo, o count-in,
+  o playhead e a exportação seguem o mapa de andamento; a partitura mostra `rall. → 90`. O
+  treino continua valendo: escala o mapa inteiro. Campo novo `tempo` no compasso.
 
 ### Mudado
 - Cada compasso passa a durar os seus `beats` tempos no áudio, metrônomo, kiai, esteira e

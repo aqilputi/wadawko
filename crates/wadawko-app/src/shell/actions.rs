@@ -329,6 +329,10 @@ impl Shell {
         let d = on!(d, cx, measure::ToggleDim, |this, w, cx| this.hairpin(Hairpin::Dim, cx));
         let d = on!(d, cx, measure::BeatsUp, |this, w, cx| this.g(cx, |g, cx, _| g.change_beats(1, cx)));
         let d = on!(d, cx, measure::BeatsDown, |this, w, cx| this.g(cx, |g, cx, _| g.change_beats(-1, cx)));
+        let d = on!(d, cx, measure::TempoRall, |this, w, cx| this.g(cx, |g, cx, _| g.tempo_preset(Some(-10.0), cx)));
+        let d = on!(d, cx, measure::TempoAccel, |this, w, cx| this.g(cx, |g, cx, _| g.tempo_preset(Some(10.0), cx)));
+        let d = on!(d, cx, measure::ATempo, |this, w, cx| this.g(cx, |g, cx, _| g.tempo_preset(None, cx)));
+        let d = on!(d, cx, measure::TempoClear, |this, w, cx| this.g(cx, |g, cx, _| g.clear_tempo(cx)));
 
         let d = on!(d, cx, track::Add, |this, w, cx| {
             let def = this.add_instrument.clone();

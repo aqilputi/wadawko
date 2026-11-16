@@ -473,3 +473,49 @@ fn mono_and_multichannel_outputs() {
     eng.process(&mut mono, 1);
     assert!(peak(&mono) > 0.0);
 }
+
+#[test]
+fn rallentando_alonga_e_accelerando_encurta() {
+    use wadawko_core::TempoMark;
+    use wadawko_core::ops::measures::set_tempo_mark;
+    // "don" no 1º tempo de cada um dos 4 compassos; rall. 100 → 50 nos compassos 2 e 3
+    let mut song = one_track(&[], 4);
+    for mi in 0..4 {
+        set_cell(&mut song, "chu1", mi, 0, Some("don"), None);
+    }
+    set_tempo_mark(&mut song, 1, Some(TempoMark { target: 50.0, span: 2 }));
+    let (mut eng, mut ctl) = pair(MasterMode::Live);
+    let schedule = ctl.set_song(&song, &CompileOptions::default());
+    // duração: 4 tempos a 100 + rampa de 8 tempos 100 → 50 + 4 tempos a 50
+    let ramp = 8.0 * 60.0 * (0.5f64).ln() / -50.0;
+    assert!((schedule.seconds(100.0) - (2.4 + ramp + 4.8)).abs() < 1e-9, "{}", schedule.seconds(100.0));
+    // treino a 50 %: tudo dura o dobro
+    assert!((schedule.seconds(50.0) - 2.0 * schedule.seconds(100.0)).abs() < 1e-9);
+    ctl.play(PlayOptions::default());
+    pump(&mut eng, 15.0);
+    let fired = hits(&ctl.poll_events());
+    assert_eq!(fired.len(), 4);
+    // cada golpe sai no instante da integral exata do mapa (±2 frames)
+    for (i, (tick, _)) in schedule.hits().enumerate() {
+        let want = 576.0 + schedule.curve.seconds_to(tick, 100.0) * SR as f64;
+        assert!((fired[i].3 as f64 - want).abs() <= 2.0, "golpe {i}: frame {} ≠ {want:.0}", fired[i].3);
+    }
+    // o relógio publica o BPM que está soando (o playhead extrapola com ele)
+    let (mut eng, mut ctl) = pair(MasterMode::Live);
+    ctl.set_song(&song, &CompileOptions::default());
+    ctl.play(PlayOptions::default());
+    pump(&mut eng, 2.4 + ramp + 0.5);
+    let bpm = ctl.clock().snapshot().bpm;
+    assert!((bpm - 50.0).abs() < 0.01, "{bpm}");
+
+    // accel.: 100 → 200 de uma vez ("a tempo" com span 0) no compasso 3
+    let mut fast = song.clone();
+    set_tempo_mark(&mut fast, 1, None);
+    set_tempo_mark(&mut fast, 2, Some(TempoMark { target: 200.0, span: 0 }));
+    let (_, mut ctl) = pair(MasterMode::Live);
+    let s = ctl.set_song(&fast, &CompileOptions::default());
+    assert!((s.seconds(100.0) - (4.8 + 2.4)).abs() < 1e-9);
+    // região começando no compasso 4: já parte de 200 BPM
+    let s = ctl.set_song(&fast, &CompileOptions { region: Some(Region { start_bar: 3, end_bar: 4 }), ..Default::default() });
+    assert!((s.seconds(100.0) - 1.2).abs() < 1e-9, "{}", s.seconds(100.0));
+}

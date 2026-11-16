@@ -309,3 +309,18 @@ fn snapshot_svg_de_um_compasso() {
     let want = std::fs::read_to_string(&path).unwrap();
     assert_eq!(svg, want, "snapshot mudou; rode com UPDATE_SNAPSHOTS=1 se for intencional");
 }
+
+#[test]
+fn mudanca_de_andamento_aparece_no_cabecalho() {
+    let mut song = demo::demo_song();
+    let bpm = song.tempo;
+    wadawko_core::ops::measures::set_tempo_mark(&mut song, 1, Some(wadawko_core::TempoMark { target: bpm - 20.0, span: 2 }));
+    wadawko_core::ops::measures::set_tempo_mark(&mut song, 3, Some(wadawko_core::TempoMark { target: bpm, span: 0 }));
+    let score = engrave(&song, &EngraveOptions::default(), &FONTS);
+    let texts = |mi: usize| -> Vec<String> {
+        score.measures[mi].cmds.iter().filter_map(|c| if let DrawCmd::Text { text, .. } = c { Some(text.clone()) } else { None }).collect()
+    };
+    assert!(texts(1).contains(&format!("rall. → {:.0}", song.tempo - 20.0)), "{:?}", texts(1));
+    assert!(texts(3).contains(&format!("♩ = {:.0}", song.tempo)), "{:?}", texts(3));
+    assert!(!texts(0).iter().any(|t| t.contains("rall") || t.contains("♩")));
+}

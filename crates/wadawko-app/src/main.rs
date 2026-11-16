@@ -564,6 +564,26 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             let (_, b2, _) = beats(cx);
             println!("PROBE ctrl-z na fórmula: volta a {b2}/4");
         }
+        // andamento: rallentando pela ação da paleta no compasso do cursor → a música fica
+        // mais longa; Ctrl+Z volta
+        {
+            let secs = |cx: &mut AsyncApp| {
+                cx.update(|cx| {
+                    let st = state.read(cx);
+                    let m = shell.read(cx).grid.read(cx).cursor.map_or(0, |c| c.m);
+                    (m, st.song().measures.get(m).and_then(|x| x.tempo.clone()), st.schedule.seconds(st.song().tempo))
+                })
+            };
+            let (m, t0, s0) = secs(cx);
+            let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::measure::TempoRall), cx));
+            wait(cx, 150).await;
+            let (_, t1, s1) = secs(cx);
+            println!("PROBE andamento no compasso {}: {t0:?} → {t1:?} · duração {s0:.2} s → {s1:.2} s (rall. alonga: {})", m + 1, s1 > s0);
+            key("ctrl-z", cx);
+            wait(cx, 100).await;
+            let (_, t2, s2) = secs(cx);
+            println!("PROBE ctrl-z no andamento: {t2:?} · {s2:.2} s (igual ao início: {})", (s2 - s0).abs() < 1e-6);
+        }
         // calibração: botão do cabeçalho fixo (+ seção) com clique sintético
         if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("addsec").map(|t| t.bounds.center())) {
             let n0 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));
@@ -799,6 +819,13 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 }
                 "menu" => s.grid.update(cx, |g, cx| {
                     g.menu = Some(views::grid::Menu::Row { t: 0, s: 0 });
+                    cx.notify();
+                }),
+                "tempo" => s.grid.update(cx, |g, cx| {
+                    // rall. de −20 BPM ao longo dos compassos 1–2 e o popover aberto
+                    let bpm = g.song.tempo;
+                    g.set_tempo(0, Some(wadawko_core::TempoMark { target: bpm - 20.0, span: 2 }), cx);
+                    g.menu = Some(views::grid::Menu::Tempo { m: 0, x: 300.0, y: 80.0 });
                     cx.notify();
                 }),
                 "mixer" => window.dispatch_action(Box::new(keys::nav::Mixer), cx),
