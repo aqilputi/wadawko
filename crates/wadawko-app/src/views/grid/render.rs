@@ -234,6 +234,10 @@ impl Render for GridView {
         }
         let geom = self.geom.clone();
         let weak = cx.entity().downgrade();
+        let weak_fit = weak.clone();
+        // barra da seção se adapta à largura da grade (do último frame; 0 = ainda sem medida → completa)
+        let bar = BarFit::for_width(f32::from(self.geom.borrow().root.size.width));
+        let bar_used = bar;
         let rails = ops::people::rails_for_tracks(&song);
         let rail_w = rails.len() as f32 * 5.0 + if rails.is_empty() { 0.0 } else { 4.0 };
 
@@ -285,8 +289,13 @@ impl Render for GridView {
             }))
             .child(
                 canvas(
-                    move |b, _, _| {
+                    move |b, _, cx| {
                         geom.borrow_mut().root = b;
+                        // a largura mudou de faixa (redimensionou a janela, abriu/fechou a
+                        // lateral): re-renderiza para a barra das seções se reorganizar
+                        if BarFit::for_width(f32::from(b.size.width)) != bar_used {
+                            let _ = weak_fit.update(cx, |_, cx| cx.notify());
+                        }
                     },
                     |_, _, _, _| {},
                 )
@@ -430,21 +439,27 @@ impl Render for GridView {
                         .overflow_hidden()
                         .items_center()
                         .gap(px(6.0))
-                        .child(div().text_color(th.accent).text_size(px(14.0)).child("𝄆"))
+                        .when(bar == BarFit::Full, |d| d.child(div().text_color(th.accent).text_size(px(14.0)).child("𝄆")))
                         .child(mk(format!("s{s}-rep-"), "−", false, rep_op(-1)))
                         .child(div().text_size(px(13.0)).text_color(if rep > 1 { th.accent } else { th.ink_soft }).child(SharedString::from(format!("{rep}×"))))
                         .child(mk(format!("s{s}-rep+"), "+", false, rep_op(1)))
-                        .child(div().text_color(th.accent).text_size(px(14.0)).child("𝄇"))
+                        .when(bar == BarFit::Full, |d| d.child(div().text_color(th.accent).text_size(px(14.0)).child("𝄇")))
                         .child(mk(format!("s{s}-col"), if collapsed { "▸" } else { "▾" }, false, Rc::new(move |this, cx| {
                             if !this.collapsed.remove(&key_col) {
                                 this.collapsed.insert(key_col.clone());
                             }
                             cx.notify();
                         })))
-                        .child(div().w(px(8.0)))
-                        .child(mk(format!("s{s}-m-"), "−", false, meas_op(false)))
-                        .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(SharedString::from(format!("{} compasso{}", sec.end - sec.start, if sec.end - sec.start == 1 { "" } else { "s" }))))
-                        .child(mk(format!("s{s}-m+"), "+", false, meas_op(true)))
+                        // compassos: completo "− 4 compassos +", compacto "− 4c +", apertado some
+                        // (continua no Ctrl+K e nos atalhos de section::MeasureAdd/Remove)
+                        .when(bar != BarFit::Tight, |d| {
+                            let n = sec.end - sec.start;
+                            let label = if bar == BarFit::Full { format!("{n} compasso{}", if n == 1 { "" } else { "s" }) } else { format!("{n}c") };
+                            d.child(div().w(px(if bar == BarFit::Full { 8.0 } else { 2.0 })))
+                                .child(mk(format!("s{s}-m-"), "−", false, meas_op(false)))
+                                .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(SharedString::from(label)))
+                                .child(mk(format!("s{s}-m+"), "+", false, meas_op(true)))
+                        })
                 )
                 .child({
                     let w1 = weak.clone();
@@ -469,7 +484,7 @@ impl Render for GridView {
                             .text_color(th.ink_soft)
                             .cursor_pointer()
                             .hover(|st| st.bg(th.paper_hover))
-                            .child("⧉ clonar")
+                            .child(if bar == BarFit::Full { "⧉ clonar" } else { "⧉" })
                             .on_click(move |_: &ClickEvent, _, cx: &mut App| {
                                 cx.stop_propagation();
                                 let _ = w1.update(cx, |this, cx| op(this, cx));
@@ -647,5 +662,44 @@ impl Render for GridView {
             None => {}
         }
         root
+    }
+}
+
+/// Quanto cabe na barra da seção, pela largura da grade.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BarFit {
+    /// tudo: 𝄆 − 2× + 𝄇 ▾ − 4 compassos + ⧉ clonar ✕
+    Full,
+    /// sem os 𝄆 𝄇, "4c", "⧉"
+    Compact,
+    /// também sem os controles de compasso
+    Tight,
+}
+
+impl BarFit {
+    /// Larguras medidas da barra: coluna do nome (`LABEL_W`) + controles
+    /// (completa ≈ 425 px, compacta ≈ 280 px).
+    pub fn for_width(grid_w: f32) -> BarFit {
+        let rest = grid_w - LABEL_W;
+        if grid_w <= 0.0 || rest >= 430.0 {
+            BarFit::Full
+        } else if rest >= 285.0 {
+            BarFit::Compact
+        } else {
+            BarFit::Tight
+        }
+    }
+}
+
+#[cfg(test)]
+mod bar_tests {
+    use super::*;
+
+    #[test]
+    fn bar_degrades_with_width() {
+        assert_eq!(BarFit::for_width(0.0), BarFit::Full); // primeiro frame, sem medida
+        assert_eq!(BarFit::for_width(1200.0), BarFit::Full);
+        assert_eq!(BarFit::for_width(LABEL_W + 300.0), BarFit::Compact);
+        assert_eq!(BarFit::for_width(410.0), BarFit::Tight); // janela de ~936 px com lateral e painel
     }
 }

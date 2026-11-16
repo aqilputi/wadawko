@@ -456,6 +456,17 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         // 5) barra da seção: clicar no texto "1×" (não é botão) (des)seleciona;
         //    clicar no botão "+" das repetições NÃO
         let hint = |id: &str| keys::HINTS.with(|h| h.borrow().targets.get(id).map(|t| t.bounds));
+        // barra apertada: nenhum botão pode ficar por baixo do "clonar"
+        // (limpa o registro de alvos e redesenha a grade: botões que sumiram deixam registro velho)
+        keys::HINTS.with(|h| h.borrow_mut().targets.clear());
+        let _ = cx.update(|cx| shell.read(cx).grid.clone().update(cx, |_, cx| cx.notify()));
+        wait(cx, 200).await;
+        if let Some(cl) = hint("s0-clone") {
+            let ids = ["s0-rep-", "s0-rep+", "s0-col", "s0-m-", "s0-m+"];
+            let over: Vec<&str> = ids.iter().copied().filter(|id| hint(id).is_some_and(|b| b.right() > cl.left())).collect();
+            let grid_w = cx.update(|cx| f32::from(shell.read(cx).grid.read(cx).geom.borrow().root.size.width));
+            println!("PROBE barra da seção (grade {grid_w:.0} px): botões por baixo do clonar = {over:?} · clonar {:.0} px de largura", f32::from(cl.size.width));
+        }
         if let (Some(rm), Some(rp)) = (hint("s0-rep-"), hint("s0-rep+")) {
             let txt = gpui_kit::point((rm.right() + rp.left()) / 2.0, rm.center().y);
             let sel0 = cx.update(|cx| state.read(cx).tp.selected.len());
