@@ -64,7 +64,7 @@ impl GridView {
         let cur_def = track.def_id().to_string();
         let lbl = |s: &'static str| div().w(px(74.0)).flex_none().text_size(px(10.5)).text_color(th.ink_faint).child(s);
         let row = || div().flex().flex_wrap().items_center().gap(px(4.0));
-        let click = |id: &'static str, label: SharedString, on: bool, cx: &mut Context<Self>, f: Rc<dyn Fn(&mut GridView, &mut Context<GridView>)>| {
+        let click = |id: &'static str, label: SharedString, on: bool, cx: &mut Context<Self>, f: Op| {
             chip((id, t), th, on).child(label).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| f(this, cx)))
         };
 

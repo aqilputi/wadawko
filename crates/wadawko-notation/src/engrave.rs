@@ -84,6 +84,9 @@ fn hairpin_segments(n: usize, hp_of: impl Fn(usize) -> Option<Hairpin>, dyn_of: 
     out
 }
 
+/// por golpe desenhado num compasso: as chaves (linha, célula, golpe) que ele representa
+type HitKeys = Vec<Vec<(u32, u32, u16)>>;
+
 struct Engraver<'a> {
     song: &'a Song,
     fonts: &'a StandardFonts,
@@ -541,7 +544,7 @@ impl<'a> Engraver<'a> {
 
     // ───────────── um compasso ─────────────
 
-    fn engrave_measure(&self, mi: usize, geo: &MeasureGeo) -> (MeasureLayout, Vec<Vec<(u32, u32, u16)>>) {
+    fn engrave_measure(&self, mi: usize, geo: &MeasureGeo) -> (MeasureLayout, HitKeys) {
         let sp = self.sp;
         let song = self.song;
         let meas = &song.measures[mi];
@@ -555,7 +558,7 @@ impl<'a> Engraver<'a> {
         let cw = meta.cw;
         let mut cmds: Vec<DrawCmd> = Vec::new();
         let mut hits: Vec<HitGfx> = Vec::new();
-        let mut keys: Vec<Vec<(u32, u32, u16)>> = Vec::new();
+        let mut keys: HitKeys = Vec::new();
         let mut beams: Vec<BeamInfo> = Vec::new();
         let n_tracks = song.tracks.len();
 

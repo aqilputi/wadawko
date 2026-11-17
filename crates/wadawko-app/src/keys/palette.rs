@@ -22,6 +22,9 @@ pub enum PRun {
     Kyai(&'static str),
 }
 
+/// item da paleta: (título, grupo, atalho, o que fazer)
+pub type PItem = (String, &'static str, Option<String>, PRun);
+
 impl Shell {
     fn toggle_state(&self, id: &str, cx: &App) -> Option<bool> {
         let st = self.state.read(cx);
@@ -74,9 +77,9 @@ impl Shell {
     }
 
     /// Itens filtrados e ordenados: (título, grupo, atalho, o que fazer).
-    pub fn palette_items(&self, cx: &App) -> Vec<(String, &'static str, Option<String>, PRun)> {
+    pub fn palette_items(&self, cx: &App) -> Vec<PItem> {
         let q = self.palette.as_ref().map(|p| p.query.as_str()).unwrap_or("");
-        let mut scored: Vec<(i32, usize, (String, &'static str, Option<String>, PRun))> = Vec::new();
+        let mut scored: Vec<(i32, usize, PItem)> = Vec::new();
         for (i, s) in keys::SPECS.iter().enumerate() {
             let Ok(action) = cx.build_action(s.id, None) else { continue };
             let title = match self.toggle_state(s.id, cx) {

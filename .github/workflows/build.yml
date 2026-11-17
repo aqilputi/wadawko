@@ -40,11 +40,17 @@ jobs:
             libx11-dev libx11-xcb-dev libxcb1-dev libxcb-xkb-dev libvulkan-dev
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: ". -> spike/target"
           shared-key: linux-release
+
+      # lints: o workspace está sem avisos do clippy; manter assim
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --release -- -D warnings
 
       # testes em --release: reaproveita os artefatos do build abaixo (um perfil só)
       - name: Testes

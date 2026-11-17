@@ -150,7 +150,7 @@ fn skia_renders_small_scene() {
     assert_eq!(c.pixel(145, 85), Some(INK.to_rgba8()));
 
     // a cena não está vazia e o PNG é válido
-    let non_bg = c.data().chunks_exact(4).filter(|p| *p != bg).count();
+    let non_bg = c.data().as_chunks::<4>().0.iter().filter(|p| **p != bg).count();
     assert!(non_bg > 1000, "{non_bg} px diferentes do fundo");
     let png = c.encode_png().unwrap();
     assert_eq!(&png[..8], b"\x89PNG\r\n\x1a\n");

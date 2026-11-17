@@ -177,7 +177,7 @@ fn main() {
         cx.spawn(async move |cx: &mut AsyncApp| {
             let t0 = Instant::now();
             let bank = cx.background_executor().spawn(async move { SampleBank::load_from(samples_dir.as_deref()) }).await;
-            let _ = st.update(cx, |s, cx| match bank {
+            st.update(cx, |s, cx| match bank {
                 Ok(b) => {
                     eprintln!("samples: {} carregados em {:.2} s", b.len(), t0.elapsed().as_secs_f32());
                     s.attach_bank(b, cx)
@@ -300,7 +300,7 @@ fn selftest(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App)
         // edição programática pela grade (caminho único: GridView::set_cell → AppState::edit)
         let before = state.read_with(cx, |s, _| s.song().cell(0, 0, 1).map(str::to_string));
         let new = if before.as_deref() == Some("tsuku") { "doko" } else { "tsuku" };
-        let _ = shell.update(cx, |sh, cx| {
+        shell.update(cx, |sh, cx| {
             sh.grid.update(cx, |g, cx| {
                 g.lane = Lane::Cells;
                 g.cursor = Some(Cur { m: 0, t: 0, k: 1 });
@@ -309,22 +309,22 @@ fn selftest(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App)
         });
         let read = |cx: &mut AsyncApp| state.read_with(cx, |s, _| s.song().cell(0, 0, 1).map(str::to_string));
         let after = read(cx);
-        let _ = state.update(cx, |s, cx| {
+        state.update(cx, |s, cx| {
             s.undo(cx);
         });
         let undone = read(cx);
-        let _ = state.update(cx, |s, cx| {
+        state.update(cx, |s, cx| {
             s.redo(cx);
         });
         let redone = read(cx);
         println!("TESTE edição: célula (linha 1, compasso 1, célula 2) antes={before:?} → depois={after:?} · desfazer={undone:?} · refazer={redone:?}");
         sleep(cx, 700).await; // autosave (400 ms)
-        let _ = state.update(cx, |s, _| {
+        state.update(cx, |s, _| {
             let dirty_before = s.store.has_unsaved_changes();
             let r = s.flush();
             println!("TESTE gravação: pendente antes do flush={dirty_before} · flush={:?} · pendente depois={} · erro={:?}", r.map_err(|e| format!("{e:#}")), s.store.has_unsaved_changes(), s.store.autosave_error());
         });
-        let _ = cx.update(|cx| cx.quit());
+        cx.update(|cx| cx.quit());
     })
     .detach();
 }
@@ -381,7 +381,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         // linha 2 da música aberta (use uma com notas no compasso 0 dessa linha)
         let (Some(a), Some(b)) = (cell(0, 2, 0, cx), cell(0, 2, 1, cx)) else {
             println!("PROBE sem geometria de células");
-            let _ = cx.update(|cx| cx.quit());
+            cx.update(|cx| cx.quit());
             return;
         };
         let row = |cx: &mut AsyncApp| cx.update(|cx| (0..4).map(|k| state.read(cx).song().cell(2, 0, k).map(str::to_string).unwrap_or("·".into())).collect::<Vec<_>>().join(" "));
@@ -459,7 +459,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         // barra apertada: nenhum botão pode ficar por baixo do "clonar"
         // (limpa o registro de alvos e redesenha a grade: botões que sumiram deixam registro velho)
         keys::HINTS.with(|h| h.borrow_mut().targets.clear());
-        let _ = cx.update(|cx| shell.read(cx).grid.clone().update(cx, |_, cx| cx.notify()));
+        cx.update(|cx| shell.read(cx).grid.clone().update(cx, |_, cx| cx.notify()));
         wait(cx, 200).await;
         if let Some(cl) = hint("s0-clone") {
             let ids = ["s0-rep-", "s0-rep+", "s0-col", "s0-m-", "s0-m+"];
@@ -589,7 +589,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             wait(cx, 100).await;
         }
         report("antes do ctrl-k", cx);
-        let _ = w.update(cx, |_, window, cx| {
+        let _ = w.update(cx, |_, window, _cx| {
             let ctx = window.context_stack().iter().map(|c| format!("{c:?}")).collect::<Vec<_>>().join(" > ");
             println!("PROBE contexto de teclas: {ctx}");
         });
@@ -605,7 +605,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         println!("PROBE Tab na paleta desce a seleção: {s0:?} → {s1:?}");
         key("escape", cx);
         wait(cx, 100).await;
-        let _ = cx.update(|cx| cx.quit());
+        cx.update(|cx| cx.quit());
     })
     .detach();
 }
@@ -619,7 +619,7 @@ fn run_drag_demo(shell: Entity<Shell>, w: Win, cx: &mut App) {
         cx.background_executor().timer(Duration::from_millis(1500)).await;
         let cell = |m, t, k, cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m, t, k }).map(|b| b.center()));
         let (Some(a), Some(b)) = (cell(0, 2, 0, cx), cell(0, 2, 1, cx)) else {
-            let _ = cx.update(|cx| cx.quit());
+            cx.update(|cx| cx.quit());
             return;
         };
         let alt = Modifiers { alt: true, ..Default::default() };
@@ -657,7 +657,7 @@ fn run_drag_demo(shell: Entity<Shell>, w: Win, cx: &mut App) {
         let (r2, u2) = frames();
         println!("DEMO soltou · parado: {} frames em {:.1} s · render() média {:.2} ms", r2 - r1, t1.elapsed().as_secs_f32(), (u2 - u1) as f64 / (r2 - r1).max(1) as f64 / 1000.0);
         cx.background_executor().timer(Duration::from_millis(600)).await;
-        let _ = cx.update(|cx| cx.quit());
+        cx.update(|cx| cx.quit());
     })
     .detach();
 }
@@ -694,7 +694,7 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 shell::DBG_FOLLOW_V.load(Ordering::Relaxed),
                 shell::DBG_GRID_RENDERS.load(Ordering::Relaxed)
             );
-            let _ = cx.update(|cx| cx.quit());
+            cx.update(|cx| cx.quit());
             return;
         }
         // `playstat-grade` / `playstat-esteira`: toca, mede 6 s (frames + render) e sai
@@ -704,7 +704,7 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 if tab == "esteira" {
                     window.dispatch_action(Box::new(keys::view::Esteira), cx);
                 }
-                let _ = shell.update(cx, |s: &mut Shell, cx| s.toggle_play(false, cx));
+                shell.update(cx, |s: &mut Shell, cx| s.toggle_play(false, cx));
             });
             cx.background_executor().timer(Duration::from_millis(2000)).await;
             let (r0, u0, t0) = (RENDERS.load(Ordering::Relaxed), shell::RENDER_US.load(Ordering::Relaxed), Instant::now());
@@ -712,7 +712,7 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
             cx.background_executor().timer(Duration::from_millis(6000)).await;
             let (r1, u1, secs) = (RENDERS.load(Ordering::Relaxed), shell::RENDER_US.load(Ordering::Relaxed), t0.elapsed().as_secs_f32());
             println!("STAT fim · {} frames em {secs:.1} s ({:.0} fps) · Shell::render média {:.2} ms", r1 - r0, (r1 - r0) as f32 / secs, (u1 - u0) as f64 / (r1 - r0).max(1) as f64 / 1000.0);
-            let _ = cx.update(|cx| cx.quit());
+            cx.update(|cx| cx.quit());
             return;
         }
         cx.background_executor().timer(Duration::from_millis(1500)).await;
@@ -720,7 +720,7 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
             wait_audio(&state, cx, 20.0).await;
         }
         let _ = w.update(cx, |_, window, cx| {
-            let _ = shell.update(cx, |s: &mut Shell, cx| match demo.as_str() {
+            shell.update(cx, |s: &mut Shell, cx| match demo.as_str() {
                 "palette" => {
                     s.open_palette(window, cx);
                     if let Some(p) = s.palette.as_mut() {

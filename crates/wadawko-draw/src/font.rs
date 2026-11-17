@@ -358,12 +358,11 @@ impl FontBook {
                     continue;
                 }
                 let slot = faces[i].get_or_insert_with(|| self.face(FontId(i as u32)));
-                if let Some(face) = slot {
-                    if let Some(gid) = face.glyph_index(ch) {
+                if let Some(face) = slot
+                    && let Some(gid) = face.glyph_index(ch) {
                         found = Some((i, gid));
                         break;
                     }
-                }
             }
             // sem glifo em nenhuma fonte: .notdef da primária
             let (i, gid) = found.unwrap_or((font.0 as usize, GlyphId(0)));
