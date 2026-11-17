@@ -169,6 +169,7 @@ pub struct LaneClock {
 
 impl LaneClock {
     /// Andamento constante (sem marcações).
+    #[cfg(test)]
     pub fn constant(bpm: f64) -> Self {
         LaneClock { curve: TempoCurve::constant(bpm), bpm, len_ticks: 0.0 }
     }
