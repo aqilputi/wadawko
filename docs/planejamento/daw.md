@@ -690,6 +690,23 @@ Regras para o agente implementador:
 5. **Pronto quando**: VP passa; capture `mixer` tocando e `play`; `--demo playstat-grade` e
    `--demo playstat-esteira` dentro de +5 % do E0.
 
+> **Decisões na implementação (2026-11-17)**: `Meters` vive no `Engine` (criado em
+> `with_clock`) e o `Controller` guarda o mesmo `Arc` (`meters()`); o pico por canal é medido
+> já com o ganho/pan aplicados (|x·g|, as duas zonas somam no mesmo slot) e o do master depois
+> do soft clip; o LED usa 0,999 antes do soft clip. A UI lê com `Meters::take` (swap 0) em
+> `AppState::poll` e aplica a balística em `state::Level` (36 dB/s; pico retido 1,5 s e cai a
+> 12 dB/s; piso −60 dB) — teste `level_rises_instantly_and_falls_36_db_per_second`. O Shell
+> pede frames enquanto `levels.active()` (os medidores caem depois de parar). Os mini-medidores
+> da grade são pintados no overlay com `ui::paint_meter` (3 px sob o nome, largura =
+> `LABEL_W − label_pad − 150`; `Geom.label_pad` vem do render da grade). O mixer já ficou no
+> visual da E5 (strip 84 px, fader 160 com escala de dB e medidor de 6 px, cabeçalho de painel
+> por grupo, strip **master** com fader de saída (`AppState::master_db`, não é edição da
+> música), medidor L/R e LED de clip). Teste do engine:
+> `meters_report_channel_bus_and_master_peaks` (o clip precisa de 8 linhas iguais a +6 dB — o
+> compressor do master segura uma só). Probe: "medidores: master e linha mostram nível
+> tocando" (20 verificações). `playstat-grade` 5,9–7,1 ms/frame (antes 6,0–6,8) e
+> `playstat-esteira` 5,6–6,2 (antes 6,2): sem regressão.
+
 ### F4 — Inspector (se sobrar tempo) · 2 h
 
 1. `views/inspector.rs` (`impl Shell { fn inspector(&self, th, cx) -> Div }`): blocos

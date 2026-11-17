@@ -101,6 +101,93 @@ pub struct ExportRun {
     pub started: Instant,
 }
 
+/// Um medidor na UI (F3): nível com queda de 36 dB/s e pico retido por 1,5 s
+/// que depois cai a 12 dB/s (docs/planejamento/daw.md §2.5).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Level {
+    pub level: f32,
+    pub peak: f32,
+    /// quando o pico foi marcado (segundos desde um instante de referência)
+    pub peak_at: f32,
+}
+
+impl Level {
+    /// Aplica um novo pico lido do engine (`raw`, linear) `dt` segundos depois
+    /// da última leitura, em `now` segundos.
+    pub fn feed(&mut self, raw: f32, dt: f32, now: f32) {
+        let fall = 10f32.powf(-36.0 * dt / 20.0);
+        self.level = (self.level * fall).max(raw);
+        if raw >= self.peak {
+            self.peak = raw;
+            self.peak_at = now;
+        } else if now - self.peak_at > 1.5 {
+            self.peak *= 10f32.powf(-12.0 * dt / 20.0);
+        }
+        if self.level < 1e-3 {
+            self.level = 0.0;
+        }
+        if self.peak < 1e-3 {
+            self.peak = 0.0;
+        }
+    }
+
+    pub fn is_silent(&self) -> bool {
+        self.level <= 0.0 && self.peak <= 0.0
+    }
+}
+
+/// Medidores da UI por canal (slot do schedule), barramento (slot) e master L/R.
+#[derive(Clone, Debug)]
+pub struct Levels {
+    pub chan: Vec<Level>,
+    pub bus: Vec<Level>,
+    pub master: [Level; 2],
+    /// quando o LED de clip acendeu
+    pub clip_at: Option<Instant>,
+    epoch: Instant,
+    last: f32,
+}
+
+impl Default for Levels {
+    fn default() -> Self {
+        let now = Instant::now();
+        Levels { chan: vec![Level::default(); wadawko_audio::MAX_CHANNELS], bus: vec![Level::default(); wadawko_audio::MAX_BUSES], master: [Level::default(); 2], clip_at: None, epoch: now, last: 0.0 }
+    }
+}
+
+impl Levels {
+    /// Lê os picos publicados pelo engine e aplica a balística.
+    pub fn poll(&mut self, meters: &wadawko_audio::Meters) {
+        let now = self.epoch.elapsed().as_secs_f32();
+        let dt = (now - self.last).clamp(0.0, 0.5);
+        self.last = now;
+        for (i, l) in self.chan.iter_mut().enumerate() {
+            l.feed(wadawko_audio::Meters::take(&meters.chan[i]), dt, now);
+        }
+        for (i, l) in self.bus.iter_mut().enumerate() {
+            l.feed(wadawko_audio::Meters::take(&meters.bus[i]), dt, now);
+        }
+        for (i, l) in self.master.iter_mut().enumerate() {
+            l.feed(wadawko_audio::Meters::take(&meters.master[i]), dt, now);
+        }
+        if meters.take_clip() {
+            self.clip_at = Some(Instant::now());
+        }
+        if self.clip_at.is_some_and(|t| t.elapsed() > Duration::from_secs(1)) {
+            self.clip_at = None;
+        }
+    }
+
+    /// Algum medidor ainda mostra nível (precisa de frames para cair)?
+    pub fn active(&self) -> bool {
+        self.clip_at.is_some() || self.master.iter().any(|l| !l.is_silent()) || self.chan.iter().any(|l| !l.is_silent()) || self.bus.iter().any(|l| !l.is_silent())
+    }
+
+    pub fn clip(&self) -> bool {
+        self.clip_at.is_some()
+    }
+}
+
 pub struct AppState {
     pub store: ProjectStore,
     pub history: SongHistory,
@@ -125,6 +212,10 @@ pub struct AppState {
     /// (rall./accel.). É o que a barra de cima mostra.
     pub sounding_bpm: f32,
     pub hits: Vec<HitFlash>,
+    /// medidores de nível (F3), com balística aplicada em `poll`
+    pub levels: Levels,
+    /// volume de saída (dB) do strip master do mixer — não faz parte da música
+    pub master_db: f64,
     pub toast: Option<(String, Instant)>,
     pub export: Option<ExportRun>,
     pub db_label: String,
@@ -175,6 +266,8 @@ impl AppState {
             playback_bpm: bpm,
             sounding_bpm: bpm,
             hits: Vec::new(),
+            levels: Levels::default(),
+            master_db: 0.0,
             toast: None,
             export: None,
             db_label,
@@ -501,9 +594,43 @@ impl AppState {
         }
         let snap = clock.snapshot();
         self.sounding_bpm = if snap.playing { snap.bpm.round() } else { self.playback_bpm };
+        self.levels.poll(audio.meters());
         audio.collect_garbage();
         let keep = Duration::from_millis(self.flash_ms() as u64 + 20);
         self.hits.retain(|h| now < h.at + keep);
+    }
+
+    // ───────────── medidores (F3) ─────────────
+
+    /// Nível da linha `t`: máximo entre os canais dela no schedule (linha
+    /// compartilhada = um canal por dono; o kiai entra junto).
+    pub fn track_level(&self, t: usize) -> Level {
+        let Some(track) = self.song().tracks.get(t) else { return Level::default() };
+        let mut best = Level::default();
+        for (i, ch) in self.schedule.channels.iter().enumerate() {
+            if ch.is_used()
+                && ch.track_id == track.id
+                && let Some(l) = self.levels.chan.get(i)
+                && l.level >= best.level
+            {
+                best = Level { level: l.level, peak: l.peak.max(best.peak), peak_at: l.peak_at };
+            }
+        }
+        best
+    }
+
+    /// Nível do barramento da pessoa `pid`.
+    pub fn person_level(&self, pid: &str) -> Level {
+        self.schedule.buses.iter().position(|b| b.person_id == pid).and_then(|i| self.levels.bus.get(i).copied()).unwrap_or_default()
+    }
+
+    /// Volume de saída (strip master): −40..+6 dB; com `--mute` o som continua calado.
+    pub fn set_master_db(&mut self, db: f64, cx: &mut Context<Self>) {
+        self.master_db = db.clamp(-40.0, 6.0);
+        if let Some(a) = self.audio.as_mut() {
+            a.set_master_gain(if self.mute { 0.0 } else { 10f32.powf(self.master_db as f32 / 20.0) });
+        }
+        cx.notify();
     }
 
     // ───────────── projetos ─────────────
@@ -770,6 +897,42 @@ pub fn next_selection(cur: &[String], id: &str, additive: bool) -> Vec<String> {
         Vec::new()
     } else {
         vec![id.to_string()]
+    }
+}
+
+#[cfg(test)]
+mod level_tests {
+    use super::Level;
+
+    #[test]
+    fn level_rises_instantly_and_falls_36_db_per_second() {
+        let mut l = Level::default();
+        l.feed(1.0, 0.016, 0.0);
+        assert_eq!(l.level, 1.0);
+        assert_eq!(l.peak, 1.0);
+        // 1 s de silêncio em passos de 16 ms: −36 dB ≈ ×0,0158
+        let mut t = 0.0;
+        for _ in 0..62 {
+            t += 1.0 / 62.0;
+            l.feed(0.0, 1.0 / 62.0, t);
+        }
+        assert!((l.level - 0.0158).abs() < 0.002, "{}", l.level);
+        // pico retido por 1,5 s, depois cai a 12 dB/s
+        assert_eq!(l.peak, 1.0);
+        for _ in 0..62 {
+            t += 1.0 / 62.0;
+            l.feed(0.0, 1.0 / 62.0, t);
+        }
+        assert!(l.peak < 1.0 && l.peak > 0.3, "{}", l.peak);
+        // um pico novo maior substitui na hora
+        l.feed(0.8, 0.016, t);
+        assert_eq!(l.peak, 0.8);
+        assert!(!l.is_silent());
+        for _ in 0..600 {
+            t += 0.016;
+            l.feed(0.0, 0.016, t);
+        }
+        assert!(l.is_silent());
     }
 }
 

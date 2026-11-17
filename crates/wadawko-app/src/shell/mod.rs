@@ -597,6 +597,37 @@ impl Shell {
         (out, label)
     }
 
+    /// Mini-medidores das linhas (F3): um retângulo de 3 px sob o nome de cada
+    /// linha, por seção visível, com o nível/pico já com balística. Desenhados no
+    /// overlay (sem cache), nunca dentro da grade.
+    fn row_meters(&self, cx: &App) -> Vec<(Bounds<Pixels>, f32, f32)> {
+        let st = self.state.read(cx);
+        if !st.levels.active() {
+            return Vec::new();
+        }
+        let song = st.song();
+        let levels: Vec<crate::state::Level> = (0..song.tracks.len()).map(|t| st.track_level(t)).collect();
+        if levels.iter().all(|l| l.level <= 0.0 && l.peak <= 0.0) {
+            return Vec::new();
+        }
+        let grid = self.grid.read(cx);
+        let g = grid.geom.borrow();
+        let w = (grid::LABEL_W - g.label_pad - 150.0).max(24.0);
+        let mut out = Vec::new();
+        for b in g.sections.iter().filter(|b| f32::from(b.size.width) > 0.0) {
+            let x = f32::from(b.origin.x) - grid::LABEL_W + g.label_pad;
+            let top = f32::from(b.origin.y) + grid::SEC_DYN_H + grid::TIMELINE_H;
+            for (t, l) in levels.iter().enumerate() {
+                if (l.level <= 0.0 && l.peak <= 0.0) || t >= g.rows.y.len() {
+                    continue;
+                }
+                let y = top + g.rows.y[t] + grid::CELL_H - 4.0;
+                out.push((Bounds::new(point(px(x), px(y)), size(px(w), px(3.0))), l.level, l.peak));
+            }
+        }
+        out
+    }
+
     fn follow(&mut self, cx: &mut Context<Self>) {
         if !self.playing(cx) || !self.on_grid() {
             return;
@@ -709,7 +740,8 @@ impl Shell {
         }
         self.follow(cx);
         self.drive_bench(cx);
-        if self.bench.is_some() || playing {
+        // frames enquanto toca e enquanto os medidores ainda caem depois de parar
+        if self.bench.is_some() || playing || self.state.read(cx).levels.active() {
             window.request_animation_frame();
         }
         if self.last_hud.elapsed() > Duration::from_millis(500) {
@@ -724,6 +756,7 @@ impl Shell {
         // playhead + notas soando agora (overlay sem cache, irmão da grade)
         let ph = if self.on_grid() { self.playhead(cx) } else { None };
         let (flashes, play_pos) = if self.on_grid() { self.playing_cells(cx) } else { (Vec::new(), None) };
+        let row_meters = if self.on_grid() { self.row_meters(cx) } else { Vec::new() };
         self.status = self.status_model(playing, play_pos, cx);
         // moldura em cache: só re-renderiza quando a chave dela muda
         self.refresh_chrome(playing, f32::from(window.viewport_size().width), cx);
@@ -763,6 +796,14 @@ impl Shell {
         let overlay = canvas(
             |_, _, _| {},
             move |vb, _, window, _| {
+                // mini-medidores das linhas (3 px sob o nome)
+                for (b, level, peak) in &row_meters {
+                    let clip = vb.intersect(b);
+                    if f32::from(clip.size.width) <= 0.0 || f32::from(clip.size.height) <= 0.0 {
+                        continue;
+                    }
+                    window.with_content_mask(Some(gpui_kit::ContentMask { bounds: vb }), |window| crate::ui::paint_meter(window, *b, *level, *peak, false, &th));
+                }
                 for f in &flashes {
                     let clip = vb.intersect(&f.bounds);
                     if f32::from(clip.size.width) <= 0.0 || f32::from(clip.size.height) <= 0.0 {

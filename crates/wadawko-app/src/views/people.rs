@@ -201,7 +201,7 @@ impl PeopleView {
             ));
         }
 
-        mixer::group_card(th, color, div().child(head).child(swatches).child(mixer::bus_controls("pp-", state, p, th, 150.0)).child(list)).w(px(330.0))
+        mixer::group_card(th, color, "Pessoa", div().child(head).child(swatches).child(mixer::bus_controls("pp-", state, p, th, 150.0)).child(list)).w(px(330.0))
     }
 }
 

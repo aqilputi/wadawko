@@ -212,6 +212,9 @@ pub struct Geom {
     pub offset: f32,
     pub cw: f32,
     pub rows: Rows,
+    /// recuo do texto dos rótulos de linha (listra + trilhos de pessoa), para o
+    /// mini-medidor do overlay
+    pub label_pad: f32,
 }
 
 /// O que a grade pede ao Shell para perguntar ao usuário (prompt de texto).

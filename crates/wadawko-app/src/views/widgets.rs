@@ -282,9 +282,9 @@ pub fn sbtn(id: impl Into<SharedString>, th: &Theme, act: Act) -> gpui_kit::Stat
     hbtn(id, th, act).h(px(26.0)).px(px(8.0)).text_size(px(12.0)).rounded(px(ui::R1)).bg(th.paper_raise).text_color(th.ink_soft)
 }
 
-/// Botão quadrado M/S (mudo/solo): aceso com `color` quando `on`.
+/// Botão M/S (mudo/solo) 22×18: aceso com `color` quando `on`.
 pub fn mini(id: impl Into<SharedString>, label: &'static str, th: &Theme, on: bool, color: Hsla, act: Act) -> gpui_kit::Stateful<gpui_kit::Div> {
-    let b = hbtn_bare(id, th, act).w(px(27.0)).h(px(27.0)).px(px(0.0)).rounded(px(ui::R1)).text_size(px(11.0)).font_weight(FontWeight::BOLD).child(label);
+    let b = hbtn_bare(id, th, act).w(px(22.0)).h(px(18.0)).px(px(0.0)).rounded(px(ui::R1)).text_size(px(10.0)).font_weight(FontWeight::BOLD).child(label);
     let hover = th.paper_hover;
     if on { b.bg(color).border_color(color).text_color(th.on_accent).hover(move |s| s.bg(color)) } else { b.bg(th.paper_raise).text_color(th.ink_soft).hover(move |s| s.bg(hover)) }
 }

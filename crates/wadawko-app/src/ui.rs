@@ -208,46 +208,44 @@ fn meter_bands(th: &Theme) -> [(f32, gpui_kit::Hsla); 3] {
     [(42.0 / 60.0, th.meter_lo), (54.0 / 60.0, th.meter_mid), (1.0, th.meter_hi)]
 }
 
+/// Pinta um medidor em `b`: fundo `cell_empty` com borda `line`, três bandas e
+/// o pico retido como linha de 1 px `ink`. `level`/`peak` lineares (0..1+).
+/// Usado por [`meter`] e pelos mini-medidores do overlay da grade.
+pub fn paint_meter(window: &mut Window, b: Bounds<gpui_kit::Pixels>, level: f32, peak: f32, vertical: bool, th: &Theme) {
+    let (lv, pk) = (meter_frac(level), meter_frac(peak));
+    let (x0, y0, w, h) = (f32::from(b.origin.x), f32::from(b.origin.y), f32::from(b.size.width), f32::from(b.size.height));
+    window.paint_quad(quad(b, px(R1), th.cell_empty, px(1.0), th.line, BorderStyle::Solid));
+    let mut from = 0.0f32;
+    for (to, col) in meter_bands(th) {
+        let hi = lv.min(to);
+        if hi > from {
+            let r = if vertical {
+                Bounds::new(point(px(x0 + 1.0), px(y0 + 1.0 + (h - 2.0) * (1.0 - hi))), size(px((w - 2.0).max(1.0)), px((h - 2.0) * (hi - from))))
+            } else {
+                Bounds::new(point(px(x0 + 1.0 + (w - 2.0) * from), px(y0 + 1.0)), size(px((w - 2.0) * (hi - from)), px((h - 2.0).max(1.0))))
+            };
+            window.paint_quad(quad(r, px(0.0), col, px(0.0), transparent_black(), BorderStyle::Solid));
+        }
+        from = to;
+    }
+    if pk > 0.0 {
+        let r = if vertical {
+            Bounds::new(point(px(x0 + 1.0), px(y0 + 1.0 + (h - 2.0) * (1.0 - pk))), size(px((w - 2.0).max(1.0)), px(1.0)))
+        } else {
+            Bounds::new(point(px(x0 + (w - 1.0) * pk), px(y0 + 1.0)), size(px(1.0), px((h - 2.0).max(1.0))))
+        };
+        window.paint_quad(quad(r, px(0.0), th.ink, px(0.0), transparent_black(), BorderStyle::Solid));
+    }
+}
+
 /// Medidor de nível: `level` e `peak` lineares (0..1+), vertical (w 6) ou
-/// horizontal (h 3). Fundo `cell_empty` com borda `line`; pico retido = linha
-/// de 1 px `ink`. A balística (queda, pico retido) é de quem chama (F3).
-#[allow(dead_code)] // usado pelos medidores (F3)
+/// horizontal (h 3). A balística (queda, pico retido) é de quem chama
+/// (`state::Level`); este elemento só desenha o que recebe.
 pub fn meter(level: f32, peak: f32, vertical: bool, th: &Theme) -> impl IntoElement {
     let th = *th;
     let base = div().flex_none();
     let base = if vertical { base.w(px(6.0)).h_full() } else { base.h(px(3.0)).w_full() };
-    let (lv, pk) = (meter_frac(level), meter_frac(peak));
-    base.child(
-        canvas(
-            |_, _, _| {},
-            move |b, _, window, _| {
-                let (x0, y0, w, h) = (f32::from(b.origin.x), f32::from(b.origin.y), f32::from(b.size.width), f32::from(b.size.height));
-                window.paint_quad(quad(b, px(R1), th.cell_empty, px(1.0), th.line, BorderStyle::Solid));
-                let mut from = 0.0f32;
-                for (to, col) in meter_bands(&th) {
-                    let hi = lv.min(to);
-                    if hi > from {
-                        let r = if vertical {
-                            Bounds::new(point(px(x0 + 1.0), px(y0 + h * (1.0 - hi))), size(px((w - 2.0).max(1.0)), px(h * (hi - from))))
-                        } else {
-                            Bounds::new(point(px(x0 + w * from), px(y0 + 1.0)), size(px(w * (hi - from)), px((h - 2.0).max(1.0))))
-                        };
-                        window.paint_quad(quad(r, px(0.0), col, px(0.0), transparent_black(), BorderStyle::Solid));
-                    }
-                    from = to;
-                }
-                if pk > 0.0 {
-                    let r = if vertical {
-                        Bounds::new(point(px(x0 + 1.0), px(y0 + h * (1.0 - pk))), size(px((w - 2.0).max(1.0)), px(1.0)))
-                    } else {
-                        Bounds::new(point(px(x0 + w * pk - 1.0), px(y0 + 1.0)), size(px(1.0), px((h - 2.0).max(1.0))))
-                    };
-                    window.paint_quad(quad(r, px(0.0), th.ink, px(0.0), transparent_black(), BorderStyle::Solid));
-                }
-            },
-        )
-        .size_full(),
-    )
+    base.child(canvas(|_, _, _| {}, move |b, _, window, _| paint_meter(window, b, level, peak, vertical, &th)).size_full())
 }
 
 #[cfg(test)]

@@ -765,17 +765,26 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 cx.update(|cx| state.update(cx, |s, cx| s.play(0, cx)));
                 wait(cx, 900).await;
                 let mut seen = Vec::new();
+                let (mut master, mut track) = (0.0f32, 0.0f32);
                 for _ in 0..6 {
                     if let Some(mi) = cx.update(|cx| state.read(cx).playhead().map(|p| p.mi)) {
                         seen.push(mi);
                     }
+                    // medidores (F3): o master e alguma linha mostram nível enquanto toca
+                    let (m, t) = cx.update(|cx| {
+                        let st = state.read(cx);
+                        (st.levels.master[0].level.max(st.levels.master[1].level), (0..st.song().tracks.len()).map(|t| st.track_level(t).level).fold(0.0, f32::max))
+                    });
+                    master = master.max(m);
+                    track = track.max(t);
                     wait(cx, 200).await;
                 }
                 cx.update(|cx| state.update(cx, |s, cx| s.stop(cx)));
                 let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::transport::ClearRegion), cx));
                 wait(cx, 150).await;
-                println!("PROBE tocando no trecho c2–c3: compassos vistos = {seen:?}");
+                println!("PROBE tocando no trecho c2–c3: compassos vistos = {seen:?} · medidores: master {master:.3} · linha {track:.3}");
                 check("tocando com trecho de loop o playhead fica dentro dele", !seen.is_empty() && seen.iter().all(|&m| (1..3).contains(&m)));
+                check("medidores: master e linha mostram nível tocando", master > 0.0 && track > 0.0);
             } else {
                 println!("PROBE (sem áudio ou música curta: pulo o teste do playhead no trecho)");
             }
@@ -1015,6 +1024,11 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                     cx.notify();
                 }),
                 "mixer" => window.dispatch_action(Box::new(keys::nav::Mixer), cx),
+                // mixer tocando (medidores, master com nível)
+                "mixer-play" => {
+                    window.dispatch_action(Box::new(keys::nav::Mixer), cx);
+                    s.toggle_play(false, cx);
+                }
                 "pessoas" | "people" => window.dispatch_action(Box::new(keys::nav::Pessoas), cx),
                 "kit" => window.dispatch_action(Box::new(keys::nav::Kit), cx),
                 "probe" => {}

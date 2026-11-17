@@ -123,6 +123,9 @@ pub fn person_color(p: &Person, th: &Theme) -> Hsla {
     p.color.as_deref().and_then(parse_color).unwrap_or(th.accent)
 }
 
+/// comprimento do fader vertical dos strips (px)
+pub const FADER_LEN: f32 = 160.0;
+
 /// Controles do barramento de uma pessoa: volume (dB) + mudo + solo. Usado no
 /// cabeçalho do grupo do Mixer e no cartão da página Pessoas (`prefix` = página).
 pub fn bus_controls(prefix: &'static str, state: &Entity<AppState>, p: &Person, th: &Theme, len: f32) -> gpui_kit::Div {
@@ -143,21 +146,39 @@ pub fn bus_controls(prefix: &'static str, state: &Entity<AppState>, p: &Person, 
             th,
         ))
         .child(div().w(px(42.0)).text_size(px(10.5)).font_weight(FontWeight::BOLD).text_color(th.ink_soft).child(SharedString::from(db_label(vol))))
-        .child(widgets::mini(format!("{prefix}bus-m-{}", p.id), "M", th, p.is_muted(), th.accent, on_mute))
+        .child(widgets::mini(format!("{prefix}bus-m-{}", p.id), "M", th, p.is_muted(), th.warn, on_mute))
         .child(widgets::mini(format!("{prefix}bus-s-{}", p.id), "S", th, p.is_solo(), th.accent2, on_solo))
 }
 
-/// Cartão de grupo com a faixa colorida da pessoa à esquerda.
-pub fn group_card(th: &Theme, color: Hsla, body: gpui_kit::Div) -> gpui_kit::Div {
+/// Cartão de grupo: cabeçalho de painel (swatch 10×10 na cor + nome) e corpo.
+pub fn group_card(th: &Theme, color: Hsla, title: &str, body: gpui_kit::Div) -> gpui_kit::Div {
     div()
         .flex()
+        .flex_col()
         .rounded(px(ui::R0))
         .bg(th.paper)
         .border_1()
         .border_color(th.line)
         .overflow_hidden()
-        .child(div().flex_none().w(px(4.0)).bg(color))
+        .child(ui::panel_header(title, th).child(div().absolute().left(px(10.0)).size(px(10.0)).rounded(px(ui::R1)).bg(color)).pl(px(26.0)))
         .child(body.flex_1().min_w_0().p(px(12.0)).flex().flex_col().gap(px(10.0)))
+}
+
+/// Escala de dB ao lado do fader (0, −6, −12, −24), alinhada ao trilho do slider.
+fn db_scale(th: &Theme, len: f32) -> gpui_kit::Div {
+    let mut col = div().relative().flex_none().w(px(18.0)).h(px(len));
+    for (db, label) in [(0.0, "0"), (-6.0, "−6"), (-12.0, "−12"), (-24.0, "−24")] {
+        let t = widgets::frac(db, VOL_MIN, VOL_MAX) as f32;
+        let y = 7.0 + (1.0 - t) * (len - 14.0);
+        col = col.child(div().absolute().right(px(0.0)).top(px(y - 6.0)).text_size(px(9.0)).text_color(th.ink_faint).child(label));
+    }
+    col
+}
+
+/// Fader vertical + medidor de 6 px à direita (nível/pico já com balística).
+fn fader_with_meter(slider: Slider, level: crate::state::Level, th: &Theme) -> gpui_kit::Div {
+    let len = slider.len;
+    div().flex().items_start().gap(px(3.0)).child(db_scale(th, len)).child(widgets::slider(slider, th)).child(div().h(px(len)).py(px(7.0)).child(ui::meter(level.level, level.peak, true, th)))
 }
 
 pub struct MixerView {
@@ -172,7 +193,7 @@ impl MixerView {
     }
 
     /// Strip de uma linha dentro do grupo `gid` (id da pessoa ou "none").
-    fn strip(&self, song: &Song, t: &Track, person: Option<&Person>, th: &Theme) -> gpui_kit::Div {
+    fn strip(&self, song: &Song, t: &Track, ti: usize, person: Option<&Person>, th: &Theme, cx: &Context<Self>) -> gpui_kit::Div {
         let gid = person.map_or("none", |p| p.id.as_str());
         let key = format!("{gid}-{}", t.id);
         let shared = person.is_some() && t.is_shared();
@@ -180,6 +201,7 @@ impl MixerView {
         let vol = t.volume.unwrap_or(Track::DEFAULT_VOLUME_DB);
         let pan = t.pan.unwrap_or(0.0);
         let label = ops::kit::instrument_label(song, t);
+        let level = self.state.read(cx).track_level(ti);
 
         let (st, tid) = (self.state.clone(), t.id.clone());
         let on_vol = Rc::new(move |v: f64, _: &mut Window, cx: &mut App| widgets::edit_co(&st, cx, widgets::tag("trk-vol", &tid), |song| set_track_volume(song, &tid, v)));
@@ -190,7 +212,7 @@ impl MixerView {
         let (st, tid) = (self.state.clone(), t.id.clone());
         let on_solo = Rc::new(move |_: &mut Window, cx: &mut App| widgets::edit(&st, cx, |song| toggle_track_solo(song, &tid)));
 
-        let small = |s: String| div().text_size(px(10.5)).font_weight(FontWeight::BOLD).text_color(th.ink_soft).child(SharedString::from(s));
+        let small = |s: String| div().text_size(px(10.0)).font_weight(FontWeight::BOLD).text_color(th.ink_soft).child(SharedString::from(s));
         // cabeçalho de 22 px preenchido com a cor da linha (F1), como o mixer de uma DAW
         let tcol = track_color(t);
         let head = div()
@@ -213,7 +235,7 @@ impl MixerView {
                     .text_color(Theme::on_track_color())
                     .child(div().truncate().child(SharedString::from(t.name.clone()))),
             )
-            .child(div().w_full().px(px(6.0)).pt(px(4.0)).text_center().text_size(px(10.0)).text_color(th.ink_soft).child(div().truncate().child(SharedString::from(if shared {
+            .child(div().w_full().px(px(4.0)).pt(px(4.0)).text_center().text_size(px(10.0)).text_color(th.ink_soft).child(div().truncate().child(SharedString::from(if shared {
                 format!("{label} · compart.")
             } else {
                 label.to_string()
@@ -224,9 +246,9 @@ impl MixerView {
             .flex()
             .flex_col()
             .items_center()
-            .gap(px(8.0))
+            .gap(px(6.0))
             .when(!audible, |d| d.opacity(0.4))
-            .child(widgets::slider(
+            .child(fader_with_meter(
                 Slider {
                     id: format!("mx-vol-{key}").into(),
                     value: vol,
@@ -235,22 +257,23 @@ impl MixerView {
                     step: 1.0,
                     default: Some(Track::DEFAULT_VOLUME_DB),
                     vertical: true,
-                    len: 128.0,
-                    color: th.accent,
+                    len: FADER_LEN,
+                    color: th.ink_soft,
                     on_change: on_vol,
                 },
+                level,
                 th,
             ))
             .child(small(db_label(vol)))
             .child(widgets::slider(
-                Slider { id: format!("mx-pan-{key}").into(), value: pan, min: -1.0, max: 1.0, step: 0.1, default: Some(0.0), vertical: false, len: 80.0, color: th.accent2, on_change: on_pan },
+                Slider { id: format!("mx-pan-{key}").into(), value: pan, min: -1.0, max: 1.0, step: 0.1, default: Some(0.0), vertical: false, len: 64.0, color: th.accent2, on_change: on_pan },
                 th,
             ))
             .child(small(pan_label(pan)));
 
         div()
             .flex_none()
-            .w(px(104.0))
+            .w(px(84.0))
             .flex()
             .flex_col()
             .items_center()
@@ -261,8 +284,8 @@ impl MixerView {
             .overflow_hidden()
             .when(shared, |d| d.border_dashed().border_color(person.map_or(th.line_strong, |p| person_color(p, th))))
             .child(head)
-            .child(div().px(px(8.0)).pt(px(8.0)).pb(px(12.0)).flex().flex_col().items_center().gap(px(10.0)).child(faders).child(
-                div().flex().gap(px(5.0)).child(widgets::mini(format!("mx-m-{key}"), "M", th, t.muted, th.warn, on_mute)).child(widgets::mini(
+            .child(div().px(px(4.0)).pt(px(6.0)).pb(px(10.0)).flex().flex_col().items_center().gap(px(8.0)).child(faders).child(
+                div().flex().gap(px(4.0)).child(widgets::mini(format!("mx-m-{key}"), "M", th, t.muted, th.warn, on_mute)).child(widgets::mini(
                     format!("mx-s-{key}"),
                     "S",
                     th,
@@ -272,56 +295,112 @@ impl MixerView {
                 )),
             ))
     }
+
+    /// Strip master (F6): volume de saída, medidor L/R e LED de clip.
+    fn master(&self, th: &Theme, cx: &Context<Self>) -> gpui_kit::Div {
+        let st = self.state.read(cx);
+        let db = st.master_db;
+        let (l, r) = (st.levels.master[0], st.levels.master[1]);
+        let clip = st.levels.clip();
+        let state = self.state.clone();
+        let on_vol = Rc::new(move |v: f64, _: &mut Window, cx: &mut App| state.update(cx, |s, cx| s.set_master_db(v, cx)));
+        let meters = div().h(px(FADER_LEN)).py(px(7.0)).flex().gap(px(2.0)).child(ui::meter(l.level, l.peak, true, th)).child(ui::meter(r.level, r.peak, true, th));
+        let led = div().size(px(8.0)).rounded(px(ui::R1)).border_1().border_color(if clip { th.danger } else { th.line_strong }).bg(if clip { th.danger } else { th.cell_empty });
+        div().flex_none().w(px(96.0)).flex().flex_col().rounded(px(ui::R0)).bg(th.paper).border_1().border_color(th.line).overflow_hidden().child(ui::panel_header("Master", th).child(led)).child(
+            div()
+                .p(px(8.0))
+                .flex()
+                .flex_col()
+                .items_center()
+                .gap(px(6.0))
+                .child(
+                    div()
+                        .flex()
+                        .items_start()
+                        .gap(px(3.0))
+                        .child(db_scale(th, FADER_LEN))
+                        .child(widgets::slider(
+                            Slider {
+                                id: "mx-master".into(),
+                                value: db,
+                                min: VOL_MIN,
+                                max: VOL_MAX,
+                                step: 1.0,
+                                default: Some(0.0),
+                                vertical: true,
+                                len: FADER_LEN,
+                                color: th.ink_soft,
+                                on_change: on_vol,
+                            },
+                            th,
+                        ))
+                        .child(meters),
+                )
+                .child(div().text_size(px(10.0)).font_weight(FontWeight::BOLD).text_color(th.ink_soft).child(SharedString::from(db_label(db))))
+                .child(div().text_size(px(9.0)).text_color(th.ink_faint).child(if clip { "clip" } else { "saída" })),
+        )
+    }
 }
 
 impl Render for MixerView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let (th, song) = {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let (th, song, animating) = {
             let st = self.state.read(cx);
-            (st.theme, st.song().clone())
+            (st.theme, st.song().clone(), st.playing() || st.levels.active())
         };
+        if animating {
+            // medidores: o Shell já pede frames enquanto toca; aqui garante durante a queda
+            window.request_animation_frame();
+        }
         let muted_note = |text: &'static str| div().text_size(px(12.0)).text_color(th.ink_soft).child(text);
-        let mut page = div().w_full().flex().flex_col().gap(px(14.0)).child(widgets::page_title("Mixer"));
+        let mut groups = div().flex_1().min_w_0().flex().flex_col().gap(px(14.0));
 
         for p in song.people() {
             let color = person_color(p, &th);
             let audible = person_audible(&song, p);
+            let level = self.state.read(cx).person_level(&p.id);
             let head = div()
                 .flex()
                 .flex_wrap()
                 .items_center()
                 .gap(px(8.0))
-                .child(div().w(px(14.0)).h(px(14.0)).rounded(px(ui::R1)).bg(color).border_1().border_color(th.line_strong))
-                .child(div().text_size(px(14.5)).font_weight(FontWeight::BOLD).text_color(if audible { th.ink } else { th.ink_faint }).child(SharedString::from(p.name.clone())))
-                .child(div().w(px(1.0)).h(px(20.0)).mx(px(6.0)).bg(th.line))
-                .child(bus_controls("mx-", &self.state, p, &th, 130.0));
-            let mut strips = div().flex().flex_wrap().gap(px(12.0));
+                .text_color(if audible { th.ink } else { th.ink_faint })
+                .child(div().text_size(px(11.0)).text_color(th.ink_faint).child("barramento"))
+                .child(bus_controls("mx-", &self.state, p, &th, 130.0))
+                .child(div().w(px(130.0)).h(px(3.0)).child(ui::meter(level.level, level.peak, false, &th)));
+            let mut strips = div().flex().flex_wrap().gap(px(10.0));
             let mut n = 0;
-            for t in song.tracks.iter().filter(|t| t.person_ids().contains(&p.id)) {
-                strips = strips.child(self.strip(&song, t, Some(p), &th));
+            for (ti, t) in song.tracks.iter().enumerate().filter(|(_, t)| t.person_ids().contains(&p.id)) {
+                strips = strips.child(self.strip(&song, t, ti, Some(p), &th, cx));
                 n += 1;
             }
             if n == 0 {
                 strips = strips.child(muted_note("Sem instrumentos."));
             }
-            page = page.child(group_card(&th, color, div().child(head).child(strips)));
+            groups = groups.child(group_card(&th, color, &p.name, div().child(head).child(strips)));
         }
 
-        let ungrouped: Vec<&Track> = song.tracks.iter().filter(|t| t.person_ids().is_empty()).collect();
+        let ungrouped: Vec<(usize, &Track)> = song.tracks.iter().enumerate().filter(|(_, t)| t.person_ids().is_empty()).collect();
         if !ungrouped.is_empty() {
-            let mut strips = div().flex().flex_wrap().gap(px(12.0));
-            for t in ungrouped {
-                strips = strips.child(self.strip(&song, t, None, &th));
+            let mut strips = div().flex().flex_wrap().gap(px(10.0));
+            for (ti, t) in ungrouped {
+                strips = strips.child(self.strip(&song, t, ti, None, &th, cx));
             }
-            let head = div().text_size(px(14.5)).font_weight(FontWeight::BOLD).text_color(th.ink).child("Sem pessoa");
-            page = page.child(group_card(&th, th.line_strong, div().child(head).child(strips)));
+            groups = groups.child(group_card(&th, th.line_strong, "Sem pessoa", div().child(strips)));
         }
         if song.tracks.is_empty() {
-            page = page.child(muted_note("Sem faixas. Adicione uma linha no Editor."));
+            groups = groups.child(muted_note("Sem faixas. Adicione uma linha no Editor."));
         }
-        page.child(div().text_size(px(11.0)).text_color(th.ink_faint).child(
-            "Arraste os sliders (duplo clique volta ao padrão) · Ctrl+Space salta para um controle; num slider, ←/→ ajustam e Esc solta · M = mudo, S = solo (linha e pessoa são camadas separadas).",
-        ))
+        div()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(14.0))
+            .child(widgets::page_title("Mixer"))
+            .child(div().flex().items_start().gap(px(14.0)).child(groups).child(self.master(&th, cx)))
+            .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(
+                "Arraste os faders (duplo clique volta ao padrão) · Ctrl+Space salta para um controle; num slider, ←/→ ajustam e Esc solta · M = mudo, S = solo (linha e pessoa são camadas separadas) · medidores: verde até −18 dB, âmbar até −6, vermelho até 0; a linha é o pico retido.",
+            ))
     }
 }
 

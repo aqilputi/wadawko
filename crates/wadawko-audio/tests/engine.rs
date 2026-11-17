@@ -517,3 +517,51 @@ fn rallentando_alonga_e_accelerando_encurta() {
     let s = ctl.set_song(&fast, &CompileOptions { region: Some(Region { start_bar: 3, end_bar: 4 }), ..Default::default() });
     assert!((s.seconds(100.0) - 1.2).abs() < 1e-9, "{}", s.seconds(100.0));
 }
+
+/// Medidores (F3): tocando um golpe, o pico do canal da linha, do barramento da
+/// pessoa e do master aparecem; `take` zera; o LED de clip acende com +6 dB
+/// de volume em cima de golpes fortes. Tudo no caminho de tempo real, sem alocar.
+#[test]
+fn meters_report_channel_bus_and_master_peaks() {
+    use wadawko_audio::Meters;
+    use wadawko_audio::schedule::channel_key;
+    let (mut eng, mut ctl) = pair(MasterMode::Live);
+    let mut song = one_track(&[(0, "DON"), (2, "DON"), (4, "DON"), (6, "DON")], 1);
+    song.people = Some(vec![Person { id: "ana".into(), name: "Ana".into(), ..Default::default() }]);
+    song.tracks[0].person_ids = Some(vec!["ana".into()]);
+    let schedule = ctl.set_song(&song, &CompileOptions::default());
+    let slot = schedule.channel_slot(&channel_key(&song.tracks[0], None)).expect("canal da linha") as usize;
+    let bus = schedule.buses.iter().position(|b| b.person_id == "ana").expect("barramento da Ana");
+    let meters = ctl.meters().clone();
+    // parado: nada
+    pump(&mut eng, 0.1);
+    assert_eq!(Meters::take(&meters.chan[slot]), 0.0);
+    assert_eq!(Meters::take(&meters.master[0]), 0.0);
+    ctl.play(PlayOptions::default());
+    pump(&mut eng, 0.2);
+    let (c, b, l, r) = (Meters::take(&meters.chan[slot]), Meters::take(&meters.bus[bus]), Meters::take(&meters.master[0]), Meters::take(&meters.master[1]));
+    assert!(c > 0.01 && b > 0.01 && l > 0.01 && r > 0.01, "canal {c} · barramento {b} · master {l}/{r}");
+    assert!(!meters.take_clip(), "golpes a −6 dB não clipam");
+    // `take` zerou; o próximo bloco publica de novo
+    assert_eq!(Meters::take(&meters.chan[slot]), 0.0);
+    pump(&mut eng, 0.2);
+    assert!(Meters::take(&meters.chan[slot]) > 0.01);
+    // clip: oito linhas iguais no teto (+6 dB) e barramento +6 dB encostam no limite
+    // antes do soft clip
+    for i in 1..8 {
+        let mut t = song.tracks[0].clone();
+        t.id = format!("chu-{i}");
+        t.volume = Some(6.0);
+        song.tracks.push(t);
+        let cells = song.measures[0].cells["chu1"].clone();
+        song.measures[0].cells.insert(format!("chu-{i}"), cells);
+    }
+    song.tracks[0].volume = Some(6.0);
+    song.people.as_mut().unwrap()[0].volume = Some(6.0);
+    ctl.set_song(&song, &CompileOptions::default());
+    ctl.play(PlayOptions::default());
+    pump(&mut eng, 1.0);
+    let m = Meters::take(&meters.master[0]);
+    assert!(meters.take_clip(), "LED de clip (pico do master {m})");
+    assert!(!meters.take_clip(), "zera ao ler");
+}

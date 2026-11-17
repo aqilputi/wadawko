@@ -378,6 +378,7 @@ impl Render for GridView {
         let bar_used = bar;
         let rails = ops::people::rails_for_tracks(&song);
         let rail_w = rails.len() as f32 * 5.0 + if rails.is_empty() { 0.0 } else { 4.0 };
+        self.geom.borrow_mut().label_pad = 6.0 + rail_w;
 
         // botão pequeno (20×16) = clique + alvo de salto com a MESMA operação; aceso na cor dada
         let mkc = |id: String, label: &'static str, on: bool, color: Hsla, op: Op| {
@@ -692,7 +693,9 @@ impl Render for GridView {
                     .flex()
                     .flex_col()
                     .child(div().h(px(SEC_DYN_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).child("dinâmica · clique = pp…ff · < >"))
-                    .child(div().h(px(TIMELINE_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).child("↺ loop em cima · ↔ arraste · clique = tocar daqui"));
+                    .child(
+                        div().h(px(TIMELINE_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).truncate().child("↺ loop em cima · ↔ arraste · clique = tocar daqui"),
+                    );
                 // listra de cor da linha (4 px, como o track header de uma DAW) + 2 px de respiro;
                 // os trilhos de pessoa vêm depois dela
                 const STRIPE_W: f32 = 6.0;

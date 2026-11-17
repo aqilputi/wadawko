@@ -168,6 +168,54 @@ pub(crate) enum Garbage {
     Seq(#[allow(dead_code)] Arc<PreviewSeq>),
 }
 
+// ───────────────────────────── medidores ─────────────────────────────
+
+/// Picos de nível por canal, barramento e master (F3), publicados pelo thread
+/// de áudio em atômicos: cada valor guarda os bits de um `f32` ≥ 0 — o
+/// `fetch_max` em `u32` preserva a ordem dos floats não negativos. A UI lê com
+/// [`Meters::take`] (pico desde a última leitura) e aplica a própria balística.
+pub struct Meters {
+    pub chan: [AtomicU32; MAX_CHANNELS],
+    pub bus: [AtomicU32; MAX_BUSES],
+    pub master: [AtomicU32; 2],
+    /// `|l|` ou `|r|` chegou a 0,999 antes do soft clip desde a última leitura
+    pub clip: AtomicBool,
+}
+
+impl Meters {
+    pub fn new() -> Arc<Meters> {
+        Arc::new(Meters {
+            chan: std::array::from_fn(|_| AtomicU32::new(0)),
+            bus: std::array::from_fn(|_| AtomicU32::new(0)),
+            master: [AtomicU32::new(0), AtomicU32::new(0)],
+            clip: AtomicBool::new(false),
+        })
+    }
+
+    #[inline]
+    fn bump(slot: &AtomicU32, peak: f32) {
+        if peak > 0.0 {
+            slot.fetch_max(peak.to_bits(), Ordering::Relaxed);
+        }
+    }
+
+    /// Pico (linear) do slot desde a última leitura, zerando-o.
+    pub fn take(slot: &AtomicU32) -> f32 {
+        f32::from_bits(slot.swap(0, Ordering::Relaxed))
+    }
+
+    /// Houve clip desde a última leitura? (zera)
+    pub fn take_clip(&self) -> bool {
+        self.clip.swap(false, Ordering::Relaxed)
+    }
+}
+
+impl Default for Meters {
+    fn default() -> Self {
+        Meters { chan: std::array::from_fn(|_| AtomicU32::new(0)), bus: std::array::from_fn(|_| AtomicU32::new(0)), master: [AtomicU32::new(0), AtomicU32::new(0)], clip: AtomicBool::new(false) }
+    }
+}
+
 // ───────────────────────────── relógio ─────────────────────────────
 
 /// Estado publicado pelo thread de áudio em atômicos (sem locks) — é daqui
@@ -474,6 +522,7 @@ pub struct Engine {
     sr: f64,
     samples: Arc<SampleSet>,
     clock: Arc<Clock>,
+    meters: Arc<Meters>,
     cmd_rx: Option<rtrb::Consumer<Command>>,
     ev_tx: Option<rtrb::Producer<EngineEvent>>,
     garbage_tx: Option<rtrb::Producer<Garbage>>,
@@ -541,6 +590,7 @@ impl Engine {
             sr,
             samples,
             clock,
+            meters: Meters::new(),
             cmd_rx: None,
             ev_tx: None,
             garbage_tx: None,
@@ -599,6 +649,11 @@ impl Engine {
 
     pub fn clock(&self) -> &Arc<Clock> {
         &self.clock
+    }
+
+    /// Picos de nível (por canal, barramento e master) publicados a cada bloco.
+    pub fn meters(&self) -> &Arc<Meters> {
+        &self.meters
     }
 
     pub fn is_playing(&self) -> bool {
@@ -1124,6 +1179,7 @@ impl Engine {
             click_k2,
             sr,
             clock,
+            meters,
             strip_tail,
             master_mode,
             out_gain,
@@ -1280,12 +1336,16 @@ impl Engine {
             if ch.cur == [0.0, 0.0] && ch.target == [0.0, 0.0] {
                 continue;
             }
+            // medidor do canal: pico de |x·g| do bloco (as duas zonas somam no mesmo slot)
+            let mut peak = 0.0f32;
             if ch.bus == 0 {
                 let (gl, gr) = (ch.cur[0], ch.cur[1]);
                 let (dl, dr) = ((ch.target[0] - gl) * inv_n, (ch.target[1] - gr) * inv_n);
                 for (f, x) in buf.iter().enumerate() {
-                    master_l[f] += x * (gl + dl * f as f32);
-                    master_r[f] += x * (gr + dr * f as f32);
+                    let (l, r) = (x * (gl + dl * f as f32), x * (gr + dr * f as f32));
+                    master_l[f] += l;
+                    master_r[f] += r;
+                    peak = peak.max(l.abs()).max(r.abs());
                 }
             } else {
                 // o barramento (Tone.Channel) soma a entrada em mono
@@ -1298,9 +1358,12 @@ impl Engine {
                 let g = (ch.cur[0] + ch.cur[1]) * 0.5;
                 let d = ((ch.target[0] + ch.target[1]) * 0.5 - g) * inv_n;
                 for (f, x) in buf.iter().enumerate() {
-                    bb[f] += x * (g + d * f as f32);
+                    let y = x * (g + d * f as f32);
+                    bb[f] += y;
+                    peak = peak.max(y.abs());
                 }
             }
+            Meters::bump(&meters.chan[s / 2], peak);
         }
         for ch in chans.iter_mut() {
             ch.cur = ch.target;
@@ -1312,11 +1375,14 @@ impl Engine {
                 let bb = &bus_buf[b * BLOCK..b * BLOCK + n];
                 let g = bus.cur * std::f32::consts::FRAC_1_SQRT_2;
                 let d = (bus.target * std::f32::consts::FRAC_1_SQRT_2 - g) * inv_n;
+                let mut peak = 0.0f32;
                 for (f, x) in bb.iter().enumerate() {
                     let y = x * (g + d * f as f32);
                     master_l[f] += y;
                     master_r[f] += y;
+                    peak = peak.max(y.abs());
                 }
+                Meters::bump(&meters.bus[b], peak);
             }
             bus.cur = bus.target;
         }
@@ -1329,6 +1395,7 @@ impl Engine {
         let g0 = *out_gain;
         let dg = (*out_gain_target - g0) * inv_n;
         *out_gain = *out_gain_target;
+        let (mut peak_l, mut peak_r, mut clipped) = (0.0f32, 0.0f32, false);
         for f in 0..n {
             let (mut l, mut r) = (master_l[f] * 0.5, master_r[f] * 0.5);
             if !l.is_finite() || !r.is_finite() {
@@ -1336,9 +1403,13 @@ impl Engine {
             }
             if live {
                 (l, r) = comp.tick(l, r);
+                // LED de clip: o sinal encostou no teto ANTES do soft clip
+                clipped |= l.abs() >= 0.999 || r.abs() >= 0.999;
                 l = soft_clip(l);
                 r = soft_clip(r);
             }
+            peak_l = peak_l.max(l.abs());
+            peak_r = peak_r.max(r.abs());
             let g = g0 + dg * f as f32;
             (l, r) = (l * g, r * g);
             let o = &mut out[f * channels..(f + 1) * channels];
@@ -1349,6 +1420,11 @@ impl Engine {
                 o[1] = r;
                 o[2..].fill(0.0);
             }
+        }
+        Meters::bump(&meters.master[0], peak_l);
+        Meters::bump(&meters.master[1], peak_r);
+        if clipped {
+            meters.clip.store(true, Ordering::Relaxed);
         }
     }
 }
