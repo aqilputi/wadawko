@@ -737,10 +737,21 @@ Regras para o agente implementador:
 Strips e grupos conforme 2.4 (planos, cap retangular, escala de dB); cartões com
 `ui::panel_header`; sliders com thumb retangular. Capture `mixer`, `pessoas`, `kit`, `config`.
 
+> **Decisões na implementação (2026-11-17)**: o mixer já saiu no visual novo na F3. Aqui os
+> cartões ganharam cabeçalho de painel: `ui::titled_card(título, th, corpo)` (substitui
+> `ui::card`) nas Configurações (TECLADO, SINCRONIA SOM × IMAGEM, BANCO E CRÉDITOS, TESTAR
+> TECLA, CONFLITOS, MAPA DE ATALHOS) e no Kit ("INSTRUMENTO · BASE: X" — a base saiu da linha
+> do nome); `mixer::group_card(th, cor, título, corpo)` com swatch 10×10 no cabeçalho é usado
+> pelo mixer e pelo cartão de Pessoa. Os sliders já tinham o thumb retangular desde a E2.
+
 ### E6 — Esteira e partitura · 30 min
 
 `lane.rs`: `fuchi` → `th.accent2`, lanes R0, divisores `line`; `score.rs`: cartão R0. Capture
 `esteira`, `partitura`.
+
+> **Na implementação (2026-11-17)**: já estava feito pelas E1/E2 (`fuchi` = `th.accent2`,
+> campo da lane em `R0` com borda `line`, cartão da partitura em `R0`); a F1 acrescentou o
+> anel de cor da linha no tambor da esteira. Conferido nas capturas da E7.
 
 ### E7 — Fechamento · 45 min
 

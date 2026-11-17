@@ -189,9 +189,11 @@ pub fn panel_header(title: &str, th: &Theme) -> gpui_kit::Div {
         .child(div().flex_1().min_w_0().truncate().child(SharedString::from(title.to_uppercase())))
 }
 
-/// Cartão de página (Configurações, Kit, Pessoas): `paper`, borda `line`, cantos retos.
-pub fn card(th: &Theme) -> gpui_kit::Div {
-    div().p(px(14.0)).rounded(px(R0)).bg(th.paper).border_1().border_color(th.line).flex().flex_col().gap(px(8.0))
+/// Cartão de página (Kit, Configurações; Pessoas e Mixer usam `group_card`):
+/// `paper`, borda `line`, cantos retos, [`panel_header`] no topo (de borda a
+/// borda) e `body` com o padding do cartão.
+pub fn titled_card(title: &str, th: &Theme, body: gpui_kit::Div) -> gpui_kit::Div {
+    div().rounded(px(R0)).bg(th.paper).border_1().border_color(th.line).flex().flex_col().overflow_hidden().child(panel_header(title, th)).child(body.p(px(14.0)).flex().flex_col().gap(px(8.0)))
 }
 
 // ───────────────────────────── medidor de nível (§2.5) ─────────────────────────────

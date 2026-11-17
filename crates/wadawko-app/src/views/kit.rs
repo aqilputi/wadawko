@@ -357,7 +357,6 @@ impl KitView {
             .items_center()
             .gap(px(8.0))
             .child(name)
-            .child(div().flex_none().text_size(px(11.0)).text_color(th.ink_soft).child(SharedString::from(format!("base: {}", def.base.label()))))
             .when(n > 0, |d| {
                 d.child(
                     div()
@@ -375,7 +374,15 @@ impl KitView {
             .child(widgets::sbtn(format!("kit-dup-{}", def.id), th, on_dup).child("⧉"))
             .child(widgets::sbtn(format!("kit-del-{}", def.id), th, on_del).child("×"));
 
-        ui::card(th).flex_1().min_w(px(340.0)).max_w(px(560.0)).child(head).child(div().flex().gap(px(10.0)).child(self.zone_editor(def, Zone::Head, th)).child(self.zone_editor(def, Zone::Rim, th)))
+        // cabeçalho de painel com a base do som; o nome (editável) fica no corpo
+        ui::titled_card(
+            &format!("instrumento · base: {}", def.base.label()),
+            th,
+            div().child(head).child(div().flex().gap(px(10.0)).child(self.zone_editor(def, Zone::Head, th)).child(self.zone_editor(def, Zone::Rim, th))),
+        )
+        .flex_1()
+        .min_w(px(340.0))
+        .max_w(px(560.0))
     }
 
     fn builtin_row(&self, def: &InstrumentDef, th: &Theme) -> gpui_kit::Div {
