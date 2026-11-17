@@ -122,7 +122,7 @@ pub struct Cur {
 }
 
 /// Modo do modelo "simples" (vim desligado): editar ou selecionar com o mouse.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Mode {
     Edit,
     Select,
@@ -136,7 +136,7 @@ pub enum Lane {
 }
 
 /// Modo de teclado da grade.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum VMode {
     Normal,
     Insert,

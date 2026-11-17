@@ -9,8 +9,24 @@ use crate::shell::Shell;
 use crate::song_ext::SongExt;
 use crate::theme::Theme;
 
+/// Tudo o que a status bar mostra, já como texto: o Shell calcula a cada frame e
+/// só redesenha a barra (view em cache) quando o hash muda.
+#[derive(Clone, Debug, Default, Hash, PartialEq)]
+pub struct StatusModel {
+    vmode: Option<VMode>,
+    showcmd: String,
+    pos_text: Option<String>,
+    bpm: String,
+    tocando: String,
+    audio: Option<String>,
+    export: Option<String>,
+    toast: Option<String>,
+    hud: String,
+    src: String,
+}
+
 impl Shell {
-    pub(crate) fn status_bar(&self, th: &Theme, playing: bool, play_pos: Option<String>, cx: &mut Context<Self>) -> gpui_kit::Div {
+    pub(crate) fn status_model(&self, playing: bool, play_pos: Option<String>, cx: &mut Context<Self>) -> StatusModel {
         let st = self.state.read(cx);
         let song = st.song().clone();
         let (vmode, cursor, lane) = {
@@ -42,14 +58,8 @@ impl Shell {
             }
             s
         };
-        let (chip_bg, chip_fg) = match vmode {
-            VMode::Normal => (th.ink, th.paper),
-            VMode::Insert => (th.accent, th.on_accent),
-            VMode::Visual | VMode::VLine => (th.accent2, th.on_accent),
-            VMode::Simple => (th.paper_raise, th.ink_soft),
-        };
-        let tocando: SharedString = match (playing, &play_pos) {
-            (true, Some(p)) => format!("♪ tocando · {p}").into(),
+        let tocando = match (playing, &play_pos) {
+            (true, Some(p)) => format!("♪ tocando · {p}"),
             (true, None) => "♪ tocando".into(),
             _ => "parado".into(),
         };
@@ -67,6 +77,29 @@ impl Shell {
             (Some(_), _) => None,
             (None, Some(e)) => Some(format!("sem áudio: {e}")),
             (None, None) => Some("carregando samples…".to_string()),
+        };
+        StatusModel {
+            vmode: Some(vmode),
+            showcmd,
+            pos_text,
+            bpm: format!("{:.0} BPM", song.tempo),
+            tocando,
+            audio,
+            export: st.export_label(),
+            toast: st.toast.as_ref().map(|t| t.0.clone()),
+            hud: self.hud.clone(),
+            src,
+        }
+    }
+
+    pub(crate) fn status_bar(&self, th: &Theme, m: &StatusModel) -> gpui_kit::Div {
+        let StatusModel { vmode, showcmd, pos_text, bpm, tocando, audio, export, toast, hud, src } = m.clone();
+        let vmode = vmode.unwrap_or(VMode::Simple);
+        let (chip_bg, chip_fg) = match vmode {
+            VMode::Normal => (th.ink, th.paper),
+            VMode::Insert => (th.accent, th.on_accent),
+            VMode::Visual | VMode::VLine => (th.accent2, th.on_accent),
+            VMode::Simple => (th.paper_raise, th.ink_soft),
         };
         div()
             .h(px(26.0))
@@ -103,14 +136,14 @@ impl Shell {
             .when(!showcmd.is_empty(), |d| d.child(div().text_color(th.accent).font_weight(FontWeight::BOLD).child(SharedString::from(showcmd.clone()))))
             .when_some(pos_text, |d, p| d.child(div().text_color(th.ink_faint).child(SharedString::from(p))))
             .child(div().text_color(th.ink_faint).child("·"))
-            .child(SharedString::from(format!("{:.0} BPM", song.tempo)))
+            .child(SharedString::from(bpm))
             .child(div().text_color(th.ink_faint).child("·"))
-            .child(tocando)
+            .child(SharedString::from(tocando))
             .when_some(audio, |d, t| d.child(div().text_color(th.ink_faint).child(SharedString::from(t))))
-            .when_some(st.export_label(), |d, t| d.child(div().px(px(8.0)).rounded(px(4.0)).bg(th.accent_wash).text_color(th.accent).child(SharedString::from(format!("⏳ {t}")))))
-            .when_some(st.toast.as_ref().map(|t| t.0.clone()), |d, t| d.child(div().px(px(8.0)).rounded(px(4.0)).bg(th.accent2_wash).text_color(th.accent2).truncate().child(SharedString::from(t))))
+            .when_some(export, |d, t| d.child(div().px(px(8.0)).rounded(px(4.0)).bg(th.accent_wash).text_color(th.accent).child(SharedString::from(format!("⏳ {t}")))))
+            .when_some(toast, |d, t| d.child(div().px(px(8.0)).rounded(px(4.0)).bg(th.accent2_wash).text_color(th.accent2).truncate().child(SharedString::from(t))))
             .child(div().flex_1())
-            .child(div().text_color(th.ink_faint).child(SharedString::from(self.hud.clone())))
+            .child(div().text_color(th.ink_faint).child(SharedString::from(hud)))
             .child(div().text_color(th.ink_faint).child("·"))
             .child(div().text_color(th.ink_faint).child(SharedString::from(src)))
     }

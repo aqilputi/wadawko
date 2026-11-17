@@ -24,9 +24,13 @@ para 55 fps.
    caches. Para redesenhar, notifique a entidade que mudou (`cx.notify()`).
 3. **Peça `request_animation_frame` só enquanto algo anima de fato** (ex.: o bloco arrastado
    para quando assenta — `drag_ghost::Swing::settled`). Cada frame redesenha a raiz.
-4. **A moldura (barra de cima, lateral, painel de músicas) fica em cache** com uma chave por
-   peça (`shell/chrome.rs`, `Shell::refresh_chrome`). Mostrou algo novo numa dessas peças?
-   **Inclua na chave**, senão ela fica velha.
+4. **A moldura (barra de cima, lateral, painel de músicas, barra de contexto e status bar) fica
+   em cache** com uma chave por peça (`shell/chrome.rs`, `Shell::refresh_chrome`). Mostrou algo
+   novo numa dessas peças? **Inclua na chave**, senão ela fica velha. A status bar é desenhada
+   de um `StatusModel` (só texto, com `Hash`): tocando, ela redesenha quando a posição muda de
+   célula, não a cada frame. A barra de contexto quebra linha (altura variável) e view em cache
+   precisa de tamanho fixo: quando a chave muda (inclusive a largura da janela) ela é desenhada
+   sem cache e medida; nos frames seguintes usa o cache com a altura medida.
 5. **Nada de tesselar paths por frame** quando a forma se repete: pré-tessele e translade
    (pétalas da esteira, `lane.rs::paint_petal`).
 6. **Evite hover em elementos grandes dentro da grade**: entrar/sair com o mouse notifica a
