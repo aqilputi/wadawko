@@ -1,3 +1,5 @@
+<img src="assets/linux/icons/hicolor/128x128/apps/io.github.aqilputi.WaDAWko.png" width="96" align="right" alt="">
+
 # WaDAWko
 
 Editor de partituras e "DAW" para grupos de **taiko**, escrito em **kuchi shōga** — as sílabas
@@ -27,7 +29,8 @@ App desktop nativo em **Rust + [GPUI](https://www.gpui.rs/)** para Linux. O app 
 
 ## Baixar
 
-Pacote para Linux x86_64 em **[Releases](https://github.com/aqilputi/wadawko/releases)**:
+Para Linux x86_64 em **[Releases](https://github.com/aqilputi/wadawko/releases)**: um **AppImage**
+(`chmod +x` e rode) ou o pacote que instala em `~/.local` com atalho no menu:
 
 ```sh
 tar xzf wadawko-*-linux-x86_64.tar.gz
@@ -36,7 +39,8 @@ wadawko
 ```
 
 Requer GPU com Vulkan (Mesa serve), PipeWire/ALSA e glibc ≥ 2.39; `ffmpeg` só para MP3.
-Vindo do app web? Na primeira vez: `wadawko --migrate-from <repo-antigo>/data/wadawko.db`.
+Vindo do app web ou de outro PC? **Config → importar músicas** e escolha o `wadawko.db` antigo
+(ou um backup `.json`).
 
 ## Compilar
 

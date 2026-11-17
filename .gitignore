@@ -12,3 +12,6 @@
 *.db-wal
 *.db-shm
 *.db-journal
+/tools/.cache/
+/build-flatpak/
+/.flatpak-builder/

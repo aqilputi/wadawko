@@ -2,9 +2,12 @@
 Type=Application
 Name=WaDAWko
 GenericName=Editor de partituras de taiko
+GenericName[en]=Taiko score editor
 Comment=Escreva, ouça e ensaie músicas de taiko em kuchi shōga
+Comment[en]=Write, hear and rehearse taiko pieces in kuchi shōga
 Exec=wadawko
-Icon=audio-x-generic
+Icon=io.github.aqilputi.WaDAWko
 Terminal=false
 Categories=AudioVideo;Audio;Music;
-Keywords=taiko;kuchi shoga;partitura;percussão;
+Keywords=taiko;kuchi shoga;partitura;percussão;drum;score;
+StartupWMClass=io.github.aqilputi.WaDAWko

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- WaDAWko: taiko visto de frente (couro, pregos byō) com duas bachi cruzadas -->
+  <defs>
+    <radialGradient id="couro" cx="0.42" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#fff8ec"/>
+      <stop offset="1" stop-color="#ead9bd"/>
+    </radialGradient>
+    <linearGradient id="corpo" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b5523f"/>
+      <stop offset="1" stop-color="#7d3326"/>
+    </linearGradient>
+  </defs>
+  <!-- fundo -->
+  <rect x="8" y="8" width="240" height="240" rx="56" fill="#e26374"/>
+  <!-- corpo do tambor (borda de madeira) -->
+  <circle cx="128" cy="134" r="92" fill="url(#corpo)"/>
+  <circle cx="128" cy="134" r="92" fill="none" stroke="#5a2219" stroke-width="4"/>
+  <!-- couro -->
+  <circle cx="128" cy="134" r="74" fill="url(#couro)" stroke="#2b1b14" stroke-width="5"/>
+  <!-- pregos (byō) -->
+  <g fill="#232733">
+    <circle cx="128" cy="51" r="5"/><circle cx="169.5" cy="62.1" r="5"/><circle cx="199.9" cy="92.5" r="5"/>
+    <circle cx="211" cy="134" r="5"/><circle cx="199.9" cy="175.5" r="5"/><circle cx="169.5" cy="205.9" r="5"/>
+    <circle cx="128" cy="217" r="5"/><circle cx="86.5" cy="205.9" r="5"/><circle cx="56.1" cy="175.5" r="5"/>
+    <circle cx="45" cy="134" r="5"/><circle cx="56.1" cy="92.5" r="5"/><circle cx="86.5" cy="62.1" r="5"/>
+  </g>
+  <!-- anel do couro -->
+  <circle cx="128" cy="134" r="46" fill="none" stroke="#e26374" stroke-width="7" opacity="0.85"/>
+  <circle cx="128" cy="134" r="12" fill="#e26374" opacity="0.85"/>
+  <!-- bachi cruzadas -->
+  <g stroke-linecap="round">
+    <line x1="34" y1="42" x2="150" y2="158" stroke="#2b1b14" stroke-width="15"/>
+    <line x1="34" y1="42" x2="150" y2="158" stroke="#f3e2c3" stroke-width="10"/>
+    <line x1="222" y1="42" x2="106" y2="158" stroke="#2b1b14" stroke-width="15"/>
+    <line x1="222" y1="42" x2="106" y2="158" stroke="#f3e2c3" stroke-width="10"/>
+  </g>
+</svg>

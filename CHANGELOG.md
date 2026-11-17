@@ -15,7 +15,14 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
   andamento; a barra de cima mostra `♪ 110` enquanto soa outro BPM; a partitura mostra `rall. → 90`. O
   treino continua valendo: escala o mapa inteiro. Campo novo `tempo` no compasso.
 
+- **Importar músicas de outro banco ou backup** (Config → importar músicas, ou `Ctrl+K`): um
+  `wadawko.db` (do app web ou de outra instalação) ou um backup `.json`; junta sem sobrescrever.
+  Na primeira execução o app avisa onde fica.
+- Licença do código: **MIT OR Apache-2.0** (`LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`).
+
 ### Mudado
+- Repositório: o app web e o protótipo `spike/` saíram do `main` (ficam na tag `web-final`);
+  samples em `assets/samples/`; os builds vão para `target/` (antes `spike/target/`).
 - Cada compasso passa a durar os seus `beats` tempos no áudio, metrônomo, kiai, esteira e
   playhead. Antes todo compasso ocupava 4 tempos (herança do app web): um 5/4 sobrepunha o
   compasso seguinte e um 3/4 deixava um tempo de silêncio. Músicas só em 4/4 não mudam.
