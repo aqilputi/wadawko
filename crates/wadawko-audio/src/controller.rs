@@ -165,13 +165,7 @@ impl Controller {
             None => base,
         } as f32;
         let from_tick = if s.has_region { 0.0 } else { s.time.cell_tick(opts.start_cell) };
-        self.send(Command::Play(PlayCmd {
-            from_tick,
-            bpm,
-            looping: opts.looping,
-            count_in: opts.count_in,
-            trainer: trainer.map(|t| Trainer { base_bpm: base as f32, step: t.step as f32 }),
-        }));
+        self.send(Command::Play(PlayCmd { from_tick, bpm, looping: opts.looping, count_in: opts.count_in, trainer: trainer.map(|t| Trainer { base_bpm: base as f32, step: t.step as f32 }) }));
         bpm
     }
 

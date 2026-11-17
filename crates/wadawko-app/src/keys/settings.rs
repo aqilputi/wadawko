@@ -20,10 +20,7 @@ pub struct Settings {
 
 pub fn load_settings() -> Settings {
     let v = std::fs::read_to_string(settings_path()).ok().and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok());
-    Settings {
-        vim: v.as_ref().and_then(|v| v["vim"].as_bool()).unwrap_or(true),
-        av_offset_ms: v.as_ref().and_then(|v| v["av_offset_ms"].as_f64()).unwrap_or(0.0) as f32,
-    }
+    Settings { vim: v.as_ref().and_then(|v| v["vim"].as_bool()).unwrap_or(true), av_offset_ms: v.as_ref().and_then(|v| v["av_offset_ms"].as_f64()).unwrap_or(0.0) as f32 }
 }
 
 pub fn save_settings(s: Settings) -> Result<()> {

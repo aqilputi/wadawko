@@ -49,11 +49,7 @@ pub struct SampleSet {
 
 impl SampleSet {
     pub fn from_bank(bank: &SampleBank) -> Arc<SampleSet> {
-        let samples = bank
-            .samples()
-            .iter()
-            .map(|s| MonoSample { data: s.frames.as_chunks::<2>().0.iter().map(|f| (f[0] + f[1]) * 0.5).collect(), sr: s.sr })
-            .collect();
+        let samples = bank.samples().iter().map(|s| MonoSample { data: s.frames.as_chunks::<2>().0.iter().map(|f| (f[0] + f[1]) * 0.5).collect(), sr: s.sr }).collect();
         Arc::new(SampleSet { samples })
     }
 }
@@ -112,18 +108,36 @@ pub enum Command {
     SetMetronome(bool),
     SetTrainer(Option<Trainer>),
     /// mix de um canal: volume linear, pan −1..1, mudo (mudo/solo já resolvidos)
-    SetChannelMix { slot: u16, gain: f32, pan: f32, mute: bool },
+    SetChannelMix {
+        slot: u16,
+        gain: f32,
+        pan: f32,
+        mute: bool,
+    },
     /// destino de um canal (0 = master)
-    SetChannelBus { slot: u16, bus: u16 },
+    SetChannelBus {
+        slot: u16,
+        bus: u16,
+    },
     /// mix do barramento de uma pessoa
-    SetBusMix { slot: u16, gain: f32, mute: bool },
+    SetBusMix {
+        slot: u16,
+        gain: f32,
+        mute: bool,
+    },
     /// filtros de um strip (previews)
-    SetStrip { strip: u16, chain: FilterChain },
+    SetStrip {
+        strip: u16,
+        chain: FilterChain,
+    },
     /// volume geral de saída (depois do master), linear
     SetMasterGain(f32),
     SetMasterMode(MasterMode),
     /// dispara um evento avulso daqui a `delay` s (previews)
-    Trigger { kind: EventKind, delay: f32 },
+    Trigger {
+        kind: EventKind,
+        delay: f32,
+    },
     PlaySeq(Arc<PreviewSeq>),
     /// para a sequência e mata a cauda do canal de preview
     StopSeq,
@@ -282,11 +296,7 @@ impl Clock {
         let lat = self.latency_ns.load(Ordering::Relaxed) as f64 + self.fixed_delay_ns.load(Ordering::Relaxed) as f64 + extra_offset_ms as f64 * 1e6;
         let secs = (self.elapsed_ns(&s) - lat) / 1e9;
         let t = s.pos_tick + secs * s.bpm as f64 / 60.0 * PPQ;
-        if s.looping && s.len_ticks > 0.0 {
-            if t < 0.0 { if s.wraps > 0 { t + s.len_ticks } else { 0.0 } } else { t % s.len_ticks }
-        } else {
-            t.clamp(0.0, s.len_ticks.max(0.0))
-        }
+        if s.looping && s.len_ticks > 0.0 { if t < 0.0 { if s.wraps > 0 { t + s.len_ticks } else { 0.0 } } else { t % s.len_ticks } } else { t.clamp(0.0, s.len_ticks.max(0.0)) }
     }
 
     /// Frame de saída audível agora (mesma base do `frame` dos [`EngineEvent`]).
@@ -854,11 +864,7 @@ impl Engine {
             return;
         }
         // humanização: ganho ±12 %, pitch ±1 % (~17 cents), micro-timing ±6 ms
-        let (jg, jr, jt) = if h.humanize {
-            (self.rng.jitter(HUMANIZE_GAIN), self.rng.jitter(HUMANIZE_RATE), self.rng.bipolar() as f64 * HUMANIZE_TIME * self.sr)
-        } else {
-            (1.0, 1.0, 0.0)
-        };
+        let (jg, jr, jt) = if h.humanize { (self.rng.jitter(HUMANIZE_GAIN), self.rng.jitter(HUMANIZE_RATE), self.rng.bipolar() as f64 * HUMANIZE_TIME * self.sr) } else { (1.0, 1.0, 0.0) };
         // choke: couro abafa couro e borda anteriores do mesmo canal (a pele
         // parou de vibrar); borda só abafa borda
         let fade = ((h.choke as f64 * self.sr) as u32).max(1);
@@ -966,11 +972,7 @@ impl Engine {
         // (taxa no meio do bloco: numa rampa o erro não acumula bloco a bloco)
         let base_tpf = self.bpm as f64 / 60.0 * PPQ / self.sr;
         let curve = &self.schedule.curve;
-        let tpf = if curve.segments.is_empty() {
-            base_tpf
-        } else {
-            base_tpf * curve.factor_at(self.pos + n as f64 * base_tpf * curve.factor_at(self.pos) * 0.5)
-        };
+        let tpf = if curve.segments.is_empty() { base_tpf } else { base_tpf * curve.factor_at(self.pos + n as f64 * base_tpf * curve.factor_at(self.pos) * 0.5) };
         let mut n = n;
         let mut end = self.pos + n as f64 * tpf;
         // tolerância de 1 milionésimo de frame: o acúmulo de ponto flutuante não
@@ -1164,7 +1166,13 @@ impl Engine {
                         v.env *= *click_k2;
                     }
                     let p = v.phase;
-                    let tri = if p < 0.25 { 4.0 * p } else if p < 0.75 { 2.0 - 4.0 * p } else { 4.0 * p - 4.0 };
+                    let tri = if p < 0.25 {
+                        4.0 * p
+                    } else if p < 0.75 {
+                        2.0 - 4.0 * p
+                    } else {
+                        4.0 * p - 4.0
+                    };
                     let s = tri * v.env * 0.398_107_2;
                     master_l[f] += s;
                     master_r[f] += s;

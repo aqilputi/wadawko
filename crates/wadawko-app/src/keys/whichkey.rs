@@ -60,11 +60,7 @@ impl Shell {
                     .child(div().text_size(px(12.0)).text_color(if group { th.accent } else { th.ink_soft }).truncate().child(SharedString::from(t))),
             );
         }
-        let title = if prefix.is_empty() {
-            "Atalhos disponíveis aqui (Ctrl+/ ou Esc fecha)".to_string()
-        } else {
-            keys::prefix_title(&prefix).map(|t| format!("{prefix} — {t}")).unwrap_or(prefix)
-        };
+        let title = if prefix.is_empty() { "Atalhos disponíveis aqui (Ctrl+/ ou Esc fecha)".to_string() } else { keys::prefix_title(&prefix).map(|t| format!("{prefix} — {t}")).unwrap_or(prefix) };
         deferred(
             div()
                 .absolute()

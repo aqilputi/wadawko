@@ -13,9 +13,7 @@ use gpui_kit::{Action, App, KeyBinding, KeyBindingContextPredicate};
 pub const DEFAULT_KEYMAP: &str = include_str!("../../assets/keymap-default.json");
 
 pub fn user_keymap_path() -> PathBuf {
-    let base = std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"));
+    let base = std::env::var_os("XDG_CONFIG_HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_default()).join(".config"));
     base.join("wadawko").join("keymap.json")
 }
 
@@ -42,9 +40,7 @@ fn parse_keymap(src: &str, origin: &str, cx: &App, errors: &mut Vec<String>) -> 
             let built: Result<Box<dyn Action>> = match action {
                 serde_json::Value::String(name) => cx.build_action(name, None).map_err(|e| anyhow!("{e}")),
                 serde_json::Value::Null => cx.build_action("zed::NoAction", None).map_err(|e| anyhow!("{e}")),
-                serde_json::Value::Array(a) if a.len() == 2 => {
-                    cx.build_action(a[0].as_str().unwrap_or_default(), Some(a[1].clone())).map_err(|e| anyhow!("{e}"))
-                }
+                serde_json::Value::Array(a) if a.len() == 2 => cx.build_action(a[0].as_str().unwrap_or_default(), Some(a[1].clone())).map_err(|e| anyhow!("{e}")),
                 _ => Err(anyhow!("valor inesperado")),
             };
             match built {

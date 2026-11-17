@@ -19,16 +19,8 @@ pub enum BaseInstrument {
 
 impl BaseInstrument {
     pub const COUNT: usize = 8;
-    pub const ALL: [BaseInstrument; 8] = [
-        BaseInstrument::Shime,
-        BaseInstrument::Chu,
-        BaseInstrument::Hira,
-        BaseInstrument::Nagado,
-        BaseInstrument::Onagado,
-        BaseInstrument::Okedo,
-        BaseInstrument::Odaiko,
-        BaseInstrument::Kane,
-    ];
+    pub const ALL: [BaseInstrument; 8] =
+        [BaseInstrument::Shime, BaseInstrument::Chu, BaseInstrument::Hira, BaseInstrument::Nagado, BaseInstrument::Onagado, BaseInstrument::Okedo, BaseInstrument::Odaiko, BaseInstrument::Kane];
 
     /// id usado no JSON das músicas ("shime", "chu", …).
     pub const fn as_str(self) -> &'static str {

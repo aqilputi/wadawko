@@ -49,14 +49,7 @@ fn real_database_copy_reads_and_survives_a_write_cycle() {
             let original: Value = serde_json::from_str(&raw).unwrap();
             assert_eq!(song.to_value(), original, "{}: o round-trip mudou o JSON", p.meta.id);
             assert_eq!(Song::from_json(&song.to_json()).unwrap(), *song);
-            eprintln!(
-                "{} {:<12} {:>3} compassos  {:>6} bytes  byte-idêntico: {}",
-                p.meta.id,
-                p.meta.title,
-                song.measures.len(),
-                raw.len(),
-                song.to_json() == raw
-            );
+            eprintln!("{} {:<12} {:>3} compassos  {:>6} bytes  byte-idêntico: {}", p.meta.id, p.meta.title, song.measures.len(), raw.len(), song.to_json() == raw);
         }
         assert!(projects.iter().any(|p| p.current), "currentId aponta para uma música listada");
         ro.all().unwrap()

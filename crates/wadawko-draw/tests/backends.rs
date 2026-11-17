@@ -2,8 +2,7 @@
 
 use wadawko_draw::smufl::{self, FAMILY_ZEN_KAKU, glyphs};
 use wadawko_draw::{
-    Canvas2D, Color, DrawCmd, LineCap, Path, Quad, Recording, SkiaCanvas, SmuflFont, StandardFonts,
-    StateStack, Stroke, SvgCanvas, SvgOptions, TextAlign, TextStyle, Transform, pt, rect,
+    Canvas2D, Color, DrawCmd, LineCap, Path, Quad, Recording, SkiaCanvas, SmuflFont, StandardFonts, StateStack, Stroke, SvgCanvas, SvgOptions, TextAlign, TextStyle, Transform, pt, rect,
 };
 
 const INK: Color = Color::rgb(0x1f1a17);
@@ -20,11 +19,7 @@ fn shapes_scene(c: &mut dyn Canvas2D) {
     c.quad(&Quad::fill(rect(10.0, 10.0, 40.0, 20.0), RED.with_alpha(0.5)).radius(4.0).border(2.0, INK));
     c.line(pt(10.0, 40.5), pt(110.0, 40.5), &Stroke::new(1.0), INK);
     let mut pb = Path::builder();
-    pb.move_to(pt(60.0, 10.0))
-        .line_to(pt(80.0, 10.0))
-        .quad_to(pt(90.0, 20.0), pt(80.0, 30.0))
-        .cubic_to(pt(75.0, 35.0), pt(65.0, 35.0), pt(60.0, 30.0))
-        .close();
+    pb.move_to(pt(60.0, 10.0)).line_to(pt(80.0, 10.0)).quad_to(pt(90.0, 20.0), pt(80.0, 30.0)).cubic_to(pt(75.0, 35.0), pt(65.0, 35.0), pt(60.0, 30.0)).close();
     let path = pb.build();
     c.fill_path(&path, INK);
     c.stroke_path(&path, &Stroke::round(1.5), RED);
@@ -69,10 +64,7 @@ fn svg_glyphs_as_paths_and_native() {
     let mut c = SvgCanvas::with_options(100.0, 40.0, Some(&f.book), opts);
     c.glyph(f.bravura.font, glyphs::NOTEHEAD_BLACK.codepoint, pt(10.0, 20.0), size, INK);
     let svg = c.finish();
-    assert!(
-        svg.contains("<text x=\"10\" y=\"20\" font-family=\"Bravura\" font-size=\"40\" fill=\"#1f1a17\">&#xE0A4;</text>"),
-        "{svg}"
-    );
+    assert!(svg.contains("<text x=\"10\" y=\"20\" font-family=\"Bravura\" font-size=\"40\" fill=\"#1f1a17\">&#xE0A4;</text>"), "{svg}");
 
     // texto como contorno: sem <text>, com <path>
     let opts = SvgOptions { text_as_paths: true, background: Some(PAPER), ..SvgOptions::default() };
@@ -229,8 +221,5 @@ fn stroke_caps_reach_svg() {
     let mut c = SvgCanvas::new(10.0, 10.0);
     c.line(pt(1.0, 1.0), pt(9.0, 9.0), &Stroke::new(2.0).cap(LineCap::Square), INK.with_alpha(0.25));
     let svg = c.finish();
-    assert!(
-        svg.contains("<line x1=\"1\" y1=\"1\" x2=\"9\" y2=\"9\" stroke=\"#1f1a17\" stroke-opacity=\"0.25\" stroke-width=\"2\" stroke-linecap=\"square\"/>"),
-        "{svg}"
-    );
+    assert!(svg.contains("<line x1=\"1\" y1=\"1\" x2=\"9\" y2=\"9\" stroke=\"#1f1a17\" stroke-opacity=\"0.25\" stroke-width=\"2\" stroke-linecap=\"square\"/>"), "{svg}");
 }

@@ -118,8 +118,7 @@ impl<'a> Engraver<'a> {
         let z = opts.zoom();
         let sp = opts.staff_space.max(1.0) * z;
         let n = song.measures.len();
-        let rhythms: Vec<Vec<TrackRhythm>> =
-            song.measures.iter().map(|m| song.tracks.iter().map(|t| measure_rhythm(m, &t.id)).collect()).collect();
+        let rhythms: Vec<Vec<TrackRhythm>> = song.measures.iter().map(|m| song.tracks.iter().map(|t| measure_rhythm(m, &t.id)).collect()).collect();
 
         // estatísticas por linha → altura de cada faixa
         let mut stats = vec![vec![TrackStat::default(); song.tracks.len()]; n];
@@ -168,13 +167,7 @@ impl<'a> Engraver<'a> {
         let track_hair = song
             .tracks
             .iter()
-            .map(|t| {
-                hairpin_segments(
-                    n,
-                    |i| song.measures[i].track_dynamic(&t.id).and_then(|d| d.hairpin),
-                    |i| song.measures[i].track_dynamic(&t.id).and_then(|d| d.dynamic),
-                )
-            })
+            .map(|t| hairpin_segments(n, |i| song.measures[i].track_dynamic(&t.id).and_then(|d| d.hairpin), |i| song.measures[i].track_dynamic(&t.id).and_then(|d| d.dynamic)))
             .collect();
 
         Engraver {
@@ -419,7 +412,8 @@ impl<'a> Engraver<'a> {
             let m0 = measures.len();
             for mi in plan.clone() {
                 let w = self.metas[mi].width();
-                let geo = MeasureGeo { row_metrics: &row_metrics, x, w, top: y, bottom: y + sys_h, staff_ys: &staff_ys, rows: &rows, bar_top, bar_bottom, global_dyn_y, last_in_system: mi + 1 == plan.end };
+                let geo =
+                    MeasureGeo { row_metrics: &row_metrics, x, w, top: y, bottom: y + sys_h, staff_ys: &staff_ys, rows: &rows, bar_top, bar_bottom, global_dyn_y, last_in_system: mi + 1 == plan.end };
                 let (mut m, keys) = self.engrave_measure(mi, &geo);
                 m.system = si;
                 m.page = page;
@@ -435,17 +429,7 @@ impl<'a> Engraver<'a> {
             let bracket = !self.metas.get(plan.start).is_some_and(|m| m.start_repeat);
             let cmds = self.system_cmds(bracket, margin, rails_w, label_w, staff_x, &people, &staff_ys, &rows, bar_top, bar_bottom, &label_style);
             let right = if let Some(pw) = page_w { pw - margin } else { x };
-            systems.push(SystemLayout {
-                page,
-                bounds: rect(margin, y, right - margin, sys_h),
-                staff_x,
-                measures: m0..measures.len(),
-                staff_ys,
-                rows,
-                bar_top,
-                bar_bottom,
-                cmds,
-            });
+            systems.push(SystemLayout { page, bounds: rect(margin, y, right - margin, sys_h), staff_x, measures: m0..measures.len(), staff_ys, rows, bar_top, bar_bottom, cmds });
             y += sys_h + sys_gap;
         }
         let (last_w, last_h) = match (page_w, page_h) {
@@ -473,17 +457,7 @@ impl<'a> Engraver<'a> {
             }
         }
 
-        Score {
-            mode: self.opts.mode,
-            theme: self.theme,
-            staff_space: sp,
-            pages,
-            systems,
-            measures,
-            track_ids: song.tracks.iter().map(|t| t.id.clone()).collect(),
-            hit_index,
-            slop: 14.0 * sp,
-        }
+        Score { mode: self.opts.mode, theme: self.theme, staff_space: sp, pages, systems, measures, track_ids: song.tracks.iter().map(|t| t.id.clone()).collect(), hit_index, slop: 14.0 * sp }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -683,9 +657,7 @@ impl<'a> Engraver<'a> {
                 }
                 let color = cell_color(cell);
                 let st = self.text_style(syl_size).align(TextAlign::Center);
-                let items: Vec<(usize, &str, f32, f32)> = (i..=j)
-                    .filter_map(|k| events[k].label.as_deref().map(|l| (k, l, x_of(events[k].pos) + head_w / 2.0, self.text_width(l, &st))))
-                    .collect();
+                let items: Vec<(usize, &str, f32, f32)> = (i..=j).filter_map(|k| events[k].label.as_deref().map(|l| (k, l, x_of(events[k].pos) + head_w / 2.0, self.text_width(l, &st)))).collect();
                 let overlap = items.windows(2).any(|w| w[0].2 + w[0].3 / 2.0 + 0.1 * sp > w[1].2 - w[1].3 / 2.0);
                 let is_roll = (i..=j).any(|k| matches!(events[k].kind, EventKind::Note { roll, .. } if roll > 0));
                 let word = rhythm.words.get(cell).and_then(|w| w.as_deref());

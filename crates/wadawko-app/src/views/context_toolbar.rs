@@ -28,13 +28,8 @@ impl Shell {
         let inst_name = ops::kit::instrument_by_id(&song, Some(&self.add_instrument)).map(|d| d.name.clone()).unwrap_or_else(|| "Chū-daiko".into());
         let mut toolbar = div().flex().flex_wrap().items_center().gap(px(8.0)).p(px(7.0)).rounded(px(10.0)).bg(th.paper).border_1().border_color(th.line);
         if !self.vim_on {
-            toolbar = toolbar.child(segmented(
-                "mode",
-                th,
-                vec![("✎ editar", Box::new(keys::grid::ModeEdit)), ("⬚ selecionar", Box::new(keys::grid::ModeSelect))],
-                (mode == Mode::Select) as usize,
-                false,
-            ));
+            toolbar =
+                toolbar.child(segmented("mode", th, vec![("✎ editar", Box::new(keys::grid::ModeEdit)), ("⬚ selecionar", Box::new(keys::grid::ModeSelect))], (mode == Mode::Select) as usize, false));
         }
         let mut toolbar = toolbar
             .child(segmented(
@@ -124,8 +119,8 @@ impl Shell {
             );
         }
 
-        toolbar.child(div().flex_1()).child(
-            div().flex().items_center().gap(px(6.0)).text_size(px(11.0)).text_color(th.ink_faint).child(kbd("Ctrl K", th)).child("comandos").child(kbd("Ctrl ␣", th)).child("saltar"),
-        )
+        toolbar
+            .child(div().flex_1())
+            .child(div().flex().items_center().gap(px(6.0)).text_size(px(11.0)).text_color(th.ink_faint).child(kbd("Ctrl K", th)).child("comandos").child(kbd("Ctrl ␣", th)).child("saltar"))
     }
 }

@@ -195,7 +195,11 @@ fn main() {
         let bench = args.bench;
         let st = state.clone();
         let win = gpui_kit::open_window(
-            WindowOptions { window_bounds: Some(WindowBounds::Windowed(bounds)), titlebar: Some(gpui_kit::TitlebarOptions { title: Some("WaDAWko".into()), ..Default::default() }), ..Default::default() },
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                titlebar: Some(gpui_kit::TitlebarOptions { title: Some("WaDAWko".into()), ..Default::default() }),
+                ..Default::default()
+            },
             cx,
             move |window, cx| cx.new(|cx| Shell::new(window, cx, st.clone(), bench)),
         )
@@ -322,7 +326,12 @@ fn selftest(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App)
         state.update(cx, |s, _| {
             let dirty_before = s.store.has_unsaved_changes();
             let r = s.flush();
-            println!("TESTE gravação: pendente antes do flush={dirty_before} · flush={:?} · pendente depois={} · erro={:?}", r.map_err(|e| format!("{e:#}")), s.store.has_unsaved_changes(), s.store.autosave_error());
+            println!(
+                "TESTE gravação: pendente antes do flush={dirty_before} · flush={:?} · pendente depois={} · erro={:?}",
+                r.map_err(|e| format!("{e:#}")),
+                s.store.has_unsaved_changes(),
+                s.store.autosave_error()
+            );
         });
         cx.update(|cx| cx.quit());
     })
@@ -334,7 +343,7 @@ fn selftest(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App)
 const PPQ_PROBE: f64 = 960.0;
 
 fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App) {
-    use gpui_kit::{Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PlatformInput, Pixels, Point};
+    use gpui_kit::{Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, PlatformInput, Point};
     fn wait(cx: &mut AsyncApp, ms: u64) -> impl std::future::Future<Output = ()> {
         cx.background_executor().timer(Duration::from_millis(ms))
     }
@@ -367,9 +376,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 println!("PROBE tecla {k}: tratada={handled}");
             });
         };
-        let cell = |m: usize, t: usize, k: usize, cx: &mut AsyncApp| -> Option<Point<Pixels>> {
-            cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m, t, k }).map(|b| b.center()))
-        };
+        let cell = |m: usize, t: usize, k: usize, cx: &mut AsyncApp| -> Option<Point<Pixels>> { cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m, t, k }).map(|b| b.center())) };
         let mouse = |ev: PlatformInput, cx: &mut AsyncApp| {
             let _ = w.update(cx, |_, window, cx| {
                 window.dispatch_event(ev, cx);
@@ -387,10 +394,12 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             return;
         };
         let row = |cx: &mut AsyncApp| cx.update(|cx| (0..4).map(|k| state.read(cx).song().cell(2, 0, k).map(str::to_string).unwrap_or("·".into())).collect::<Vec<_>>().join(" "));
-        let drag_state = |cx: &mut AsyncApp| cx.update(|cx| {
-            let g = shell.read(cx).grid.read(cx);
-            (g.move_drag.map(|m| (m.started, m.clone, m.dt, m.dg)), g.ghost.len())
-        });
+        let drag_state = |cx: &mut AsyncApp| {
+            cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.move_drag.map(|m| (m.started, m.clone, m.dt, m.dg)), g.ghost.len())
+            })
+        };
         // arrasto com passos intermediários (como a mão), sem soltar
         let sweep = |from: gpui_kit::Point<Pixels>, to: gpui_kit::Point<Pixels>, m: Modifiers, cx: &mut AsyncApp| {
             for i in 1..=6 {
@@ -601,7 +610,13 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         let (bar0, grid0) = (hint_y("addsec"), cell(0, 2, 0, cx).map(|p| f32::from(p.y)));
         if let Some(p) = cell(0, 2, 0, cx) {
             mouse(
-                PlatformInput::Scroll(gpui_kit::ScrollEvent { position: p, delta: gpui_kit::ScrollDelta::Pixels(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(-600.0))), modifiers: none, touch_phase: gpui_kit::TouchPhase::Moved, source: Default::default() }),
+                PlatformInput::Scroll(gpui_kit::ScrollEvent {
+                    position: p,
+                    delta: gpui_kit::ScrollDelta::Pixels(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(-600.0))),
+                    modifiers: none,
+                    touch_phase: gpui_kit::TouchPhase::Moved,
+                    source: Default::default(),
+                }),
                 cx,
             );
         }

@@ -99,9 +99,10 @@ impl ProjectStore {
         let (workspace, song) = 'boot: {
             let mut ws = existing.unwrap_or_default();
             if let Some(id) = ws.current_id.clone()
-                && let Some(song) = try_read_song(&db, &id) {
-                    break 'boot (ws, song);
-                }
+                && let Some(song) = try_read_song(&db, &id)
+            {
+                break 'boot (ws, song);
+            }
             let readable = ws.projects.iter().find_map(|p| try_read_song(&db, &p.id).map(|s| (p.id.clone(), s)));
             if let Some((id, song)) = readable {
                 ws.current_id = Some(id);
@@ -230,18 +231,16 @@ impl ProjectStore {
     fn touch_current(&mut self) {
         let title = display_title(&self.song);
         if let Some(id) = self.workspace.current_id.clone()
-            && let Some(meta) = self.workspace.projects.iter_mut().find(|p| p.id == id) {
-                meta.title = title;
-                meta.updated_at = now();
-            }
+            && let Some(meta) = self.workspace.projects.iter_mut().find(|p| p.id == id)
+        {
+            meta.title = title;
+            meta.updated_at = now();
+        }
     }
 
     fn schedule_current(&self) {
         let (Some(autosave), Some(id)) = (&self.autosave, &self.workspace.current_id) else { return };
-        autosave.schedule_many([
-            (project_key(id), Payload::Song(self.song.clone())),
-            (WORKSPACE_KEY.to_string(), Payload::Text(self.workspace.to_json())),
-        ]);
+        autosave.schedule_many([(project_key(id), Payload::Song(self.song.clone())), (WORKSPACE_KEY.to_string(), Payload::Text(self.workspace.to_json()))]);
     }
 
     fn write_workspace_with(&self, mut writes: Vec<KvWrite>) -> Result<()> {

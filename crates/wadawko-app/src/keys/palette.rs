@@ -9,9 +9,9 @@ use wadawko_core::vocab::PHRASES;
 
 use crate::keys;
 use crate::shell::{Palette, Shell};
-use crate::views::{Page, Tab};
 use crate::theme::Theme;
 use crate::ui;
+use crate::views::{Page, Tab};
 
 pub enum PRun {
     Action(Box<dyn Action>),

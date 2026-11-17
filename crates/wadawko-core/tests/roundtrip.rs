@@ -40,10 +40,7 @@ fn projetos_do_backup_fazem_round_trip() {
         titles.push((song.title.clone(), song.measures.len(), song.tracks.len()));
     }
     titles.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    assert_eq!(
-        titles,
-        vec![("Sample music".to_string(), 131, 4), ("yagyo".to_string(), 18, 4)]
-    );
+    assert_eq!(titles, vec![("Sample music".to_string(), 131, 4), ("yagyo".to_string(), 18, 4)]);
 }
 
 #[test]
@@ -195,7 +192,8 @@ fn numeros_saem_como_no_json_stringify() {
     assert!(song.to_json().contains(r#""tempo":92.5,"#));
     // opcionais ausentes não aparecem
     let demo_text = demo::demo_song().to_json();
-    for key in ["swing", "sections", "people", "instruments", "mainTrackIds", "mainTrackId", "instrumentId", "volume", "pan", "personIds", "kyai", "cellOwners", "dynamic", "hairpin", "trackDynamics"] {
+    for key in ["swing", "sections", "people", "instruments", "mainTrackIds", "mainTrackId", "instrumentId", "volume", "pan", "personIds", "kyai", "cellOwners", "dynamic", "hairpin", "trackDynamics"]
+    {
         assert!(!demo_text.contains(&format!("\"{key}\"")), "{key} não devia aparecer na demo");
     }
 }

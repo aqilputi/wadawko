@@ -58,8 +58,7 @@ pub struct ProjectInfo {
 /// `wadawko:project:*` que o workspace não lista (órfãs).
 pub fn list_projects(db: &Db) -> Result<Vec<ProjectInfo>> {
     let ws = read_workspace(db)?.unwrap_or_default();
-    let mut stored: std::collections::BTreeMap<String, crate::db::KvEntry> =
-        db.list(PROJECT_KEY_PREFIX)?.into_iter().map(|e| (e.key[PROJECT_KEY_PREFIX.len()..].to_string(), e)).collect();
+    let mut stored: std::collections::BTreeMap<String, crate::db::KvEntry> = db.list(PROJECT_KEY_PREFIX)?.into_iter().map(|e| (e.key[PROJECT_KEY_PREFIX.len()..].to_string(), e)).collect();
     let parse = |id: &str, raw: Option<&str>| -> Result<Song, String> {
         let raw = raw.ok_or_else(|| format!("chave {} ausente", project_key(id)))?;
         Song::from_json(raw).map_err(|e| format!("{e} ({})", e.detail()))
@@ -78,13 +77,7 @@ pub fn list_projects(db: &Db) -> Result<Vec<ProjectInfo>> {
     for (id, entry) in stored {
         let song = parse(&id, Some(&entry.value));
         let title = song.as_ref().map(display_title).unwrap_or_else(|_| "?".into());
-        out.push(ProjectInfo {
-            meta: ProjectMeta { id, title, updated_at: entry.updated_at, ..Default::default() },
-            current: false,
-            listed: false,
-            bytes: Some(entry.value.len()),
-            song,
-        });
+        out.push(ProjectInfo { meta: ProjectMeta { id, title, updated_at: entry.updated_at, ..Default::default() }, current: false, listed: false, bytes: Some(entry.value.len()), song });
     }
     Ok(out)
 }
@@ -121,8 +114,7 @@ pub fn add_song(db: &Db, song: &Song, make_current: bool) -> Result<String> {
     if make_current || ws.current_id.is_none() {
         ws.current_id = Some(id.clone());
     }
-    db.write_batch(&[KvWrite::Set(project_key(&id), song.to_json()), KvWrite::Set(WORKSPACE_KEY.into(), ws.to_json())])
-        .context("gravar a música nova")?;
+    db.write_batch(&[KvWrite::Set(project_key(&id), song.to_json()), KvWrite::Set(WORKSPACE_KEY.into(), ws.to_json())]).context("gravar a música nova")?;
     Ok(id)
 }
 

@@ -831,11 +831,7 @@ impl GridView {
         self.lane = Lane::Cells;
         self.edit.clear();
         self.edit(cx, |s| {
-            let r = if p.per_cell {
-                ops::cells::fill_sequential(s, &tid, c.m, c.k, &words, pen.as_deref())
-            } else {
-                ops::cells::fill_phrase_beats(s, &tid, c.m, c.k, &words, pen.as_deref())
-            };
+            let r = if p.per_cell { ops::cells::fill_sequential(s, &tid, c.m, c.k, &words, pen.as_deref()) } else { ops::cells::fill_phrase_beats(s, &tid, c.m, c.k, &words, pen.as_deref()) };
             next = r.next;
         });
         if let Some(n) = next {

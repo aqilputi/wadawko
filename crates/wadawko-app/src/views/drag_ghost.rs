@@ -156,10 +156,13 @@ pub fn paint(cells: &[GhostCell], grab: (f32, f32), clone: bool, pivot: Point<Pi
     // sombra (não gira junto: a luz vem de cima), cresce com a subida
     let (sdx, sdy) = (4.0 * e, 11.0 * e);
     for &(x, y, w, h, _) in &local {
-        let pts: Vec<_> = rounded_rect(x, y, w, h, 5.0).into_iter().map(|(x, y)| {
-            let p = tr(x, y);
-            point(p.x + px(sdx), p.y + px(sdy))
-        }).collect();
+        let pts: Vec<_> = rounded_rect(x, y, w, h, 5.0)
+            .into_iter()
+            .map(|(x, y)| {
+                let p = tr(x, y);
+                point(p.x + px(sdx), p.y + px(sdy))
+            })
+            .collect();
         polygon(window, &pts, Theme::alpha(gpui_kit::black(), 0.16 * e));
     }
     // cartões + sílabas
@@ -192,10 +195,12 @@ pub fn paint(cells: &[GhostCell], grab: (f32, f32), clone: bool, pivot: Point<Pi
         let w_all = f32::from(bbox.size.width);
         let c = tr(w_all, 0.0);
         let r = 8.5;
-        let disc: Vec<_> = (0..16).map(|i| {
-            let a = i as f32 / 16.0 * std::f32::consts::TAU;
-            point(c.x + px(r * a.cos()), c.y + px(r * a.sin()))
-        }).collect();
+        let disc: Vec<_> = (0..16)
+            .map(|i| {
+                let a = i as f32 / 16.0 * std::f32::consts::TAU;
+                point(c.x + px(r * a.cos()), c.y + px(r * a.sin()))
+            })
+            .collect();
         polygon(window, &disc, th.accent2);
         polyline(window, &[point(c.x - px(4.0), c.y), point(c.x + px(4.0), c.y)], 2.0, th.on_accent, false);
         polyline(window, &[point(c.x, c.y - px(4.0)), point(c.x, c.y + px(4.0))], 2.0, th.on_accent, false);

@@ -303,11 +303,7 @@ impl AppState {
     /// Tocando? Logo após um comando vale a INTENÇÃO (o thread de áudio só
     /// confirma no próximo callback); depois, o estado real do relógio.
     pub fn playing(&self) -> bool {
-        if self.play_cmd_at.elapsed() < Duration::from_millis(300) {
-            self.want_play
-        } else {
-            self.audio.as_ref().is_some_and(|a| a.clock().snapshot().playing)
-        }
+        if self.play_cmd_at.elapsed() < Duration::from_millis(300) { self.want_play } else { self.audio.as_ref().is_some_and(|a| a.clock().snapshot().playing) }
     }
 
     /// Começa a tocar da célula-fonte global `start_cell` (com região, do início dela).

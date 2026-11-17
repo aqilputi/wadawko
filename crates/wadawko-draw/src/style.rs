@@ -137,13 +137,7 @@ pub struct TextStyle {
 
 impl TextStyle {
     pub fn new(family: impl Into<Cow<'static, str>>, size: f32) -> Self {
-        TextStyle {
-            family: family.into(),
-            size,
-            weight: FontWeight::REGULAR,
-            italic: false,
-            align: TextAlign::Left,
-        }
+        TextStyle { family: family.into(), size, weight: FontWeight::REGULAR, italic: false, align: TextAlign::Left }
     }
     pub fn weight(mut self, weight: FontWeight) -> Self {
         self.weight = weight;

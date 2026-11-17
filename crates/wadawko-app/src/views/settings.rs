@@ -27,13 +27,7 @@ impl Shell {
             if b.context != last_ctx {
                 last_ctx = b.context.clone();
                 table = table.child(
-                    div()
-                        .mt(px(10.0))
-                        .mb(px(2.0))
-                        .text_size(px(11.0))
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(th.accent2)
-                        .child(SharedString::from(format!("[{}] · {}", b.context, b.origin))),
+                    div().mt(px(10.0)).mb(px(2.0)).text_size(px(11.0)).font_weight(FontWeight::BOLD).text_color(th.accent2).child(SharedString::from(format!("[{}] · {}", b.context, b.origin))),
                 );
             }
             let title = keys::title_for(&b.action).unwrap_or("");

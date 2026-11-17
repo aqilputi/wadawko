@@ -37,8 +37,7 @@ pub const CUTOFF_DEFAULT: f64 = 1200.0;
 pub const Q_DEFAULT: f64 = 1.0;
 
 /// Opções do seletor de timbre (`None` = sem filtro), na ordem do web.
-pub const FILTERS: [(Option<ToneType>, &str); 4] =
-    [(None, "nenhum"), (Some(ToneType::Lowpass), "passa-baixa"), (Some(ToneType::Highpass), "passa-alta"), (Some(ToneType::Bandpass), "passa-banda")];
+pub const FILTERS: [(Option<ToneType>, &str); 4] = [(None, "nenhum"), (Some(ToneType::Lowpass), "passa-baixa"), (Some(ToneType::Highpass), "passa-alta"), (Some(ToneType::Bandpass), "passa-banda")];
 
 /// Quantas linhas da música usam a def (`instrumentId`; fallback = id do base,
 /// como no web: `(t.instrumentId ?? t.instrument) === defId`).
@@ -143,7 +142,19 @@ impl KitView {
 
     /// Uma linha de controle: rótulo com valor + slider que edita a zona.
     #[allow(clippy::too_many_arguments)]
-    fn ctl(&self, def_id: &str, zone: Zone, field: &'static str, label: &str, shown: String, value: f64, range: (f64, f64, f64), default: f64, th: &Theme, patch: fn(f64) -> ZonePatch) -> gpui_kit::Div {
+    fn ctl(
+        &self,
+        def_id: &str,
+        zone: Zone,
+        field: &'static str,
+        label: &str,
+        shown: String,
+        value: f64,
+        range: (f64, f64, f64),
+        default: f64,
+        th: &Theme,
+        patch: fn(f64) -> ZonePatch,
+    ) -> gpui_kit::Div {
         let (st, did) = (self.state.clone(), def_id.to_string());
         let tag = widgets::tag(&format!("kit-{}-{field}", zone_key(zone)), def_id);
         let on_change = Rc::new(move |v: f64, _: &mut Window, cx: &mut App| widgets::edit_co(&st, cx, tag, |song| ops::kit::update_instrument_zone(song, &did, zone, patch(v))));
@@ -186,12 +197,13 @@ impl KitView {
         let decay = p.decay.unwrap_or(DECAY_DEFAULT);
         let over = p.overtones.unwrap_or(OVERTONES_DEFAULT);
 
-        let head = div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .child(div().text_size(px(11.5)).font_weight(FontWeight::BOLD).text_color(th.ink).child(zone_title(zone)))
-            .child(self.play_btn(format!("kit-play-{zk}-{id}"), "▶", id, zone, th));
+        let head = div().flex().items_center().justify_between().child(div().text_size(px(11.5)).font_weight(FontWeight::BOLD).text_color(th.ink).child(zone_title(zone))).child(self.play_btn(
+            format!("kit-play-{zk}-{id}"),
+            "▶",
+            id,
+            zone,
+            th,
+        ));
 
         // seletor de timbre (chips "um de N")
         let mut chips = div().flex().flex_wrap().gap(px(4.0));
@@ -228,31 +240,65 @@ impl KitView {
             let (st, did, base) = (self.state.clone(), def.id.clone(), t.clone());
             let on_cut = Rc::new(move |v: f64, _: &mut Window, cx: &mut App| {
                 let tone = InstrumentTone { cutoff: v, ..base.clone() };
-                widgets::edit_co(&st, cx, widgets::tag(&format!("kit-{zk}-cut"), &did), |song| ops::kit::update_instrument_zone(song, &did, zone, ZonePatch { tone: Some(Some(tone)), ..Default::default() }))
+                widgets::edit_co(&st, cx, widgets::tag(&format!("kit-{zk}-cut"), &did), |song| {
+                    ops::kit::update_instrument_zone(song, &did, zone, ZonePatch { tone: Some(Some(tone)), ..Default::default() })
+                })
             });
             let (st, did, base) = (self.state.clone(), def.id.clone(), t.clone());
             let on_q = Rc::new(move |v: f64, _: &mut Window, cx: &mut App| {
                 let tone = InstrumentTone { q: v, ..base.clone() };
-                widgets::edit_co(&st, cx, widgets::tag(&format!("kit-{zk}-q"), &did), |song| ops::kit::update_instrument_zone(song, &did, zone, ZonePatch { tone: Some(Some(tone)), ..Default::default() }))
+                widgets::edit_co(&st, cx, widgets::tag(&format!("kit-{zk}-q"), &did), |song| {
+                    ops::kit::update_instrument_zone(song, &did, zone, ZonePatch { tone: Some(Some(tone)), ..Default::default() })
+                })
             });
             let row = |label: &'static str, shown: String, s: Slider| {
                 div()
                     .flex()
                     .flex_col()
                     .gap(px(1.0))
-                    .child(div().flex().gap(px(4.0)).text_size(px(11.0)).text_color(th.ink_soft).child(label).child(div().font_weight(FontWeight::BOLD).text_color(th.ink).child(SharedString::from(shown))))
+                    .child(
+                        div()
+                            .flex()
+                            .gap(px(4.0))
+                            .text_size(px(11.0))
+                            .text_color(th.ink_soft)
+                            .child(label)
+                            .child(div().font_weight(FontWeight::BOLD).text_color(th.ink).child(SharedString::from(shown))),
+                    )
                     .child(widgets::slider(s, th))
             };
             col = col
                 .child(row(
                     "corte",
                     format!("{} Hz", t.cutoff.round() as i64),
-                    Slider { id: format!("kit-{zk}-cut-{id}").into(), value: t.cutoff, min: 100.0, max: 8000.0, step: 50.0, default: Some(CUTOFF_DEFAULT), vertical: false, len: 0.0, color: th.accent2, on_change: on_cut },
+                    Slider {
+                        id: format!("kit-{zk}-cut-{id}").into(),
+                        value: t.cutoff,
+                        min: 100.0,
+                        max: 8000.0,
+                        step: 50.0,
+                        default: Some(CUTOFF_DEFAULT),
+                        vertical: false,
+                        len: 0.0,
+                        color: th.accent2,
+                        on_change: on_cut,
+                    },
                 ))
                 .child(row(
                     "ressonância",
                     format!("{:.1}", t.q),
-                    Slider { id: format!("kit-{zk}-q-{id}").into(), value: t.q, min: 0.1, max: 12.0, step: 0.1, default: Some(Q_DEFAULT), vertical: false, len: 0.0, color: th.accent2, on_change: on_q },
+                    Slider {
+                        id: format!("kit-{zk}-q-{id}").into(),
+                        value: t.q,
+                        min: 0.1,
+                        max: 12.0,
+                        step: 0.1,
+                        default: Some(Q_DEFAULT),
+                        vertical: false,
+                        len: 0.0,
+                        color: th.accent2,
+                        on_change: on_q,
+                    },
                 ));
         }
         col
@@ -329,12 +375,7 @@ impl KitView {
             .child(widgets::sbtn(format!("kit-dup-{}", def.id), th, on_dup).child("⧉"))
             .child(widgets::sbtn(format!("kit-del-{}", def.id), th, on_del).child("×"));
 
-        ui::card(th)
-            .flex_1()
-            .min_w(px(340.0))
-            .max_w(px(560.0))
-            .child(head)
-            .child(div().flex().gap(px(10.0)).child(self.zone_editor(def, Zone::Head, th)).child(self.zone_editor(def, Zone::Rim, th)))
+        ui::card(th).flex_1().min_w(px(340.0)).max_w(px(560.0)).child(head).child(div().flex().gap(px(10.0)).child(self.zone_editor(def, Zone::Head, th)).child(self.zone_editor(def, Zone::Rim, th)))
     }
 
     fn builtin_row(&self, def: &InstrumentDef, th: &Theme) -> gpui_kit::Div {

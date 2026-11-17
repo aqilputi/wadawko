@@ -236,10 +236,7 @@ fn mute_and_solo_two_layers() {
     song.tracks[2].solo = false;
 
     // 2ª camada: pessoas. chū pertence à Ana; shime é compartilhado entre Ana e Bia.
-    song.people = Some(vec![
-        Person { id: "ana".into(), name: "Ana".into(), volume: Some(-6.0), ..Default::default() },
-        Person { id: "bia".into(), name: "Bia".into(), ..Default::default() },
-    ]);
+    song.people = Some(vec![Person { id: "ana".into(), name: "Ana".into(), volume: Some(-6.0), ..Default::default() }, Person { id: "bia".into(), name: "Bia".into(), ..Default::default() }]);
     song.tracks[1].person_ids = Some(vec!["ana".into()]);
     song.tracks[0].person_ids = Some(vec!["ana".into(), "bia".into()]);
     // as 4 primeiras células do shime de cada compasso são da Bia; o resto cai no fallback (Ana)
@@ -490,8 +487,7 @@ fn compassos_de_formulas_diferentes_tem_duracoes_diferentes() {
     let ticks: Vec<f64> = hits_of(&s, 0).iter().map(|(t, _)| *t).collect();
     assert_eq!(ticks, vec![3.0 * PPQ, 8.0 * PPQ, 11.0 * PPQ]);
     // metrônomo: 12 cliques, acento no 1º tempo de cada compasso (tempos 0, 4 e 9)
-    let clicks: Vec<(f64, bool)> =
-        s.events.iter().filter_map(|e| if let EventKind::Click { accent } = e.kind { Some((e.tick / PPQ, accent)) } else { None }).collect();
+    let clicks: Vec<(f64, bool)> = s.events.iter().filter_map(|e| if let EventKind::Click { accent } = e.kind { Some((e.tick / PPQ, accent)) } else { None }).collect();
     assert_eq!(clicks.len(), 12);
     let accents: Vec<f64> = clicks.iter().filter(|(_, a)| *a).map(|(t, _)| *t).collect();
     assert_eq!(accents, vec![0.0, 4.0, 9.0]);

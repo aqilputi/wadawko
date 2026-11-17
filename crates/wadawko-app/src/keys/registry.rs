@@ -97,7 +97,7 @@ pub static SPECS: &[Spec] = &[
     spec!("score::Print", "Imprimir partitura / PDF (A4 paisagem)", "Música", "score pauta print pdf papel"),
     spec!("kit::New", "Kit: novo instrumento (base escolhida)", "Música", "instrumento custom timbre som"),
     spec!("kit::Rename", "Kit: renomear instrumento", "Música", "instrumento nome"),
-    spec!("transport::SetBpm","Definir BPM…", "Transporte", "tempo andamento"),
+    spec!("transport::SetBpm", "Definir BPM…", "Transporte", "tempo andamento"),
     spec!("transport::TrainerPct", "Treino: % inicial…", "Transporte", "trainer"),
     spec!("transport::TrainerStep", "Treino: passo por volta…", "Transporte", "trainer"),
     spec!("transport::ClearRegion", "Tocar a música inteira (limpar seções selecionadas)", "Transporte", "região"),
@@ -192,8 +192,7 @@ pub fn title_for(action_name: &str) -> Option<&'static str> {
         "vim::Normal" => "voltar ao normal",
         "vim::ChangeSelection" => "reescrever seleção",
         "vim::SwapAnchor" => "trocar ponta da seleção",
-        "vim::Digit0" | "vim::Digit1" | "vim::Digit2" | "vim::Digit3" | "vim::Digit4" | "vim::Digit5" | "vim::Digit6"
-        | "vim::Digit7" | "vim::Digit8" | "vim::Digit9" => "contagem",
+        "vim::Digit0" | "vim::Digit1" | "vim::Digit2" | "vim::Digit3" | "vim::Digit4" | "vim::Digit5" | "vim::Digit6" | "vim::Digit7" | "vim::Digit8" | "vim::Digit9" => "contagem",
         "keys::Cancel" => "cancelar",
         "keys::PaletteNext" => "próximo comando",
         "keys::PalettePrev" => "comando anterior",

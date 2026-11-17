@@ -19,8 +19,7 @@ pub use bank::{MAX_LAYERS, Pick, RoundRobin, SampleBank, SampleId, SampleSource}
 pub use decode::{SampleData, decode_ogg};
 pub use embedded::{CREDITS, SAMPLE_NAMES};
 pub use manifest::{
-    ANIMALESE, BaseInstrument, EqBand, FilterKind, InstrumentManifest, Layers, MANIFEST, Tail, Tuning, UnknownInstrument, Zone, animalese, layer_max_vel,
-    layer_velocity, select_layer,
+    ANIMALESE, BaseInstrument, EqBand, FilterKind, InstrumentManifest, Layers, MANIFEST, Tail, Tuning, UnknownInstrument, Zone, animalese, layer_max_vel, layer_velocity, select_layer,
 };
 
 /// `assets/samples/` do checkout de onde o crate foi compilado — útil em

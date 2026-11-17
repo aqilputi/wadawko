@@ -128,7 +128,13 @@ impl Shell {
                     .flex()
                     .flex_col()
                     .gap(px(8.0))
-                    .child(div().flex().gap(px(8.0)).child(abtn("exp", th, keys::project::ExportJson).flex_1().child("exportar")).child(abtn("imp", th, keys::project::ImportJson).flex_1().child("importar")))
+                    .child(
+                        div()
+                            .flex()
+                            .gap(px(8.0))
+                            .child(abtn("exp", th, keys::project::ExportJson).flex_1().child("exportar"))
+                            .child(abtn("imp", th, keys::project::ImportJson).flex_1().child("importar")),
+                    )
                     .child(
                         div()
                             .flex()

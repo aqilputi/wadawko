@@ -219,10 +219,20 @@ impl Render for PeopleView {
             .gap(px(16.0))
             .child(
                 div().flex().flex_col().gap(px(4.0)).child(widgets::page_title("Pessoas")).child(
-                    note("Uma pessoa toca um ou mais instrumentos. Marque os instrumentos de cada uma; um instrumento marcado por 2 pessoas fica compartilhado. Clique no nome para renomear.").max_w(px(620.0)),
+                    note("Uma pessoa toca um ou mais instrumentos. Marque os instrumentos de cada uma; um instrumento marcado por 2 pessoas fica compartilhado. Clique no nome para renomear.")
+                        .max_w(px(620.0)),
                 ),
             )
-            .child(ui::abtn_bare("pp-add", &th, Add).bg(th.accent).border_color(th.accent).text_color(th.on_accent).font_weight(FontWeight::BOLD).rounded(px(16.0)).hover(|s| s.bg(th.accent)).child("+ pessoa"));
+            .child(
+                ui::abtn_bare("pp-add", &th, Add)
+                    .bg(th.accent)
+                    .border_color(th.accent)
+                    .text_color(th.on_accent)
+                    .font_weight(FontWeight::BOLD)
+                    .rounded(px(16.0))
+                    .hover(|s| s.bg(th.accent))
+                    .child("+ pessoa"),
+            );
 
         let mut page = div().w_full().flex().flex_col().gap(px(14.0)).child(head);
         if song.people().is_empty() {
@@ -238,7 +248,8 @@ impl Render for PeopleView {
         page = page.child(cards);
         if song.tracks.iter().any(|t| t.is_shared()) {
             page = page.child(
-                note("Instrumento compartilhado: use a caneta (acima) pra escrever notas de cada pessoa na grade, ou selecione notas e reatribua à caneta. Cada nota soa e colore pela sua dona.").max_w(px(700.0)),
+                note("Instrumento compartilhado: use a caneta (acima) pra escrever notas de cada pessoa na grade, ou selecione notas e reatribua à caneta. Cada nota soa e colore pela sua dona.")
+                    .max_w(px(700.0)),
             );
         }
         page

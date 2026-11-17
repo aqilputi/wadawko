@@ -67,12 +67,7 @@ impl GlyphBBox {
     }
     /// Retângulo em px (y para baixo) relativo à origem do glifo.
     pub fn to_px(&self, staff_space: f32) -> Rect {
-        Rect::from_ltrb(
-            self.sw.x * staff_space,
-            -self.ne.y * staff_space,
-            self.ne.x * staff_space,
-            -self.sw.y * staff_space,
-        )
+        Rect::from_ltrb(self.sw.x * staff_space, -self.ne.y * staff_space, self.ne.x * staff_space, -self.sw.y * staff_space)
     }
 }
 
@@ -239,8 +234,7 @@ pub struct SmuflMetadata {
 
 impl SmuflMetadata {
     pub fn from_json_str(json: &str) -> Result<Self> {
-        let raw: RawMetadata =
-            serde_json::from_str(json).map_err(|e| DrawError::Metadata(e.to_string()))?;
+        let raw: RawMetadata = serde_json::from_str(json).map_err(|e| DrawError::Metadata(e.to_string()))?;
         let font_version = match raw.font_version {
             serde_json::Value::String(s) => s,
             serde_json::Value::Null => String::new(),
@@ -263,8 +257,7 @@ impl SmuflMetadata {
 
     pub fn load(path: impl AsRef<FsPath>) -> Result<Self> {
         let path = path.as_ref();
-        let s = std::fs::read_to_string(path)
-            .map_err(|source| DrawError::Io { path: path.to_path_buf(), source })?;
+        let s = std::fs::read_to_string(path).map_err(|source| DrawError::Io { path: path.to_path_buf(), source })?;
         Self::from_json_str(&s)
     }
 
@@ -291,22 +284,14 @@ pub struct SmuflFont {
 
 impl SmuflFont {
     /// Registra a fonte (bytes) e interpreta o JSON de metadados — para `include_bytes!`.
-    pub fn from_bytes(
-        book: &mut FontBook,
-        font_data: impl Into<std::borrow::Cow<'static, [u8]>>,
-        metadata_json: &[u8],
-    ) -> Result<Self> {
+    pub fn from_bytes(book: &mut FontBook, font_data: impl Into<std::borrow::Cow<'static, [u8]>>, metadata_json: &[u8]) -> Result<Self> {
         let metadata = SmuflMetadata::from_json_slice(metadata_json)?;
         let font = book.add(font_data)?;
         Ok(SmuflFont { font, metadata })
     }
 
     /// Carrega fonte + metadados de arquivos.
-    pub fn load(
-        book: &mut FontBook,
-        font_path: impl AsRef<FsPath>,
-        metadata_path: impl AsRef<FsPath>,
-    ) -> Result<Self> {
+    pub fn load(book: &mut FontBook, font_path: impl AsRef<FsPath>, metadata_path: impl AsRef<FsPath>) -> Result<Self> {
         let metadata = SmuflMetadata::load(metadata_path)?;
         let font = book.load_file(font_path)?;
         Ok(SmuflFont { font, metadata })

@@ -369,11 +369,7 @@ impl Score {
     pub fn hit_at(&self, page: usize, p: Point, tolerance: f32) -> Option<HitKey> {
         let mi = self.measure_at(page, p)?;
         let m = &self.measures[mi];
-        let best = m
-            .hits
-            .iter()
-            .filter(|h| h.head.inset(-tolerance).contains(p))
-            .min_by(|a, b| dist2(a.head.center(), p).total_cmp(&dist2(b.head.center(), p)))?;
+        let best = m.hits.iter().filter(|h| h.head.inset(-tolerance).contains(p)).min_by(|a, b| dist2(a.head.center(), p).total_cmp(&dist2(b.head.center(), p)))?;
         Some(HitKey::new(self.track_ids[best.track].clone(), m.cell_base + best.cell, best.hit))
     }
 }

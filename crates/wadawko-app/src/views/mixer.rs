@@ -245,13 +245,14 @@ impl MixerView {
             .border_color(th.line)
             .when(shared, |d| d.border_dashed().border_color(person.map_or(th.line_strong, |p| person_color(p, th))))
             .child(faders)
-            .child(
-                div()
-                    .flex()
-                    .gap(px(5.0))
-                    .child(widgets::mini(format!("mx-m-{key}"), "M", th, t.muted, th.accent, on_mute))
-                    .child(widgets::mini(format!("mx-s-{key}"), "S", th, t.solo, th.accent2, on_solo)),
-            )
+            .child(div().flex().gap(px(5.0)).child(widgets::mini(format!("mx-m-{key}"), "M", th, t.muted, th.accent, on_mute)).child(widgets::mini(
+                format!("mx-s-{key}"),
+                "S",
+                th,
+                t.solo,
+                th.accent2,
+                on_solo,
+            )))
     }
 }
 

@@ -102,12 +102,7 @@ impl Rect {
     }
     /// Menor retângulo que contém os dois.
     pub fn union(&self, o: &Rect) -> Rect {
-        Rect::from_ltrb(
-            self.left().min(o.left()),
-            self.top().min(o.top()),
-            self.right().max(o.right()),
-            self.bottom().max(o.bottom()),
-        )
+        Rect::from_ltrb(self.left().min(o.left()), self.top().min(o.top()), self.right().max(o.right()), self.bottom().max(o.bottom()))
     }
     pub fn intersects(&self, o: &Rect) -> bool {
         !self.intersect(o).is_empty()
@@ -156,14 +151,7 @@ impl Transform {
     pub fn pre_concat(&self, inner: &Transform) -> Transform {
         let s = self;
         let t = inner;
-        Transform {
-            a: s.a * t.a + s.c * t.b,
-            b: s.b * t.a + s.d * t.b,
-            c: s.a * t.c + s.c * t.d,
-            d: s.b * t.c + s.d * t.d,
-            e: s.a * t.e + s.c * t.f + s.e,
-            f: s.b * t.e + s.d * t.f + s.f,
-        }
+        Transform { a: s.a * t.a + s.c * t.b, b: s.b * t.a + s.d * t.b, c: s.a * t.c + s.c * t.d, d: s.b * t.c + s.d * t.d, e: s.a * t.e + s.c * t.f + s.e, f: s.b * t.e + s.d * t.f + s.f }
     }
 
     pub fn apply(&self, p: Point) -> Point {
@@ -172,12 +160,7 @@ impl Transform {
 
     /// Caixa envolvente do retângulo transformado.
     pub fn apply_rect(&self, r: &Rect) -> Rect {
-        let ps = [
-            self.apply(pt(r.left(), r.top())),
-            self.apply(pt(r.right(), r.top())),
-            self.apply(pt(r.right(), r.bottom())),
-            self.apply(pt(r.left(), r.bottom())),
-        ];
+        let ps = [self.apply(pt(r.left(), r.top())), self.apply(pt(r.right(), r.top())), self.apply(pt(r.right(), r.bottom())), self.apply(pt(r.left(), r.bottom()))];
         let (mut l, mut t, mut rr, mut b) = (ps[0].x, ps[0].y, ps[0].x, ps[0].y);
         for p in &ps[1..] {
             l = l.min(p.x);

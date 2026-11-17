@@ -168,8 +168,7 @@ impl FontBook {
     /// Lê e registra um arquivo .ttf/.otf.
     pub fn load_file(&mut self, path: impl AsRef<FsPath>) -> Result<FontId> {
         let path = path.as_ref();
-        let bytes = std::fs::read(path)
-            .map_err(|source| DrawError::Io { path: path.to_path_buf(), source })?;
+        let bytes = std::fs::read(path).map_err(|source| DrawError::Io { path: path.to_path_buf(), source })?;
         self.add(bytes)
     }
 
@@ -260,12 +259,7 @@ impl FontBook {
         let k = size / face.units_per_em() as f32;
         let advance = face.glyph_hor_advance(gid).unwrap_or(0) as f32 * k;
         let bbox = match face.glyph_bounding_box(gid) {
-            Some(b) => Rect::from_ltrb(
-                b.x_min as f32 * k,
-                -(b.y_max as f32) * k,
-                b.x_max as f32 * k,
-                -(b.y_min as f32) * k,
-            ),
+            Some(b) => Rect::from_ltrb(b.x_min as f32 * k, -(b.y_max as f32) * k, b.x_max as f32 * k, -(b.y_min as f32) * k),
             None => Rect::default(),
         };
         Some(GlyphMetrics { advance, bbox })
@@ -291,12 +285,7 @@ impl FontBook {
     pub fn measure_text(&self, text: &str, style: &TextStyle) -> Option<TextMetrics> {
         let layout = self.layout_text(text, style)?;
         let m = self.metrics(layout.font, style.size)?;
-        Some(TextMetrics {
-            width: layout.width,
-            ascent: m.ascent,
-            descent: m.descent,
-            line_height: m.line_height(),
-        })
+        Some(TextMetrics { width: layout.width, ascent: m.ascent, descent: m.descent, line_height: m.line_height() })
     }
 
     /// Largura (soma dos avanços) de uma linha numa fonte específica.
@@ -335,13 +324,7 @@ impl FontBook {
 
     /// Layout simples por cmap + avanço, com fallback por caractere. `visit(face, glifo, x, escala)`
     /// é chamado para cada glifo com a face que efetivamente o contém.
-    fn layout_with(
-        &self,
-        text: &str,
-        font: FontId,
-        size: f32,
-        mut visit: impl FnMut(&Face<'_>, GlyphId, f32, f32),
-    ) -> TextLayout {
+    fn layout_with(&self, text: &str, font: FontId, size: f32, mut visit: impl FnMut(&Face<'_>, GlyphId, f32, f32)) -> TextLayout {
         let mut faces: Vec<Option<Option<Face<'_>>>> = (0..self.fonts.len()).map(|_| None).collect();
         let mut glyphs = Vec::with_capacity(text.len());
         let mut x = 0.0f32;
@@ -350,8 +333,7 @@ impl FontBook {
                 continue;
             }
             // primária primeiro, depois as demais na ordem de registro
-            let order = std::iter::once(font.0 as usize)
-                .chain((0..self.fonts.len()).filter(|i| *i != font.0 as usize));
+            let order = std::iter::once(font.0 as usize).chain((0..self.fonts.len()).filter(|i| *i != font.0 as usize));
             let mut found: Option<(usize, GlyphId)> = None;
             for i in order {
                 if i >= self.fonts.len() {
@@ -359,10 +341,11 @@ impl FontBook {
                 }
                 let slot = faces[i].get_or_insert_with(|| self.face(FontId(i as u32)));
                 if let Some(face) = slot
-                    && let Some(gid) = face.glyph_index(ch) {
-                        found = Some((i, gid));
-                        break;
-                    }
+                    && let Some(gid) = face.glyph_index(ch)
+                {
+                    found = Some((i, gid));
+                    break;
+                }
             }
             // sem glifo em nenhuma fonte: .notdef da primária
             let (i, gid) = found.unwrap_or((font.0 as usize, GlyphId(0)));
@@ -379,12 +362,7 @@ impl FontBook {
 
 fn family_name(face: &Face<'_>) -> Option<String> {
     use ttf_parser::name_id::{FAMILY, TYPOGRAPHIC_FAMILY};
-    let pick = |id: u16| {
-        face.names()
-            .into_iter()
-            .filter(|n| n.name_id == id && n.is_unicode())
-            .find_map(|n| n.to_string())
-    };
+    let pick = |id: u16| face.names().into_iter().filter(|n| n.name_id == id && n.is_unicode()).find_map(|n| n.to_string());
     pick(TYPOGRAPHIC_FAMILY).or_else(|| pick(FAMILY))
 }
 

@@ -11,8 +11,8 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
 use gpui_kit::{
-    App, BorderStyle, Bounds, Context, CursorStyle, DispatchPhase, Entity, FontWeight, HitboxBehavior, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point,
-    SharedString, Window, canvas, div, point, prelude::*, px, quad, size, transparent_black,
+    App, BorderStyle, Bounds, Context, CursorStyle, DispatchPhase, Entity, FontWeight, HitboxBehavior, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Point, SharedString,
+    Window, canvas, div, point, prelude::*, px, quad, size, transparent_black,
 };
 use wadawko_core::model::Song;
 

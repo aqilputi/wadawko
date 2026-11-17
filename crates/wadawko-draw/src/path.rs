@@ -139,18 +139,8 @@ impl Path {
             match *el {
                 PathEl::MoveTo(p) => s.push_str(&format!("M{} {}", num(p.x), num(p.y))),
                 PathEl::LineTo(p) => s.push_str(&format!("L{} {}", num(p.x), num(p.y))),
-                PathEl::QuadTo(c, p) => {
-                    s.push_str(&format!("Q{} {} {} {}", num(c.x), num(c.y), num(p.x), num(p.y)))
-                }
-                PathEl::CubicTo(c1, c2, p) => s.push_str(&format!(
-                    "C{} {} {} {} {} {}",
-                    num(c1.x),
-                    num(c1.y),
-                    num(c2.x),
-                    num(c2.y),
-                    num(p.x),
-                    num(p.y)
-                )),
+                PathEl::QuadTo(c, p) => s.push_str(&format!("Q{} {} {} {}", num(c.x), num(c.y), num(p.x), num(p.y))),
+                PathEl::CubicTo(c1, c2, p) => s.push_str(&format!("C{} {} {} {} {} {}", num(c1.x), num(c1.y), num(c2.x), num(c2.y), num(p.x), num(p.y))),
                 PathEl::Close => s.push('Z'),
             }
         }
@@ -190,11 +180,7 @@ impl PathBuilder {
     }
     /// Subcaminho retangular fechado (sentido horário na tela).
     pub fn rect(&mut self, r: Rect) -> &mut Self {
-        self.move_to(pt(r.left(), r.top()))
-            .line_to(pt(r.right(), r.top()))
-            .line_to(pt(r.right(), r.bottom()))
-            .line_to(pt(r.left(), r.bottom()))
-            .close()
+        self.move_to(pt(r.left(), r.top())).line_to(pt(r.right(), r.top())).line_to(pt(r.right(), r.bottom())).line_to(pt(r.left(), r.bottom())).close()
     }
     /// Subcaminho de retângulo com cantos arredondados (raio limitado a metade do menor lado).
     pub fn rounded_rect(&mut self, r: Rect, radius: f32) -> &mut Self {

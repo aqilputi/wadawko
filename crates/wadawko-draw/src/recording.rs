@@ -35,11 +35,7 @@ impl DrawCmd {
                 }
                 true
             }
-            DrawCmd::Line { color, .. }
-            | DrawCmd::FillPath { color, .. }
-            | DrawCmd::StrokePath { color, .. }
-            | DrawCmd::Text { color, .. }
-            | DrawCmd::Glyph { color, .. } => {
+            DrawCmd::Line { color, .. } | DrawCmd::FillPath { color, .. } | DrawCmd::StrokePath { color, .. } | DrawCmd::Text { color, .. } | DrawCmd::Glyph { color, .. } => {
                 *color = c;
                 true
             }
@@ -59,9 +55,7 @@ impl DrawCmd {
             DrawCmd::FillPath { path, color } => canvas.fill_path(path, *color),
             DrawCmd::StrokePath { path, stroke, color } => canvas.stroke_path(path, stroke, *color),
             DrawCmd::Text { text, origin, style, color } => canvas.text(text, *origin, style, *color),
-            DrawCmd::Glyph { font, codepoint, origin, size, color } => {
-                canvas.glyph(*font, *codepoint, *origin, *size, *color)
-            }
+            DrawCmd::Glyph { font, codepoint, origin, size, color } => canvas.glyph(*font, *codepoint, *origin, *size, *color),
         }
     }
 }

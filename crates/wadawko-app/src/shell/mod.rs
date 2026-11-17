@@ -569,11 +569,7 @@ impl Shell {
             }
             let (m, k) = song.unflat(h.cell);
             let Some(bounds) = grid.cell_bounds(Cur { m, t: h.track, k }) else { continue };
-            let (rim, vel) = song
-                .cell(h.track, m, k)
-                .and_then(phrase::resolve_cell)
-                .and_then(|r| r.hits.get(h.hit).map(|x| (x.zone == Zone::Rim, x.vel as f32)))
-                .unwrap_or((false, 0.8));
+            let (rim, vel) = song.cell(h.track, m, k).and_then(phrase::resolve_cell).and_then(|r| r.hits.get(h.hit).map(|x| (x.zone == Zone::Rim, x.vel as f32))).unwrap_or((false, 0.8));
             out.push(Flash { bounds, strength: (1.0 - age / dur).powf(0.8) * (0.7 + 0.3 * vel.min(1.0)), rim });
         }
         (out, label)
@@ -814,7 +810,8 @@ impl Shell {
         let mut root = crate::views::bind_actions(root, cx).child(workspace);
 
         // ── which-key (command hint): chord pendente, ou Ctrl+/ na raiz ──
-        if (!self.pending.is_empty() && self.pending_since.elapsed() >= Duration::from_millis(250) && self.palette.is_none()) || (self.root_hints && self.pending.is_empty() && self.palette.is_none()) {
+        if (!self.pending.is_empty() && self.pending_since.elapsed() >= Duration::from_millis(250) && self.palette.is_none()) || (self.root_hints && self.pending.is_empty() && self.palette.is_none())
+        {
             root = root.child(self.which_key(window, &th, cx));
         }
 

@@ -19,9 +19,9 @@ mod whichkey;
 pub use actions::*;
 pub use fuzzy::fuzzy;
 pub use hint_targets::{HINTS, HintAct, dispatch, hintable, next_frame};
-pub use keymap::{all_raw_bindings, binding_text, conflicts, load_keymap, user_keymap_path};
 #[cfg(test)]
 pub use keymap::{DEFAULT_KEYMAP, raw_bindings};
+pub use keymap::{all_raw_bindings, binding_text, conflicts, load_keymap, user_keymap_path};
 pub use labels::{HINT_ALPHABET, labels};
 pub use registry::{SPECS, prefix_title, title_for};
 pub use settings::{Settings, load_settings, save_settings, settings_path};
@@ -45,7 +45,16 @@ mod tests {
             }
             assert!(l.windows(2).all(|w| w[0].len() <= w[1].len()));
             let max = l.iter().map(|x| x.len()).max().unwrap_or(0);
-            assert!(max <= if n <= 26 { 1 } else if n <= 676 { 2 } else { 3 }, "rótulo longo demais para n={n}");
+            assert!(
+                max <= if n <= 26 {
+                    1
+                } else if n <= 676 {
+                    2
+                } else {
+                    3
+                },
+                "rótulo longo demais para n={n}"
+            );
         }
     }
 

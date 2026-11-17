@@ -39,14 +39,7 @@ fn run(ctx: &Context, args: Args) -> Result<()> {
         let bytes = p.bytes.map_or_else(|| "-".to_string(), |b| b.to_string());
         let when = format_utc(p.meta.updated_at);
         match &p.song {
-            Ok(song) => println!(
-                "{mark} {:<id_w$}  {:<title_w$}  {when:<16}  {:>5}  {:>6}  {:>9}  {bytes:>8}",
-                p.meta.id,
-                p.meta.title,
-                song.tempo,
-                song.tracks.len(),
-                song.measures.len()
-            ),
+            Ok(song) => println!("{mark} {:<id_w$}  {:<title_w$}  {when:<16}  {:>5}  {:>6}  {:>9}  {bytes:>8}", p.meta.id, p.meta.title, song.tempo, song.tracks.len(), song.measures.len()),
             Err(why) => {
                 unreadable += 1;
                 println!("{mark} {:<id_w$}  {:<title_w$}  {when:<16}  ILEGÍVEL: {why}", p.meta.id, p.meta.title);
