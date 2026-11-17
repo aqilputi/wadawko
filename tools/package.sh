@@ -9,8 +9,7 @@ cd "$(dirname "$0")/.."
 
 VERSION=${1:-$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)}
 VERSION=${VERSION#v}
-TARGET_DIR=${CARGO_TARGET_DIR:-$(sed -n 's/^target-dir = "\(.*\)"/\1/p' .cargo/config.toml 2>/dev/null || true)}
-TARGET_DIR=${TARGET_DIR:-target}
+TARGET_DIR=${CARGO_TARGET_DIR:-target}
 REL="$TARGET_DIR/release"
 NAME="wadawko-$VERSION-linux-x86_64"
 OUT="dist/$NAME"
@@ -23,8 +22,8 @@ rm -rf "$OUT" && mkdir -p "$OUT/bin" "$OUT/share/applications" "$OUT/licenses"
 install -m755 "$REL/wadawko" "$REL/wadawko-cli" "$REL/wadawko-render" "$OUT/bin/"
 strip "$OUT"/bin/* 2>/dev/null || true
 install -m644 assets/linux/wadawko.desktop "$OUT/share/applications/"
-install -m644 README.md CHANGELOG.md "$OUT/"
-install -m644 public/samples/CREDITS.md "$OUT/licenses/SAMPLES-CREDITS.md"
+install -m644 README.md CHANGELOG.md LICENSE-MIT LICENSE-APACHE NOTICE "$OUT/"
+install -m644 assets/samples/CREDITS.md "$OUT/licenses/SAMPLES-CREDITS.md"
 install -m644 assets/fonts/OFL-*.txt assets/fonts/FONTLOG-Bravura.txt "$OUT/licenses/"
 
 cat > "$OUT/install.sh" <<'EOF'

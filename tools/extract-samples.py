@@ -1,4 +1,9 @@
-"""Gera public/samples/v2: samples estéreo (ogg q6) por instrumento + manifest.json.
+"""Gera os samples estéreo (ogg q6) por instrumento + manifest.json (os de assets/samples/).
+
+Uso: python3 tools/extract-samples.py <pasta de saída>
+Precisa de ffmpeg e numpy, e das gravações-fonte baixadas ao lado do script
+(SCC em tools/scc/Taiko-Drums-main/; as do freesound no caminho usado abaixo).
+Não faz parte do app: os .ogg resultantes ficam versionados em assets/samples/.
 
 Fontes:
   SCC  = SCC Taiko Drums (floe-audio/Taiko-Drums), CC BY-SA 4.0

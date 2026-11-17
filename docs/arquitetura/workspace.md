@@ -20,7 +20,7 @@ testável sem display.
 |---|---|---|
 | `wadawko-core` | Modelo `Song` (serde, round-trip do JSON do web), vocabulário, parser de kuchi shōga, timeline (ordem de toque, dinâmicas), kiai e **todas as operações de edição** como funções puras | — |
 | `wadawko-store` | Persistência: SQLite `kv`, workspace/projetos, autosave em segundo plano, histórico (desfazer), migração para XDG, import de backup | core |
-| `wadawko-samples` | Os `.ogg` embutidos (`public/samples/`), decodificados com symphonia; créditos | — |
+| `wadawko-samples` | Os `.ogg` embutidos (`assets/samples/`), decodificados com symphonia; créditos | — |
 | `wadawko-audio` | Motor em tempo real (cpal + thread RT sem alocação): sampler com camadas/round robin, EQ, choke, mixer por linha e pessoa, metrônomo, kiai, transporte (loop, região, count-in, treino), render offline | core, samples |
 | `wadawko-export` | WAV (16/24 bits) e MP3 (via `ffmpeg`), limiter; binário `wadawko-render` | core, samples, audio |
 | `wadawko-draw` | Desenho 2D independente de backend (`Canvas2D`): SVG, tiny-skia, gravação; métricas SMuFL/Bravura | — |
@@ -43,7 +43,7 @@ testável sem display.
 | `crates/wadawko-core/tests/` | operações, parser, timeline; round-trip byte a byte contra as fixtures do app web; golden contra o TS |
 | `crates/wadawko-audio/tests/` | schedule (ordem, ritornello, região, swing, mudo/solo, camadas), motor, render offline e **caminho de tempo real sem alocação** |
 | `crates/wadawko-export/tests/`, `wadawko-samples/tests/` | WAV/MP3 e banco de samples |
-| `crates/wadawko-store/tests/` | banco, autosave, migração, backup (algumas usam `data/`) |
+| `crates/wadawko-store/tests/` | banco, autosave, migração, backup (fixtures do core) |
 | `crates/wadawko-cli/tests/` | comandos de ponta a ponta |
 | `crates/wadawko-notation/tests/`, `wadawko-draw/tests/` | engraving e backends de desenho |
 | `crates/wadawko-app` (`#[cfg(test)]`) | lógica pura das views (seleção, arrasto, física do balanço, keymap sem conflitos, títulos de todos os atalhos) |

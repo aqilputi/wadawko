@@ -1,5 +1,5 @@
 //! Confere o porte contra o TypeScript ORIGINAL: `fixtures/golden.json` é gerado
-//! por `tests/golden/gen.mjs` rodando `src/lib/*.ts` no node (frases, kiai,
+//! por `tests/golden/gen.mjs` rodando `src/lib/*.ts` do app web (tag `web-final`) no node (frases, kiai,
 //! constantes e ~90 roteiros de operações do store, incluindo 60 aleatórios).
 //! Aqui as mesmas entradas passam pelo Rust e o resultado tem que bater.
 

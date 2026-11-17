@@ -12,7 +12,7 @@ codigo: crates/wadawko-app
 > Caminhos nesta página são relativos a `crates/wadawko-app/`.
 
 Binário `wadawko` (GPUI via `gpui-kit = "=0.9.1"`, `extern crate gpui_kit as gpui`).
-Porte modularizado do `spike/`, com o modelo/áudio/persistência trocados pelos
+Porte modularizado do protótipo `spike/` (removido; na tag `web-final`), com o modelo/áudio/persistência trocados pelos
 crates definitivos (`wadawko-core`, `-store`, `-samples`, `-audio`, `-export`).
 
 ## Mapa dos arquivos

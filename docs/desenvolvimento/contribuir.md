@@ -14,7 +14,7 @@ generated:
 # Steps
 
 1. **Branch**: trabalhe num branch a partir do `main` e abra um PR para o `main`
-   (`github.com/aqilputi/wadawko`). O `web-legacy` guarda o app web e não recebe mudanças.
+   (`github.com/aqilputi/wadawko`). O app web antigo fica na tag `web-final` (e no branch `web-legacy`) e não recebe mudanças.
 2. **Compilar**: `cargo build -p wadawko-app` (dev já otimiza as dependências). Em outro
    checkout, reaproveite o cache com `CARGO_TARGET_DIR` — leia antes as
    [armadilhas de build](/desenvolvimento/desempenho.md#armadilhas-de-build).

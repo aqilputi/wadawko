@@ -2,7 +2,6 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
-exclude = ["spike"]
 
 [workspace.package]
 version = "0.1.0"
@@ -11,7 +10,7 @@ publish = false
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/aqilputi/wadawko"
 
-# versões compartilhadas (mesmos pins do spike/)
+# versões compartilhadas
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

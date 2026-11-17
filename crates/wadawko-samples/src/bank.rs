@@ -29,7 +29,7 @@ impl SampleId {
 pub enum SampleSource {
     /// bytes embutidos no binário (feature `embed`, padrão).
     Embedded,
-    /// diretório com `<nome>.ogg` (mesma convenção de `public/samples/`).
+    /// diretório com `<nome>.ogg` (mesma convenção de `assets/samples/`).
     /// Todos os arquivos precisam existir.
     Dir(PathBuf),
     /// diretório; arquivos ausentes caem nos embutidos (kit parcial do grupo).

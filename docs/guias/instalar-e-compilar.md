@@ -44,18 +44,16 @@ cargo build --release -p wadawko-cli      # a linha de comando (opcional)
 ```
 
 A **primeira** compilação demora (~20 min numa máquina de notebook: o GPUI é grande); as
-seguintes levam de segundos a ~2 min. O `.cargo/config.toml` manda os artefatos para
-`spike/target/` (herança do protótipo — muda na fase B do plano), então o binário fica em
-`spike/target/release/wadawko`.
+seguintes levam de segundos a ~2 min. O binário fica em `target/release/wadawko`.
 
 > Trabalhando em outro checkout (worktree) do mesmo repositório, reaproveite o cache com
-> `CARGO_TARGET_DIR=<repo>/spike/target` — e leia as armadilhas em
+> `CARGO_TARGET_DIR=<repo>/target` — e leia as armadilhas em
 > [desempenho](/desenvolvimento/desempenho.md#armadilhas-de-build).
 
 # Instalar para uso diário
 
 ```sh
-ln -sfn "$PWD/spike/target/release/wadawko" ~/.local/bin/wadawko
+ln -sfn "$PWD/target/release/wadawko" ~/.local/bin/wadawko
 ```
 
 Entrada no menu de aplicativos (`~/.local/share/applications/wadawko.desktop`):
@@ -76,10 +74,10 @@ Com o link simbólico, cada `cargo build --release` atualiza o app instalado (fe
 # Primeira execução e migração do banco
 
 O banco fica em `~/.local/share/wadawko/wadawko.db` ([dados e arquivos](/referencia/dados-e-arquivos.md)).
-Sem banco, o app não abre. Para trazer as músicas do app web (o banco `data/wadawko.db` dele):
+Para trazer as músicas do app web (o banco `data/wadawko.db` de um checkout antigo):
 
 ```sh
-wadawko --migrate-from data/wadawko.db --read-only
+wadawko --migrate-from <checkout-antigo>/data/wadawko.db --read-only
 ```
 
 A origem é só lida (cópia consolidada com `VACUUM INTO`); depois disso abra normalmente com

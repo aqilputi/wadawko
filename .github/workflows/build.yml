@@ -13,8 +13,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
-  # o .cargo/config.toml manda os artefatos para spike/target
-  CARGO_TARGET_DIR: spike/target
 
 jobs:
   linux:
@@ -45,7 +43,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: ". -> spike/target"
           shared-key: linux-release
 
       # lints: o workspace está sem avisos do clippy; manter assim

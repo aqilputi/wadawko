@@ -2,7 +2,7 @@
 //!
 //! * [`manifest`]: tabelas estáticas portadas de `src/lib/audio.ts`
 //!   (`SAMPLE_FILES`, `TUNING`, `TAIL`, `EQ`) e a regra de seleção de camada.
-//! * [`SampleBank`]: os `.ogg` de `public/samples/` decodificados (symphonia)
+//! * [`SampleBank`]: os `.ogg` de `assets/samples/` decodificados (symphonia)
 //!   para `Arc<SampleData>` estéreo intercalado, com lookup por
 //!   `(instrumento, zona, camada, round robin)`.
 //! * [`CREDITS`]: texto das licenças (CC BY-SA etc.) para a UI mostrar.
@@ -23,8 +23,8 @@ pub use manifest::{
     layer_velocity, select_layer,
 };
 
-/// `public/samples/` do checkout de onde o crate foi compilado — útil em
+/// `assets/samples/` do checkout de onde o crate foi compilado — útil em
 /// desenvolvimento e nos testes sem `embed`. Não existe em binários distribuídos.
 pub fn repo_samples_dir() -> std::path::PathBuf {
-    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../public/samples")
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/samples")
 }

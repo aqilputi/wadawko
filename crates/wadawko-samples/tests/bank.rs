@@ -6,7 +6,7 @@ use wadawko_samples::*;
 
 fn bank() -> &'static SampleBank {
     static BANK: std::sync::OnceLock<SampleBank> = std::sync::OnceLock::new();
-    BANK.get_or_init(|| SampleBank::load_dir(repo_samples_dir()).expect("carregar public/samples"))
+    BANK.get_or_init(|| SampleBank::load_dir(repo_samples_dir()).expect("carregar assets/samples"))
 }
 
 fn manifest_names() -> BTreeSet<&'static str> {

@@ -1,19 +1,28 @@
 // Gera tests/fixtures/golden.json rodando o TypeScript ORIGINAL do app web
-// (src/lib/*.ts) — a fonte da verdade do porte. Rodar da raiz do repositório:
+// (src/lib/*.ts) — a fonte da verdade do porte. O app web saiu do `main`; ele fica
+// na tag `web-final`. Para regerar, da raiz deste repositório:
 //
-//   node crates/wadawko-core/tests/golden/gen.mjs
+//   git worktree add .web web-final && (cd .web && npm ci)
+//   node crates/wadawko-core/tests/golden/gen.mjs        # ou WADAWKO_WEB=<checkout> node …
+//   git worktree remove .web
 //
-// O store é empacotado com esbuild com stubs de `$state` (identidade), `./db`
-// (memória) e `tone`/`vexflow` (vazios); `Date.now` é fixado pra os ids serem
-// determinísticos (os testes Rust usam `ids::set_deterministic` com o mesmo valor).
-import { build } from 'esbuild'
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs'
+// O store é empacotado com esbuild (o do checkout web) com stubs de `$state`
+// (identidade), `./db` (memória) e `tone`/`vexflow` (vazios); `Date.now` é fixado pra os
+// ids serem determinísticos (os testes Rust usam `ids::set_deterministic` com o mesmo valor).
+import { readFileSync, writeFileSync, mkdtempSync, existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const root = resolve(here, '../../../..')
+const web = resolve(process.env.WADAWKO_WEB ?? join(root, '.web'))
+if (!existsSync(join(web, 'src/lib/store.svelte.ts')) || !existsSync(join(web, 'node_modules/esbuild'))) {
+  console.error(`checkout do app web não encontrado em ${web} (precisa de src/lib e node_modules: veja o topo deste arquivo)`)
+  process.exit(1)
+}
+const { build } = createRequire(join(web, 'package.json'))('esbuild')
 const NOW = 1790000000000
 
 const stub = {
@@ -30,7 +39,12 @@ const stub = {
 }
 const outdir = mkdtempSync(join(process.env.WADAWKO_TMP ?? tmpdir(), 'wadawko-golden-'))
 const outfile = join(outdir, 'bundle.mjs')
-await build({ entryPoints: [join(here, 'entry.ts')], bundle: true, format: 'esm', platform: 'node', outfile, plugins: [stub], logLevel: 'error' })
+// reexporta o TS original do app web
+const entry = ['store.svelte:S', 'phrase', 'timeline', 'kyai', 'vocabulary', 'types']
+  .map((m) => { const [f, n] = m.split(':'); return `export * as ${n ?? f} from './src/lib/${f}'` })
+  .concat(["export { demoSong } from './src/lib/demo'"])
+  .join('\n')
+await build({ stdin: { contents: entry, resolveDir: web, loader: 'ts', sourcefile: 'entry.ts' }, bundle: true, format: 'esm', platform: 'node', outfile, plugins: [stub], logLevel: 'error' })
 
 globalThis.$state = (x) => x
 const realNow = Date.now
@@ -38,7 +52,7 @@ Date.now = () => NOW
 const { S, phrase, timeline, kyai, vocabulary, types, demoSong } = await import(pathToFileURL(outfile).href)
 // audio.ts não carrega fora do browser (Tone.js no topo do módulo): extrai só o
 // texto de swingWarp, tira as anotações de tipo e avalia.
-const swingSrc = readFileSync(join(root, 'src/lib/audio.ts'), 'utf8').match(/export function (swingWarp\([\s\S]*?\n\})\n/)[1]
+const swingSrc = readFileSync(join(web, 'src/lib/audio.ts'), 'utf8').match(/export function (swingWarp\([\s\S]*?\n\})\n/)[1]
 const swingWarp = new Function(`return function ${swingSrc.replaceAll(': number', '')}`)()
 void realNow
 
@@ -61,7 +75,7 @@ function fnv(s) {
 const songHash = () => fnv(JSON.stringify(canon(JSON.parse(JSON.stringify(S.store.song)))))
 const clone = (x) => JSON.parse(JSON.stringify(x))
 
-const backup = JSON.parse(readFileSync(join(root, 'data/backup-localstorage-2026-10-02.json'), 'utf8'))
+const backup = JSON.parse(readFileSync(join(here, '../fixtures/backup-localstorage-2026-10-02.json'), 'utf8'))
 const BASES = {
   demo: demoSong(),
   big: JSON.parse(backup['wadawko:project:p-muog58u1-1']),

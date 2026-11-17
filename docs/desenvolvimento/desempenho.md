@@ -52,10 +52,10 @@ visível).
 
 # Armadilhas de build
 
-- O `target/` compartilhado mora em `spike/target/` (`.cargo/config.toml`). Dois checkouts do
+- Dois checkouts do
   mesmo repo (ex.: um commit antigo num `git worktree` para comparar) compilando no **mesmo**
   `CARGO_TARGET_DIR` geram o **mesmo** artefato: o cargo pode "compilar" em 1 s e deixar o
   binário **do outro checkout** — inclusive o instalado em `~/.local/bin/wadawko`.
   Depois de builds assim: `touch crates/wadawko-app/src/main.rs`, recompile e confira
-  (`strings spike/target/release/wadawko | grep <texto novo>`).
+  (`strings target/release/wadawko | grep <texto novo>`).
 - Build fria leva ~20 min (GPUI); `opt-level = 3` nas dependências já em dev.

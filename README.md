@@ -5,7 +5,7 @@ faladas dos tambores (`don`, `doko`, `ka`, `tsuku`…). Escreva numa grade por i
 com samples reais, veja a partitura e ensaie com a esteira de notas.
 
 App desktop nativo em **Rust + [GPUI](https://www.gpui.rs/)** para Linux. O app web original
-(Svelte) está no branch `web-legacy`.
+(Svelte) está na tag `web-final`.
 
 ![A grade: seções, linhas por instrumento e as sílabas de cada célula](docs/imagens/grade.png)
 
@@ -42,7 +42,7 @@ Vindo do app web? Na primeira vez: `wadawko --migrate-from <repo-antigo>/data/wa
 
 ```sh
 git clone https://github.com/aqilputi/wadawko.git && cd wadawko
-cargo build --release -p wadawko-app          # binário em spike/target/release/wadawko
+cargo build --release -p wadawko-app          # binário em target/release/wadawko
 ```
 
 Dependências de sistema e detalhes: [instalar e compilar](docs/guias/instalar-e-compilar.md).

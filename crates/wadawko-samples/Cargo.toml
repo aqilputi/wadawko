@@ -8,7 +8,7 @@ repository.workspace = true
 
 [features]
 default = ["embed"]
-# embute os .ogg de public/samples/ no binário (desligue para builds/testes rápidos)
+# embute os .ogg de assets/samples/ no binário (desligue para builds/testes rápidos)
 embed = []
 
 [dependencies]
