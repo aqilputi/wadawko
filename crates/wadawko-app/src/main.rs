@@ -161,7 +161,8 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let dark = args.dark.unwrap_or_else(|| matches!(store.theme(), Ok(Some(wadawko_store::Theme::Dark))));
+    // tema escuro é o padrão: só abre claro se o banco guardou "claro" (ou com --light)
+    let dark = args.dark.unwrap_or_else(|| !matches!(store.theme(), Ok(Some(wadawko_store::Theme::Light))));
     let theme = if dark { Theme::dark() } else { Theme::light() };
 
     gpui_kit::application().run(move |cx: &mut App| {

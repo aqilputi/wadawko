@@ -521,6 +521,12 @@ Regras para o agente implementador:
    `ink_soft`/`paper` ≥ 4.5, `on_accent`/`accent` ≥ 4.5; e que nenhum token tem alfa < 1.
 5. **Pronto quando**: VP passa; o app abre escuro num banco novo; o botão ☀/☾ alterna.
 
+> **Decisões na implementação (2026-11-17)**: no tema claro, `accent` ficou `#c94531`
+> (o `#d9503c` da tabela dava 4,07 de contraste com o texto branco; 4,80 agora) e `warn`
+> ficou `#946808` (o `#b8860b` dava 3,25 com o "M" branco; 4,95 agora). O teste de
+> contraste cobre também `on_accent`/`warn`. `tokens()`, `luminance` e `contrast` são
+> `cfg(test)`. O `fuchi` fixo da esteira já passou a `th.accent2` nesta etapa.
+
 ### E2 — Raios (mecânico) · 30 min
 
 1. Troque as ~56 chamadas `rounded(px(N))` em `crates/wadawko-app/src/**` por `rounded(px(ui::R0))`

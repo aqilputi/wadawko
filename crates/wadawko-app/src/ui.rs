@@ -1,12 +1,20 @@
 //! Peças de UI compartilhadas: botões que despacham ações (clique = atalho =
-//! paleta = salto por rótulo), grupo segmentado, tecla (`kbd`), cartão.
+//! paleta = salto por rótulo), toggle "lâmpada", grupo segmentado, aba, tecla
+//! (`kbd`), cabeçalho de painel, medidor e cartão — no sistema de design
+//! "estilo DAW" (docs/planejamento/daw.md §2.3–2.5): cantos retos nas
+//! superfícies (`R0`), 2 px nos controles (`R1`), estados planos.
 
 use std::rc::Rc;
 
-use gpui_kit::{Action, App, FontWeight, SharedString, Window, div, prelude::*, px};
+use gpui_kit::{Action, App, BorderStyle, Bounds, FontWeight, SharedString, Window, canvas, div, point, prelude::*, px, quad, size, transparent_black};
 
 use crate::keys;
 use crate::theme::Theme;
+
+/// raio de superfície: painéis, cartões, popovers, abas, células, cursor, seleção
+pub const R0: f32 = 0.0;
+/// raio de controle: botão, chip, kbd, campo, segmento, slider, medidor, swatch
+pub const R1: f32 = 2.0;
 
 /// Botão padrão (com hover). Para um hover próprio use [`btn_bare`]: o gpui
 /// (debug) entra em pânico se `.hover` for chamado duas vezes no mesmo elemento.
@@ -15,23 +23,23 @@ pub fn btn(id: impl Into<gpui_kit::ElementId>, th: &Theme) -> gpui_kit::Stateful
     btn_bare(id, th).hover(move |s| s.bg(hover))
 }
 
-/// [`btn`] sem estilo de hover (o chamador define o seu).
+/// [`btn`] sem estilo de hover (o chamador define o seu). h 26, texto 12.
 pub fn btn_bare(id: impl Into<gpui_kit::ElementId>, th: &Theme) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .relative()
         .flex_none()
-        .h(px(32.0))
-        .px(px(12.0))
+        .h(px(26.0))
+        .px(px(10.0))
         .flex()
         .items_center()
         .justify_center()
         .gap(px(6.0))
-        .rounded(px(7.0))
+        .rounded(px(R1))
         .border_1()
         .border_color(th.line_strong)
-        .bg(th.paper)
-        .text_size(px(13.0))
+        .bg(th.paper_raise)
+        .text_size(px(12.0))
         .font_weight(FontWeight::MEDIUM)
         .text_color(th.ink)
         .cursor_pointer()
@@ -49,14 +57,29 @@ pub fn abtn_bare<A: Action + Clone>(id: &'static str, th: &Theme, a: A) -> gpui_
     keys::hintable(btn_bare(id, th).on_click(move |_, w, cx| w.dispatch_action(a.boxed_clone(), cx)), id, keys::dispatch(a2))
 }
 
-pub fn atoggle<A: Action + Clone>(id: &'static str, th: &Theme, on: bool, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
-    let b = abtn(id, th, a);
-    if on { b.bg(th.accent2_wash).border_color(th.accent2).text_color(th.accent2) } else { b }
+/// Botão de ícone 26×26 (glifo monocromático).
+#[allow(dead_code)] // entra em uso na moldura (E3)
+pub fn icon_btn<A: Action + Clone>(id: &'static str, glyph: &'static str, th: &Theme, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
+    abtn(id, th, a).w(px(26.0)).px(px(0.0)).child(glyph)
 }
 
-/// Grupo segmentado; cada segmento despacha a sua ação e é alvo de salto.
+/// Toggle "lâmpada": desligado é um botão comum; ligado fica PREENCHIDO com
+/// `accent` e texto `on_accent` (loop, metrônomo, count-in, treino).
+pub fn atoggle<A: Action + Clone>(id: &'static str, th: &Theme, on: bool, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
+    if on {
+        let acc = th.accent;
+        abtn_bare(id, th, a).bg(acc).border_color(acc).text_color(th.on_accent).font_weight(FontWeight::BOLD).hover(move |s| s.bg(Theme::alpha(acc, 0.9)))
+    } else {
+        abtn(id, th, a)
+    }
+}
+
+/// Grupo segmentado; cada segmento despacha a sua ação e é alvo de salto. O
+/// segmento ativo não é preenchido de cor: fundo `paper_hover`, texto `ink` e
+/// uma linha inferior de 2 px (`accent`, ou `accent2` se `blue`).
 pub fn segmented(id: &'static str, th: &Theme, items: Vec<(&'static str, Box<dyn Action>)>, active: usize, blue: bool) -> impl IntoElement {
-    let mut row = div().flex().flex_none().rounded(px(7.0)).border_1().border_color(th.line_strong).bg(th.paper).overflow_hidden();
+    let on_col = if blue { th.accent2 } else { th.accent };
+    let mut row = div().flex().flex_none().h(px(26.0)).rounded(px(R1)).border_1().border_color(th.line_strong).bg(th.paper_raise).overflow_hidden();
     for (i, (l, a)) in items.into_iter().enumerate() {
         let on = i == active;
         let a2 = a.boxed_clone();
@@ -65,14 +88,16 @@ pub fn segmented(id: &'static str, th: &Theme, items: Vec<(&'static str, Box<dyn
             div()
                 .id((id, i))
                 .relative()
-                .h(px(30.0))
-                .px(px(14.0))
+                .h_full()
+                .px(px(10.0))
                 .flex()
                 .items_center()
-                .text_size(px(13.0))
+                .text_size(px(12.0))
                 .font_weight(if on { FontWeight::BOLD } else { FontWeight::MEDIUM })
                 .cursor_pointer()
-                .when(on, |d| d.bg(if blue { th.accent2 } else { th.accent }).text_color(th.on_accent))
+                .border_b_2()
+                .border_color(if on { on_col } else { transparent_black() })
+                .when(on, |d| d.bg(th.paper_hover).text_color(th.ink))
                 .when(!on, |d| d.text_color(th.ink_soft).hover(|s| s.bg(th.paper_hover)))
                 .child(l)
                 .on_click(move |_, w, cx| w.dispatch_action(a.boxed_clone(), cx)),
@@ -83,43 +108,168 @@ pub fn segmented(id: &'static str, th: &Theme, items: Vec<(&'static str, Box<dyn
     row
 }
 
-pub fn kbd(text: &str, th: &Theme) -> impl IntoElement {
-    div()
-        .px(px(5.0))
-        .h(px(18.0))
+/// Aba do editor: texto `ink_soft`, h 28, sem fundo; ativa = `ink` + sublinhado 2 px `accent`.
+#[allow(dead_code)] // entra em uso na moldura (E3)
+pub fn tab<A: Action + Clone>(id: &'static str, label: &'static str, on: bool, th: &Theme, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
+    let a2 = a.clone();
+    let ink = th.ink;
+    let el = div()
+        .id(id)
+        .relative()
+        .flex_none()
+        .h(px(28.0))
+        .px(px(10.0))
         .flex()
         .items_center()
-        .rounded(px(4.0))
+        .text_size(px(12.0))
+        .font_weight(if on { FontWeight::BOLD } else { FontWeight::MEDIUM })
+        .border_b_2()
+        .border_color(if on { th.accent } else { transparent_black() })
+        .text_color(if on { th.ink } else { th.ink_soft })
+        .cursor_pointer()
+        .when(!on, |d| d.hover(move |s| s.text_color(ink)))
+        .child(label)
+        .on_click(move |_, w, cx| w.dispatch_action(a.boxed_clone(), cx));
+    keys::hintable(el, id, keys::dispatch(a2))
+}
+
+/// Tecla de atalho (h 16, texto 10).
+pub fn kbd(text: &str, th: &Theme) -> impl IntoElement {
+    div()
+        .px(px(4.0))
+        .h(px(16.0))
+        .flex()
+        .items_center()
+        .rounded(px(R1))
         .border_1()
         .border_color(th.line_strong)
         .bg(th.paper_raise)
-        .text_size(px(10.5))
+        .text_size(px(10.0))
         .font_weight(FontWeight::MEDIUM)
         .text_color(th.ink_soft)
         .child(SharedString::from(text.to_string()))
 }
 
-/// Botão pequeno (22×24) das linhas e cabeçalhos da grade.
+/// Botão pequeno 20×16 (M/S/★/⚙/×) das linhas e cabeçalhos da grade; aceso com `accent`.
 pub fn small_btn(id: impl Into<gpui_kit::ElementId>, label: impl Into<SharedString>, th: &Theme, on: bool) -> gpui_kit::Stateful<gpui_kit::Div> {
+    small_btn_on(id, label, th, on, th.accent)
+}
+
+/// [`small_btn`] aceso com a cor dada (M = `warn`, S = `accent2`, ★ = `accent`).
+pub fn small_btn_on(id: impl Into<gpui_kit::ElementId>, label: impl Into<SharedString>, th: &Theme, on: bool, color: gpui_kit::Hsla) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)
         .relative()
         .flex_none()
-        .w(px(22.0))
-        .h(px(24.0))
+        .w(px(20.0))
+        .h(px(16.0))
         .flex()
         .items_center()
         .justify_center()
-        .rounded(px(5.0))
-        .text_size(px(11.0))
-        .font_weight(FontWeight::MEDIUM)
+        .rounded(px(R1))
+        .text_size(px(10.0))
+        .font_weight(FontWeight::BOLD)
         .cursor_pointer()
-        .when(on, |d| d.bg(th.accent).text_color(th.on_accent))
+        .when(on, |d| d.bg(color).text_color(th.on_accent))
         .when(!on, |d| d.bg(th.paper_raise).text_color(th.ink_soft).hover(|s| s.bg(th.paper_hover)))
         .child(label.into())
 }
 
-/// Cartão de página (Configurações, Kit).
+/// Cabeçalho de painel: h 22, fundo `header`, título em caixa alta de 10 px.
+/// Acrescente botões (h 18) à direita com `.child(...)`.
+#[allow(dead_code)] // entra em uso na moldura (E3)
+pub fn panel_header(title: &str, th: &Theme) -> gpui_kit::Div {
+    div()
+        .h(px(22.0))
+        .flex_none()
+        .w_full()
+        .px(px(10.0))
+        .flex()
+        .items_center()
+        .gap(px(6.0))
+        .bg(th.header)
+        .border_b_1()
+        .border_color(th.line)
+        .text_size(px(10.0))
+        .font_weight(FontWeight::BOLD)
+        .text_color(th.ink_soft)
+        .child(div().flex_1().min_w_0().truncate().child(SharedString::from(title.to_uppercase())))
+}
+
+/// Cartão de página (Configurações, Kit, Pessoas): `paper`, borda `line`, cantos retos.
 pub fn card(th: &Theme) -> gpui_kit::Div {
-    div().p(px(14.0)).rounded(px(10.0)).bg(th.paper).border_1().border_color(th.line).flex().flex_col().gap(px(8.0))
+    div().p(px(14.0)).rounded(px(R0)).bg(th.paper).border_1().border_color(th.line).flex().flex_col().gap(px(8.0))
+}
+
+// ───────────────────────────── medidor de nível (§2.5) ─────────────────────────────
+
+/// Fração 0..1 do medidor para um nível linear: 0 dB = 1, −60 dB = 0 (piso).
+pub fn meter_frac(level: f32) -> f32 {
+    let db = 20.0 * level.max(1e-6).log10();
+    ((db + 60.0) / 60.0).clamp(0.0, 1.0)
+}
+
+/// Bandas do medidor como frações: (fim da banda, cor) — verde até −18 dB,
+/// `warn` até −6 dB, `accent` até 0 dB.
+fn meter_bands(th: &Theme) -> [(f32, gpui_kit::Hsla); 3] {
+    [(42.0 / 60.0, th.meter_lo), (54.0 / 60.0, th.meter_mid), (1.0, th.meter_hi)]
+}
+
+/// Medidor de nível: `level` e `peak` lineares (0..1+), vertical (w 6) ou
+/// horizontal (h 3). Fundo `cell_empty` com borda `line`; pico retido = linha
+/// de 1 px `ink`. A balística (queda, pico retido) é de quem chama (F3).
+#[allow(dead_code)] // usado pelos medidores (F3)
+pub fn meter(level: f32, peak: f32, vertical: bool, th: &Theme) -> impl IntoElement {
+    let th = *th;
+    let base = div().flex_none();
+    let base = if vertical { base.w(px(6.0)).h_full() } else { base.h(px(3.0)).w_full() };
+    let (lv, pk) = (meter_frac(level), meter_frac(peak));
+    base.child(
+        canvas(
+            |_, _, _| {},
+            move |b, _, window, _| {
+                let (x0, y0, w, h) = (f32::from(b.origin.x), f32::from(b.origin.y), f32::from(b.size.width), f32::from(b.size.height));
+                window.paint_quad(quad(b, px(R1), th.cell_empty, px(1.0), th.line, BorderStyle::Solid));
+                let mut from = 0.0f32;
+                for (to, col) in meter_bands(&th) {
+                    let hi = lv.min(to);
+                    if hi > from {
+                        let r = if vertical {
+                            Bounds::new(point(px(x0 + 1.0), px(y0 + h * (1.0 - hi))), size(px((w - 2.0).max(1.0)), px(h * (hi - from))))
+                        } else {
+                            Bounds::new(point(px(x0 + w * from), px(y0 + 1.0)), size(px(w * (hi - from)), px((h - 2.0).max(1.0))))
+                        };
+                        window.paint_quad(quad(r, px(0.0), col, px(0.0), transparent_black(), BorderStyle::Solid));
+                    }
+                    from = to;
+                }
+                if pk > 0.0 {
+                    let r = if vertical {
+                        Bounds::new(point(px(x0 + 1.0), px(y0 + h * (1.0 - pk))), size(px((w - 2.0).max(1.0)), px(1.0)))
+                    } else {
+                        Bounds::new(point(px(x0 + w * pk - 1.0), px(y0 + 1.0)), size(px(1.0), px((h - 2.0).max(1.0))))
+                    };
+                    window.paint_quad(quad(r, px(0.0), th.ink, px(0.0), transparent_black(), BorderStyle::Solid));
+                }
+            },
+        )
+        .size_full(),
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn meter_maps_db_to_fraction() {
+        assert!((meter_frac(1.0) - 1.0).abs() < 1e-6, "0 dB no topo");
+        assert!((meter_frac(0.5) - (1.0 - 6.02 / 60.0)).abs() < 1e-3, "−6 dB");
+        assert!((meter_frac(0.001) - 0.0).abs() < 1e-6, "−60 dB na base");
+        assert_eq!(meter_frac(0.0), 0.0);
+        assert_eq!(meter_frac(2.0), 1.0, "acima de 0 dB prende no topo");
+        let th = Theme::dark();
+        let b = meter_bands(&th);
+        assert!(b[0].0 < b[1].0 && b[1].0 < b[2].0 && b[2].0 == 1.0);
+    }
 }

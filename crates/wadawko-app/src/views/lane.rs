@@ -537,7 +537,7 @@ fn paint_lane(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: &mut Ap
     let w = f32::from(b.size.width);
     let now = Instant::now();
     let white: Hsla = rgb(0xffffff).into();
-    let fuchi: Hsla = rgb(0x2f6fb0).into();
+    let fuchi: Hsla = th.accent2;
 
     let mut cache = a.shaped.borrow_mut();
     // texto modelado em cache; `center_w` centraliza numa largura
