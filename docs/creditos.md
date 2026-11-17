@@ -13,8 +13,8 @@ fontes: [public/samples/CREDITS.md, assets/fonts/]
 # Créditos e licenças de terceiros
 
 O binário do app **embute** os samples e as fontes abaixo. As licenças deles valem para esses
-arquivos — não para o código do WaDAWko (cuja licença ainda será escolhida, decisão D1 do
-[plano do repositório](/planejamento/repo.md)). O app mostra os créditos em **Config → Banco e
+arquivos — não para o código do WaDAWko, que é **MIT OR Apache-2.0** (`LICENSE-MIT`,
+`LICENSE-APACHE` e o resumo em `NOTICE`, na raiz do repositório). O app mostra os créditos em **Config → Banco e
 créditos**.
 
 # Samples (`public/samples/`)

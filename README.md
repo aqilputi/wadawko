@@ -66,4 +66,11 @@ frontmatter, legível por pessoas e agentes):
 
 Samples de taiko: SCC Taiko Drums (CC BY-SA 4.0), freesound (CC BY 3.0 / CC0), animalese.js
 (CC BY 4.0). Fontes: Zen Kaku Gothic New, Shippori Mincho e Bravura (SIL OFL). Detalhes em
-[créditos](docs/creditos.md). A licença do código ainda será definida.
+[créditos](docs/creditos.md) e no [`NOTICE`](NOTICE).
+
+## Licença
+
+O código é licenciado sob **MIT** ou **Apache-2.0**, à sua escolha
+([`LICENSE-MIT`](LICENSE-MIT), [`LICENSE-APACHE`](LICENSE-APACHE)). Os samples e as fontes
+embutidos mantêm as licenças deles (acima). Contribuições enviadas a este repositório são
+licenciadas nos mesmos termos, salvo aviso em contrário.
