@@ -720,6 +720,18 @@ Regras para o agente implementador:
 3. **Pronto quando**: VP passa; capture `play` com o cursor numa célula; editar pelo inspector
    desfaz com `Ctrl+Z`.
 
+> **Decisões na implementação (2026-11-17)**: `views/inspector.rs` (`Shell::inspector` +
+> `Shell::inspector_key`, que entra na chave do `Panel` junto com seleção, trecho e caneta).
+> Blocos SEÇÃO (nome ✎, toca N× −/+, N compassos −/+, clonar, remover, "▶ só esta"), COMPASSO
+> (tempos −/+, chips pp…ff que gravam direto, `<` `>`, rall./accel./a tempo + ✕ quando há
+> marcação), LINHA (swatch que cicla a cor, nome ✎, ⚙ abre o popover, instrumento, M/S/★,
+> volume e pan com `widgets::slider`, sub-linhas, pessoas) e CÉLULA/KIAI (valor, golpes
+> resolvidos "D couro 100% · E borda 70%", dono, sfz/acento/apagar). Botões = `abtn`-like com
+> as ações existentes (clique = atalho = paleta); edições sem ação passam por `Shell::edit`
+> via `WeakEntity` (o painel é uma view em cache). Trocar o instrumento da linha fica no ⚙
+> (não há ação por linha). Probe: "inspector: chip de dinâmica edita o compasso e Ctrl+Z
+> volta" (21 verificações).
+
 ### E5 — Mixer, Pessoas, Kit, Config (restyle) · 1 h
 
 Strips e grupos conforme 2.4 (planos, cap retangular, escala de dB); cartões com

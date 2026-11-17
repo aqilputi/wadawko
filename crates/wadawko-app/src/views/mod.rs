@@ -13,6 +13,7 @@
 pub mod context_toolbar;
 pub mod drag_ghost;
 pub mod grid;
+pub mod inspector;
 pub mod kit;
 pub mod lane;
 pub mod mixer;

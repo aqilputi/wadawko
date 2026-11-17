@@ -1,6 +1,7 @@
-//! Painel direito (280 px, `chrome`): bloco INSPECTOR provisório (contexto do
-//! cursor em texto — a F4 o substitui) e bloco MÚSICAS (trocar/nova/duplicar/
-//! renomear/excluir) com exportar/importar JSON e MP3/WAV no rodapé.
+//! Painel direito (280 px, `chrome`): bloco INSPECTOR (contextual, F4 — ver
+//! `views/inspector.rs`; altura máxima de 45 %, rola) e bloco MÚSICAS
+//! (trocar/nova/duplicar/renomear/excluir) com exportar/importar JSON e
+//! MP3/WAV no rodapé.
 
 use std::rc::Rc;
 
@@ -37,6 +38,7 @@ impl Shell {
         let weak = cx.entity().downgrade();
         // contexto do cursor (seção · compasso · tempo.sub · linha) — já calculado para a status bar
         let context: SharedString = self.status.pos_text().map(str::to_string).unwrap_or_else(|| "sem cursor na grade".into()).into();
+        let inspector = self.inspector(th, cx);
         let mini = |id: &'static str, label: &'static str, a: Box<dyn gpui_kit::Action>| {
             btn(id, th).h(px(18.0)).w(px(20.0)).px(px(0.0)).text_size(px(10.0)).child(label).on_click(move |_: &ClickEvent, w, cx| {
                 cx.stop_propagation();
@@ -101,9 +103,9 @@ impl Shell {
             .border_color(th.line)
             .flex()
             .flex_col()
-            // ── inspector (provisório: só o contexto do cursor; a F4 traz o painel completo) ──
-            .child(panel_header("Inspector", th))
-            .child(div().flex_none().px(px(10.0)).py(px(6.0)).text_size(px(11.0)).text_color(th.ink_soft).truncate().child(context))
+            // ── inspector (F4): segue o cursor da grade; no máximo 45 % do painel, rola ──
+            .child(panel_header("Inspector", th).child(div().text_size(px(10.0)).font_weight(FontWeight::MEDIUM).text_color(th.ink_faint).truncate().child(context)))
+            .child(div().id("inspector").flex_none().max_h(gpui_kit::relative(0.45)).overflow_y_scroll().child(inspector))
             // ── músicas ──
             .child(
                 panel_header("Músicas", th).child(

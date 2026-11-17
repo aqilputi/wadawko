@@ -652,6 +652,26 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             key("escape", cx);
             wait(cx, 100).await;
         }
+        // inspector (F4): o chip "f" da dinâmica do compasso grava a dinâmica; Ctrl+Z volta
+        if let Some(p) = hint("ins-dyn-f").map(|b| b.center()) {
+            let dyn_of = |cx: &mut AsyncApp| {
+                cx.update(|cx| {
+                    let m = shell.read(cx).grid.read(cx).cursor.map_or(0, |c| c.m);
+                    state.read(cx).song().measures.get(m).and_then(|x| x.dynamic)
+                })
+            };
+            let d0 = dyn_of(cx);
+            click(p, none, cx).await;
+            let d1 = dyn_of(cx);
+            key("ctrl-z", cx);
+            wait(cx, 150).await;
+            let d2 = dyn_of(cx);
+            println!("PROBE inspector: dinâmica {d0:?} → clique em f → {d1:?} → ctrl-z {d2:?}");
+            check("inspector: chip de dinâmica edita o compasso e Ctrl+Z volta", d1 == Some(wadawko_core::Dynamic::F) && d1 != d0 && d2 == d0);
+        } else {
+            println!("PROBE inspector: chip ins-dyn-f não encontrado");
+            check("inspector: chip de dinâmica edita o compasso e Ctrl+Z volta", false);
+        }
         // calibração: botão do cabeçalho fixo (+ seção) com clique sintético
         if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("addsec").map(|t| t.bounds.center())) {
             let n0 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));

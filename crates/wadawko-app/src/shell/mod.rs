@@ -267,9 +267,10 @@ impl Shell {
                 h(k, &self.transport_pos(cx));
             }),
             chrome::key(|k| h(k, &(dark, format!("{:?}", self.page)))),
-            // painel: músicas + o contexto do cursor do bloco INSPECTOR
+            // painel: músicas + tudo que o INSPECTOR mostra (cursor, seleção, região, caneta)
             chrome::key(|k| {
                 h(k, &(dark, rev, &current, &export, self.status.pos_text()));
+                h(k, &(&st.tp.selected, format!("{:?}", st.tp.range), &st.pen, self.inspector_key(cx)));
                 for p in st.store.projects() {
                     h(k, &(&p.id, &p.title, p.updated_at));
                 }
