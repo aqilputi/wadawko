@@ -18,7 +18,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::{App, BorderStyle, Bounds, Context, Entity, FontWeight, Hsla, PathBuilder, Pixels, Render, ShapedLine, SharedString, TextAlign, Window, canvas, div, fill, point, prelude::*, px, quad, rgb, size};
-use wadawko_audio::PPQ;
+use wadawko_audio::{PPQ, TempoCurve};
 use wadawko_core::ops::people::{cell_owner_of, person_audible, rails_for_tracks};
 use wadawko_core::ops::sections::selected_region;
 use wadawko_core::phrase::resolve_cell;
@@ -158,16 +158,46 @@ pub fn note_events(song: &Song, order: &[usize]) -> LaneData {
     LaneData { by_track, len_ticks: starts[order.len()] * PPQ }
 }
 
-/// Posição x (px, relativa à linha de julgamento) de um evento em `tick` quando
-/// o relógio está em `now_tick`, no andamento `bpm`.
-pub fn note_x(tick: f64, now_tick: f64, bpm: f64) -> f32 {
-    (tick_secs(tick - now_tick, bpm) * PX_PER_SEC as f64) as f32
+/// Relógio da esteira: o mapa de andamento da música (rall./accel.) com o
+/// engine em `bpm` (o da música, ou o do treino) e a duração de uma passada.
+#[derive(Clone)]
+pub struct LaneClock {
+    pub curve: TempoCurve,
+    pub bpm: f64,
+    pub len_ticks: f64,
 }
 
-/// Intervalo `[i0, i1)` dos eventos (ordenados por tick) cujo x cai em
-/// `[-90, width + 48]` — o mesmo corte do `Lane.svelte`.
-pub fn visible_range(events: &[NoteEvent], now_tick: f64, bpm: f64, width: f32) -> (usize, usize) {
-    let ticks_per_px = bpm.max(1.0) / 60.0 * PPQ / PX_PER_SEC as f64;
+impl LaneClock {
+    /// Andamento constante (sem marcações).
+    pub fn constant(bpm: f64) -> Self {
+        LaneClock { curve: TempoCurve::constant(bpm), bpm, len_ticks: 0.0 }
+    }
+
+    /// Segundos desde o início da passada até `tick`; fora de `0..len` (passadas
+    /// vizinhas no loop) soma/subtrai a duração de uma passada.
+    pub fn secs(&self, tick: f64) -> f64 {
+        let bpm = self.bpm.max(1.0);
+        if self.curve.segments.is_empty() || self.len_ticks <= 0.0 {
+            return tick_secs(tick, bpm);
+        }
+        let lap = self.curve.seconds_to(self.len_ticks, bpm);
+        let k = (tick / self.len_ticks).floor();
+        self.curve.seconds_to(tick - k * self.len_ticks, bpm) + k * lap
+    }
+}
+
+/// Posição x (px, relativa à linha de julgamento) de um evento em `tick` quando
+/// o relógio está em `now_tick` (distância em TEMPO REAL: num rall. as notas se
+/// afastam, num accel. se aproximam).
+pub fn note_x(tick: f64, now_tick: f64, clock: &LaneClock) -> f32 {
+    ((clock.secs(tick) - clock.secs(now_tick)) * PX_PER_SEC as f64) as f32
+}
+
+/// Intervalo `[i0, i1)` dos eventos (ordenados por tick) cujo x pode cair em
+/// `[-90, width + 48]` — o mesmo corte do `Lane.svelte` (com mudança de andamento,
+/// um superconjunto: usa o andamento mais rápido do mapa).
+pub fn visible_range(events: &[NoteEvent], now_tick: f64, clock: &LaneClock, width: f32) -> (usize, usize) {
+    let ticks_per_px = clock.bpm.max(1.0) * clock.curve.max_factor() / 60.0 * PPQ / PX_PER_SEC as f64;
     let lo = now_tick - 90.0 * ticks_per_px;
     let hi = now_tick + (width as f64 + 48.0) * ticks_per_px;
     (events.partition_point(|e| e.tick < lo), events.partition_point(|e| e.tick <= hi))
@@ -361,7 +391,7 @@ struct PaintArgs {
     th: Theme,
     /// tick do relógio (audível tocando; posição inicial parado)
     now_tick: f64,
-    bpm: f64,
+    clock: LaneClock,
     /// tocando em loop: a passada seguinte/anterior também aparece
     wrap: bool,
     fx: Rc<RefCell<Fx>>,
@@ -414,10 +444,11 @@ impl Render for LaneView {
             tm.cell_tick(st.start_cell)
         };
         let bpm = if playing { st.playback_bpm as f64 } else { song.tempo };
+        let clock = LaneClock { curve: st.schedule.curve.clone(), bpm, len_ticks: st.schedule.len_ticks };
         let n = song.tracks.len();
         let total_h = (n as f32 * (LANE_H + LANE_GAP) - LANE_GAP).max(0.0);
         let empty = data.count() == 0;
-        let args = PaintArgs { song, data, th, now_tick, bpm, wrap: playing && st.tp.looping, fx: self.fx.clone(), shaped: self.shaped.clone() };
+        let args = PaintArgs { song, data, th, now_tick, clock, wrap: playing && st.tp.looping, fx: self.fx.clone(), shaped: self.shaped.clone() };
 
         div()
             .w_full()
@@ -598,9 +629,9 @@ fn paint_lane(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: &mut Ap
             let shifts: &[f64] = if a.wrap && len > 0.0 { &[-1.0, 0.0, 1.0] } else { &[0.0] };
             for &k in shifts {
                 let now_tick = a.now_tick - k * len;
-                let (i0, i1) = visible_range(events, now_tick, a.bpm, field_w);
+                let (i0, i1) = visible_range(events, now_tick, &a.clock, field_w);
                 for e in &events[i0..i1] {
-                    let x = note_x(e.tick, now_tick, a.bpm);
+                    let x = note_x(e.tick, now_tick, &a.clock);
                     // some ao passar da linha de julgamento (consumida)
                     let fade = if x < 0.0 { (1.0 + x / 80.0).max(0.0) } else { 1.0 };
                     let op = fade * if e.ghost { 0.5 } else { 1.0 } * if e.owner_muted { 0.3 } else { 1.0 } * track_dim;
@@ -848,21 +879,47 @@ mod tests {
     }
 
     #[test]
+    fn rallentando_afasta_as_notas() {
+        use wadawko_core::TempoMark;
+        // 2 compassos 4/4; rall. 100 → 50 no 2º, chegando na hora (span 0) = metade da velocidade
+        let mut song = demo_song();
+        song.tempo = 100.0;
+        song.measures.truncate(2);
+        song.sections = None;
+        ops::measures::set_tempo_mark(&mut song, 1, Some(TempoMark { target: 50.0, span: 0 }));
+        let order = identity(&song);
+        let segs = ops::measures::tempo_segments(&song, &order);
+        let len = 8.0 * PPQ;
+        let c = LaneClock { curve: TempoCurve::from_segments(&segs, 100.0), bpm: 100.0, len_ticks: len };
+        // 1 tempo a 100 = 0,6 s; 1 tempo a 50 = 1,2 s
+        assert!((note_x(PPQ, 0.0, &c) - 0.6 * PX_PER_SEC).abs() < 1e-3);
+        assert!((note_x(5.0 * PPQ, 4.0 * PPQ, &c) - 1.2 * PX_PER_SEC).abs() < 1e-3);
+        // treino a 50 %: o dobro da distância
+        let slow = LaneClock { bpm: 50.0, ..c.clone() };
+        assert!((note_x(PPQ, 0.0, &slow) - 1.2 * PX_PER_SEC).abs() < 1e-3);
+        // loop: o 1º tempo da passada seguinte vem logo depois do fim desta
+        let lap = 4.0 * 0.6 + 4.0 * 1.2;
+        assert!((note_x(len + PPQ, len - PPQ, &c) - (1.2 + 0.6) * PX_PER_SEC).abs() < 1e-3);
+        assert!((c.secs(len) - lap).abs() < 1e-9);
+    }
+
+    #[test]
     fn culling_and_position() {
         let song = demo_song();
         let d = note_events(&song, &identity(&song));
         let ev = &d.by_track[0];
         // 1 s adiante a 100 BPM = 380 px
-        assert!((note_x(PPQ / 0.6, 0.0, 100.0) - PX_PER_SEC).abs() < 1e-3);
-        let (i0, i1) = visible_range(ev, 0.0, 100.0, 600.0);
+        let c = LaneClock::constant(100.0);
+        assert!((note_x(PPQ / 0.6, 0.0, &c) - PX_PER_SEC).abs() < 1e-3);
+        let (i0, i1) = visible_range(ev, 0.0, &c, 600.0);
         assert_eq!(i0, 0);
         assert!(i1 > 0 && i1 < ev.len());
         for (i, e) in ev.iter().enumerate() {
-            let x = note_x(e.tick, 0.0, 100.0);
+            let x = note_x(e.tick, 0.0, &c);
             assert_eq!((i0..i1).contains(&i), (-90.0..=648.0).contains(&x), "evento {i} x={x}");
         }
         // no fim da música, nada à frente
-        let (j0, j1) = visible_range(ev, d.len_ticks + PPQ * 4.0, 100.0, 600.0);
+        let (j0, j1) = visible_range(ev, d.len_ticks + PPQ * 4.0, &c, 600.0);
         assert_eq!(j0, j1);
     }
 

@@ -254,7 +254,7 @@ impl Shell {
         let export = st.export_label();
         let keys = [
             chrome::key(|k| {
-                h(k, &(dark, playing, rev, &current, st.playback_bpm.to_bits()));
+                h(k, &(dark, playing, rev, &current, st.playback_bpm.to_bits(), st.sounding_bpm.to_bits()));
                 h(k, &format!("{:?}", st.tp));
             }),
             chrome::key(|k| h(k, &(dark, format!("{:?}", self.page)))),

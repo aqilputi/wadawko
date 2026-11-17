@@ -11,7 +11,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
   faixa de dinâmica de cada compasso abre o ajuste do BPM alvo (±1/±5) e de em quantos
   compassos chegar lá (ou na hora). Pela paleta: "Andamento: rallentando/accelerando" (±10 BPM,
   ao longo dos compassos selecionados), "a tempo" e "remover". O áudio, o metrônomo, o count-in,
-  o playhead e a exportação seguem o mapa de andamento; a partitura mostra `rall. → 90`. O
+  o playhead, a esteira (as notas se afastam no rall.) e a exportação seguem o mapa de
+  andamento; a barra de cima mostra `♪ 110` enquanto soa outro BPM; a partitura mostra `rall. → 90`. O
   treino continua valendo: escala o mapa inteiro. Campo novo `tempo` no compasso.
 
 ### Mudado

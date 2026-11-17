@@ -99,6 +99,9 @@ pub struct AppState {
     pub revision: u64,
     /// andamento que está soando (≠ `song.tempo` durante o treino)
     pub playback_bpm: f32,
+    /// BPM que está soando AGORA, arredondado: o do treino × o mapa de andamento
+    /// (rall./accel.). É o que a barra de cima mostra.
+    pub sounding_bpm: f32,
     pub hits: Vec<HitFlash>,
     pub toast: Option<(String, Instant)>,
     pub export: Option<ExportRun>,
@@ -148,6 +151,7 @@ impl AppState {
             av_offset_ms: 0.0,
             revision: 0,
             playback_bpm: bpm,
+            sounding_bpm: bpm,
             hits: Vec::new(),
             toast: None,
             export: None,
@@ -437,6 +441,8 @@ impl AppState {
                 EngineEvent::LoopWrapped { .. } | EngineEvent::Xrun { .. } => {}
             }
         }
+        let snap = clock.snapshot();
+        self.sounding_bpm = if snap.playing { snap.bpm.round() } else { self.playback_bpm };
         audio.collect_garbage();
         let keep = Duration::from_millis(self.flash_ms() as u64 + 20);
         self.hits.retain(|h| now < h.at + keep);

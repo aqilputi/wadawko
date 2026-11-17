@@ -313,6 +313,14 @@ impl TempoCurve {
         b0 + (b1 - b0) * ((t - t0) / (t1 - t0)).clamp(0.0, 1.0)
     }
 
+    /// Maior fator do mapa (1 sem marcações): limite seguro para cortes por distância.
+    pub fn max_factor(&self) -> f64 {
+        if self.base <= 0.0 {
+            return 1.0;
+        }
+        self.segments.iter().fold(1.0f64, |m, s| m.max(s.2 / self.base).max(s.3 / self.base))
+    }
+
     /// Fator a aplicar ao BPM do engine no tick `t`.
     pub fn factor_at(&self, t: f64) -> f64 {
         if self.base <= 0.0 { 1.0 } else { self.bpm_at(t) / self.base }

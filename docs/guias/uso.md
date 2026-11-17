@@ -49,8 +49,8 @@ colcheia, semicolcheia ou fusa — vale para a música toda e fica na barra de f
   **chegar em** diz em quantos compassos (a rampa é linear; "na hora" troca de uma vez — "a
   tempo"). A faixa mostra `rall. → 90 ·2c`; a partitura, `rall. → 90`. Pela paleta: "Andamento:
   rallentando" / "accelerando" (±10 BPM; com seleção, a rampa dura os compassos selecionados),
-  "a tempo" (volta ao BPM da música) e "remover". O BPM da barra de cima continua sendo o da
-  música; o treino escala o mapa inteiro.
+  "a tempo" (volta ao BPM da música) e "remover". O campo BPM da barra de cima continua sendo o
+  da música; tocando, o `♪ 110` ao lado mostra o que está soando. O treino escala o mapa inteiro.
 - **Modos** (barra de ferramentas, ou `Ctrl+Shift+S`): **editar** (padrão: digitar) e
   **selecionar**. Com o **vim** ligado (Config), a grade usa normal/inserção/visual.
 
