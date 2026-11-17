@@ -2,6 +2,13 @@
 
 ## 2026-11-17
 
+**Criação** do plano [design estilo DAW e features de DAW](/planejamento/daw.md): pesquisa da
+linguagem visual do Bitwig (e Live, Renoise, Reaper, FL) e de UX/features de DAWs e notadores de
+percussão; sistema de design escuro de cantos retos (tokens, componentes, layout com transporte
+central, nav rail estreita, inspector); backlog de features priorizado com o corte para
+implementar agora (cor por trilha, loop por trecho na régua, medidores de nível) e plano de
+implementação em etapas verificáveis.
+
 **Atualização**: licença (MIT OR Apache-2.0) em créditos; repositório sem app web e sem
 `spike/` (visão geral, instalar e compilar, desempenho, arquitetura); importar músicas de outro
 banco ou backup pela Config (dados e arquivos, instalar e compilar); AppImage, Flatpak e ícone
