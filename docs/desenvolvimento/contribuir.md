@@ -22,18 +22,19 @@ generated:
    chama `AppState::edit`. Página/aba nova, comando novo, atalho novo: siga a
    [arquitetura do app](/arquitetura/app.md).
 4. **Antes do commit**:
-   - `cargo test --workspace`;
+   - `cargo test --workspace` e `cargo clippy --workspace --all-targets` (a CI recusa avisos);
    - mudou interação? rode o probe ([testes e depuração](/desenvolvimento/testes-e-depuracao.md))
      e acrescente um passo para o caso novo;
    - mudou teclas ou títulos de comandos? `python3 tools/gen-atalhos.py`;
    - mexeu em desenho/animação? confira as [regras de desempenho](/desenvolvimento/desempenho.md);
    - mexeu em `docs/`? `python3 tools/okf-check.py docs`.
-5. **Mensagens de commit** em português, título curto + corpo explicando o porquê (veja o
+5. **Issues e PRs**: há modelos em `.github/` (bug, ideia e PR, com o checklist acima).
+6. **Mensagens de commit** em português, título curto + corpo explicando o porquê (veja o
    `git log`).
-6. **CI** (`.github/workflows/ci.yml`): todo push/PR roda a checagem de `docs/` e dos atalhos,
+7. **CI** (`.github/workflows/ci.yml`): todo push/PR roda a checagem de `docs/` e dos atalhos,
    `cargo test --workspace --release`, o build release e gera o pacote como artefato da
    execução (aba Actions). A primeira execução sem cache leva bem mais (o GPUI é grande).
-7. **Release**: atualize o `CHANGELOG.md` (seção `## [x.y.z] - data`), suba a versão no
+8. **Release**: atualize o `CHANGELOG.md` (seção `## [x.y.z] - data`), suba a versão no
    `Cargo.toml` do workspace e envie a tag — o `release.yml` testa, empacota e publica:
    ```sh
    git tag v0.2.0 && git push origin v0.2.0

@@ -95,7 +95,7 @@ impl Shell {
                 Ok(Ok(None)) => return,
                 _ => dir.join(&name),
             };
-            let _ = state.update(cx, |s, cx| s.start_export(path, cx));
+            state.update(cx, |s, cx| s.start_export(path, cx));
         })
         .detach();
     }

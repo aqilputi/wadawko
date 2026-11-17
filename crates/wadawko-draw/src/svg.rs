@@ -350,19 +350,18 @@ impl Canvas2D for SvgCanvas<'_> {
         if text.is_empty() {
             return;
         }
-        if self.opts.text_as_paths {
-            if let Some(path) = self.fonts.and_then(|f| f.text_outline(text, style, origin)) {
+        if self.opts.text_as_paths
+            && let Some(path) = self.fonts.and_then(|f| f.text_outline(text, style, origin)) {
                 self.push_path(&path, &paint_attr("fill", color));
                 return;
             }
-        }
         self.push_text(text, origin, &style.family, style.size, style.weight.0, style.italic, style.align, color);
     }
 
     fn glyph(&mut self, font: FontId, codepoint: char, origin: Point, size: f32, color: Color) {
         let fonts = self.fonts;
-        if self.opts.glyphs_as_paths {
-            if let Some(upem) = fonts.and_then(|f| f.info(font)).map(|i| i.units_per_em as f32) {
+        if self.opts.glyphs_as_paths
+            && let Some(upem) = fonts.and_then(|f| f.info(font)).map(|i| i.units_per_em as f32) {
                 let id = format!("g{}_{:X}", font.0, codepoint as u32);
                 if !self.glyph_defs.contains(&(font, codepoint)) {
                     // contorno em unidades da fonte (y já invertido); o <use> aplica a escala
@@ -386,7 +385,6 @@ impl Canvas2D for SvgCanvas<'_> {
                 );
                 return;
             }
-        }
         let (family, weight, italic) = match fonts.and_then(|f| f.info(font)) {
             Some(i) => (i.family.clone(), i.weight.0, i.italic),
             None => (format!("font{}", font.0), 400, false),

@@ -518,9 +518,9 @@ fn paint_petal(window: &mut Window, x: f32, y: f32, w: f32, rot: f32, color: Hsl
     let Some(mut path) = path else { return };
     let d = point(px(x), px(y));
     for v in &mut path.vertices {
-        v.xy_position = v.xy_position + d;
+        v.xy_position += d;
     }
-    path.bounds.origin = path.bounds.origin + d;
+    path.bounds.origin += d;
     window.paint_path(path, color);
 }
 

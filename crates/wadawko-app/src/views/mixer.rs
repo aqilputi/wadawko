@@ -278,7 +278,7 @@ impl Render for MixerView {
                 .child(bus_controls("mx-", &self.state, p, &th, 130.0));
             let mut strips = div().flex().flex_wrap().gap(px(12.0));
             let mut n = 0;
-            for t in song.tracks.iter().filter(|t| t.person_ids().iter().any(|id| *id == p.id)) {
+            for t in song.tracks.iter().filter(|t| t.person_ids().contains(&p.id)) {
                 strips = strips.child(self.strip(&song, t, Some(p), &th));
                 n += 1;
             }

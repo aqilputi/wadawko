@@ -19,7 +19,7 @@ use std::rc::Rc;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
-use gpui_kit::{Bounds, ContentMask, Context, Entity, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Render, ScrollWheelEvent, SharedString, Window, canvas, div, fill, point, prelude::*, px, size};
+use gpui_kit::{Bounds, ContentMask, Context, Entity, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Render, ScrollEvent, SharedString, Window, canvas, div, fill, point, prelude::*, px, size};
 use wadawko_core::Song;
 use wadawko_draw::smufl::{FAMILY_BRAVURA, FAMILY_SHIPPORI_MINCHO, FAMILY_ZEN_KAKU};
 use wadawko_draw::{Canvas2D, FontBook, SmuflFont, StandardFonts, Transform, pt, rect};
@@ -108,7 +108,7 @@ pub fn max_scroll(view_w: f32, content_w: f32) -> f32 {
 /// esquerda da view) continua sob o ponteiro. Devolve (zoom, rolagem) novos.
 pub fn zoom_about(zoom: f32, scroll: f32, anchor: f32, new_zoom: f32) -> (f32, f32) {
     let nz = new_zoom.clamp(ZOOM_MIN, ZOOM_MAX);
-    if !(zoom > 0.0) {
+    if zoom.is_nan() || zoom <= 0.0 {
         return (nz, scroll);
     }
     (nz, ((scroll + anchor) * nz / zoom - anchor).max(0.0))
@@ -221,7 +221,7 @@ impl ScoreView {
         }
     }
 
-    fn on_wheel(&mut self, ev: &ScrollWheelEvent, _: &mut Window, cx: &mut Context<Self>) {
+    fn on_wheel(&mut self, ev: &ScrollEvent, _: &mut Window, cx: &mut Context<Self>) {
         let d = ev.delta.pixel_delta(px(40.0));
         let (dx, dy) = (f32::from(d.x), f32::from(d.y));
         if ev.modifiers.control || ev.modifiers.platform {
@@ -313,12 +313,12 @@ impl ScoreView {
                 Ok(_) => format!("partitura exportada: {}", path.display()),
                 Err(e) => format!("erro ao exportar a partitura: {e:#}"),
             };
-            let _ = state.update(cx, |s, cx| {
+            state.update(cx, |s, cx| {
                 s.flash(msg);
                 cx.notify();
             });
             if res.is_ok() && kind == ExportKind::Print {
-                let _ = cx.update(|cx| cx.open_url(&format!("file://{}", path.display())));
+                cx.update(|cx| cx.open_url(&format!("file://{}", path.display())));
             }
         })
         .detach();
@@ -483,7 +483,7 @@ impl Render for ScoreView {
                     .bg(th.paper)
                     .overflow_hidden()
                     .cursor_grab()
-                    .on_scroll_wheel(cx.listener(Self::on_wheel))
+                    .on_scroll(cx.listener(Self::on_wheel))
                     .on_mouse_down(MouseButton::Left, cx.listener(Self::on_down))
                     .on_mouse_move(cx.listener(Self::on_move))
                     .on_mouse_up(MouseButton::Left, cx.listener(Self::on_up))

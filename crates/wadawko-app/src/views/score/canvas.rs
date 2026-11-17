@@ -69,7 +69,8 @@ impl<'a, S: Surface> GpuiCanvas<'a, S> {
 
 /// Contorno de um traço como caminho preenchível (non-zero), em coordenadas do usuário.
 pub fn stroke_outline(path: &Path, stroke: &Stroke) -> Option<Path> {
-    if !(stroke.width > 0.0) || path.is_empty() {
+    // (NaN também cai aqui)
+    if stroke.width.is_nan() || stroke.width <= 0.0 || path.is_empty() {
         return None;
     }
     let mut b = ts::PathBuilder::new();

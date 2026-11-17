@@ -23,8 +23,8 @@ verde a cada PR; documentação de uso e de arquitetura; backlog organizado.**
 |---|---|
 | A — Consolidar | **feita**: branch de trabalho juntado no `main` (fast-forward), `main` padrão no GitHub, release `v0.1.0` |
 | B — Limpar a raiz | parcial: planos/arquitetura já em `docs/`; falta tirar web, `spike/`, mover samples e fixtures |
-| C — Qualidade e CI | parcial: **CI no ar** (`ci.yml` + `build.yml`: docs, `cargo test --workspace --release`, build, pacote); falta fmt/clippy, avisos e testes de GUI headless |
-| D — Documentação | quase: README com capturas, `docs/` OKF, `CHANGELOG.md`; falta `LICENSE` (D1) e templates de issue/PR |
+| C — Qualidade e CI | parcial: **CI no ar** (`ci.yml` + `build.yml`: docs, `cargo test --workspace --release`, build, pacote); avisos de compilação e do clippy zerados, clippy na CI; falta `cargo fmt` e testes de GUI headless |
+| D — Documentação | quase: README com capturas, `docs/` OKF, `CHANGELOG.md`; templates de issue/PR; falta `LICENSE` (D1) |
 | E — Distribuição | parcial: **release automático** por tag (`release.yml`) com `.tar.gz` + `install.sh` + `.desktop`; falta ícone, AppImage, Flatpak |
 
 ## 0. Onde estamos (2026-11-16, início do dia)
@@ -89,10 +89,11 @@ verde a cada PR; documentação de uso e de arquitetura; backlog organizado.**
 de projeto; `cargo test --workspace` passa num clone limpo.
 
 ### Fase C — Qualidade e CI (2–3 dias)
-1. Zerar avisos: código morto (`people::owner_count`, `score/surface.rs` `clear/len`),
+1. ~~Zerar avisos~~ — feito em 2026-11-16: código morto (`people::owner_count`, `score/surface.rs` `clear/len`),
    `ScrollWheelEvent`/`on_scroll_wheel` → `ScrollEvent`/`on_scroll` (partitura).
-2. `rustfmt.toml` com o estilo atual (linhas longas, `max_width ≈ 200`) + `cargo fmt` uma vez;
-   `cargo clippy --workspace -D warnings` (resolver ou permitir lints explicitamente).
+2. `rustfmt.toml` com o estilo atual (linhas longas, `max_width ≈ 200`) + `cargo fmt` uma vez
+   (depois dos PRs abertos, para não gerar conflito). ~~`cargo clippy --workspace -D warnings`~~ —
+   feito em 2026-11-16: zerado e na CI (`build.yml`).
 3. **GitHub Actions** (`.github/workflows/ci.yml`), Linux:
    - `fmt` + `clippy` + `cargo test --workspace` (com `Swatinem/rust-cache` — sem cache a
      build do gpui passa de 20 min);
@@ -118,7 +119,7 @@ gera os índices.
    gerada do keymap + registro por `tools/gen-atalhos.py` (`--check` para a CI).
 4. ~~Guia de contribuição~~ — feito: `/desenvolvimento/contribuir.md` (+ testes e desempenho).
    Falta `CHANGELOG.md` (Keep a Changelog).
-5. Templates: `.github/ISSUE_TEMPLATE/{bug,feature}.md`, `PULL_REQUEST_TEMPLATE.md`. **(pendente)**
+5. ~~Templates~~ — feito: `.github/ISSUE_TEMPLATE/{bug,feature}.md`, `PULL_REQUEST_TEMPLATE.md`.
 6. Na CI (fase C): `python3 tools/okf-check.py docs` e `python3 tools/gen-atalhos.py --check`.
 
 ### Fase E — Distribuição (Fase 7 do `/planejamento/gpui.md`) (3–5 dias) · depende de D3
