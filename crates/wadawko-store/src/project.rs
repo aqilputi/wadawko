@@ -224,8 +224,7 @@ impl ProjectStore {
         let report = if is_sqlite {
             let src = Db::open_read_only(path)?;
             let dict: Map<String, Value> = src.all()?.into_iter().map(|(k, v)| (k, Value::String(v))).collect();
-            crate::import_backup(&self.db, &Value::Object(dict).to_string(), crate::BackupOptions::default())
-                .with_context(|| format!("importar {}", path.display()))?
+            crate::import_backup(&self.db, &Value::Object(dict).to_string(), crate::BackupOptions::default()).with_context(|| format!("importar {}", path.display()))?
         } else {
             crate::import_backup_file(&self.db, path, crate::BackupOptions::default())?
         };
