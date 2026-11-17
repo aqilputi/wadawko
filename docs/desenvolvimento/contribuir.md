@@ -22,7 +22,8 @@ generated:
    chama `AppState::edit`. Página/aba nova, comando novo, atalho novo: siga a
    [arquitetura do app](/arquitetura/app.md).
 4. **Antes do commit**:
-   - `cargo test --workspace` e `cargo clippy --workspace --all-targets` (a CI recusa avisos);
+   - `cargo fmt --all`, `cargo test --workspace` e `cargo clippy --workspace --all-targets`
+     (a CI recusa código fora do `rustfmt.toml` e avisos do clippy);
    - mudou interação? rode o probe ([testes e depuração](/desenvolvimento/testes-e-depuracao.md))
      e acrescente um passo para o caso novo;
    - mudou teclas ou títulos de comandos? `python3 tools/gen-atalhos.py`;
