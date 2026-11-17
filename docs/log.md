@@ -2,6 +2,10 @@
 
 ## 2026-11-17
 
+**Atualização**: capturas de tela em `imagens/` refeitas no visual "estilo DAW" (tema escuro,
+etapas E1–E4 do [plano](/planejamento/daw.md)), a partir de um banco só com as fixtures; as
+decisões tomadas na implementação ficaram anotadas nas etapas E1, E3 e E4 do plano.
+
 **Criação** do plano [design estilo DAW e features de DAW](/planejamento/daw.md): pesquisa da
 linguagem visual do Bitwig (e Live, Renoise, Reaper, FL) e de UX/features de DAWs e notadores de
 percussão; sistema de design escuro de cantos retos (tokens, componentes, layout com transporte
