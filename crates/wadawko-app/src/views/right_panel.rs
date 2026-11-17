@@ -8,7 +8,7 @@ use gpui_kit::{App, ClickEvent, Context, FontWeight, SharedString, div, prelude:
 use crate::keys;
 use crate::shell::Shell;
 use crate::theme::Theme;
-use crate::ui::{abtn, btn};
+use crate::ui::{self, abtn, btn};
 
 /// "10 de nov." a partir de epoch ms (UTC).
 pub fn short_date(ms: i64) -> String {
@@ -50,7 +50,7 @@ impl Shell {
                 .relative()
                 .px(px(10.0))
                 .py(px(9.0))
-                .rounded(px(8.0))
+                .rounded(px(ui::R0))
                 .border_1()
                 .flex()
                 .items_start()
@@ -100,7 +100,7 @@ impl Shell {
                 div().flex().items_center().child(div().flex_1().text_size(px(13.0)).font_weight(FontWeight::BOLD).text_color(th.ink_soft).child("MÚSICAS")).child(
                     abtn("nova", th, keys::project::New)
                         .h(px(28.0))
-                        .rounded(px(999.0))
+                        .rounded(px(ui::R1))
                         .bg(th.accent)
                         .border_color(th.accent)
                         .text_color(th.on_accent)
@@ -114,7 +114,7 @@ impl Shell {
                 d.child(
                     div()
                         .p(px(8.0))
-                        .rounded(px(8.0))
+                        .rounded(px(ui::R1))
                         .bg(th.accent_wash)
                         .flex()
                         .items_center()

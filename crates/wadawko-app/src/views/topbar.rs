@@ -7,7 +7,7 @@ use super::Tab;
 use crate::keys;
 use crate::shell::Shell;
 use crate::theme::Theme;
-use crate::ui::{abtn, atoggle, segmented};
+use crate::ui::{self, abtn, atoggle, segmented};
 
 impl Shell {
     pub(crate) fn topbar(&self, th: &Theme, playing: bool, cx: &mut Context<Self>) -> gpui_kit::Div {
@@ -36,7 +36,7 @@ impl Shell {
                     .on_click(cx.listener(|shell: &mut Shell, _, _, cx| shell.views.lane.update(cx, |v, cx| v.logo_click(cx))))
                     .size(px(37.0))
                     .flex_none()
-                    .rounded(px(8.0))
+                    .rounded(px(ui::R1))
                     .bg(th.accent)
                     .flex()
                     .items_center()

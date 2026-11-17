@@ -70,7 +70,7 @@ impl Shell {
                 .max_h(px(620.0))
                 .overflow_hidden()
                 .p(px(12.0))
-                .rounded(px(10.0))
+                .rounded(px(ui::R0))
                 .bg(th.paper)
                 .border_1()
                 .border_color(th.line_strong)

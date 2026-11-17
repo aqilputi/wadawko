@@ -8,6 +8,7 @@ use crate::keys;
 use crate::shell::Shell;
 use crate::song_ext::SongExt;
 use crate::theme::Theme;
+use crate::ui;
 
 /// Tudo o que a status bar mostra, já como texto: o Shell calcula a cada frame e
 /// só redesenha a barra (view em cache) quando o hash muda.
@@ -122,7 +123,7 @@ impl Shell {
                     .h(px(18.0))
                     .flex()
                     .items_center()
-                    .rounded(px(4.0))
+                    .rounded(px(ui::R1))
                     .bg(chip_bg)
                     .text_color(chip_fg)
                     .text_size(px(10.5))
@@ -140,8 +141,8 @@ impl Shell {
             .child(div().text_color(th.ink_faint).child("·"))
             .child(SharedString::from(tocando))
             .when_some(audio, |d, t| d.child(div().text_color(th.ink_faint).child(SharedString::from(t))))
-            .when_some(export, |d, t| d.child(div().px(px(8.0)).rounded(px(4.0)).bg(th.accent_wash).text_color(th.accent).child(SharedString::from(format!("⏳ {t}")))))
-            .when_some(toast, |d, t| d.child(div().px(px(8.0)).rounded(px(4.0)).bg(th.accent2_wash).text_color(th.accent2).truncate().child(SharedString::from(t))))
+            .when_some(export, |d, t| d.child(div().px(px(8.0)).rounded(px(ui::R1)).bg(th.accent_wash).text_color(th.accent).child(SharedString::from(format!("⏳ {t}")))))
+            .when_some(toast, |d, t| d.child(div().px(px(8.0)).rounded(px(ui::R1)).bg(th.accent2_wash).text_color(th.accent2).truncate().child(SharedString::from(t))))
             .child(div().flex_1())
             .child(div().text_color(th.ink_faint).child(SharedString::from(hud)))
             .child(div().text_color(th.ink_faint).child("·"))

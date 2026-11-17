@@ -11,6 +11,7 @@ use wadawko_core::{Hairpin, Song, Zone, phrase};
 use super::{CELL_H, CELL_X0, Cur, KYAI_H, Lane, MEASURE_GAP, MoveDrag, Range4, Rows, SEC_DYN_H, TDYN_H, TEMPO_X, TIMELINE_H, TextCache, VMode, measure_xs, tempo_chip_fits, tempo_chip_w};
 use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color};
+use crate::ui::{R0, R1};
 
 /// desenha um texto (com cache de modelagem): (texto, tamanho, cor, chave da cor, x, y, centralizar em largura)
 type PaintText<'a> = dyn FnMut(&mut Window, &mut App, &SharedString, u32, Hsla, u8, f32, f32, Option<f32>) + 'a;
@@ -52,14 +53,14 @@ fn line(window: &mut Window, a: (f32, f32), b: (f32, f32), color: Hsla) {
 #[allow(clippy::too_many_arguments)]
 fn paint_dyn(window: &mut Window, cx: &mut App, text: &mut PaintText<'_>, th: &Theme, mx: f32, y: f32, mw: f32, h: f32, dynamic: Option<&'static str>, hairpin: Option<Hairpin>, wedge_from: f32) {
     let label: SharedString = dynamic.unwrap_or("·").into();
-    window.paint_quad(rounded(rect(mx + 2.0, y + 2.0, 56.0, h - 4.0), 5.0, if dynamic.is_some() { th.accent2_wash } else { th.paper_raise }));
+    window.paint_quad(rounded(rect(mx + 2.0, y + 2.0, 56.0, h - 4.0), R1, if dynamic.is_some() { th.accent2_wash } else { th.paper_raise }));
     text(window, cx, &label, 12, if dynamic.is_some() { th.ink } else { th.ink_faint }, if dynamic.is_some() { 0 } else { 1 }, mx + 10.0, y + (h - 16.0) * 0.5, None);
     text(window, cx, &"⌄".into(), 11, th.ink_faint, 1, mx + 40.0, y + (h - 18.0) * 0.5, None);
     if mw - 44.0 > 62.0 {
         for (j, (glyph, kind)) in [("<", Hairpin::Cresc), (">", Hairpin::Dim)].into_iter().enumerate() {
             let hx = mx + mw - 44.0 + j as f32 * 22.0;
             let on = hairpin == Some(kind);
-            window.paint_quad(rounded(rect(hx, y + 3.0, 18.0, h - 6.0), 4.0, if on { th.accent2 } else { th.paper_raise }));
+            window.paint_quad(rounded(rect(hx, y + 3.0, 18.0, h - 6.0), R1, if on { th.accent2 } else { th.paper_raise }));
             text(window, cx, &glyph.into(), 10, if on { th.on_accent } else { th.ink_faint }, if on { 4 } else { 1 }, hx, y + (h - 14.0) * 0.5, Some(18.0));
         }
     }
@@ -140,7 +141,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                 let r = rect(mx + TEMPO_X, oy + 2.0, tw, SEC_DYN_H - 4.0);
                 match &meas.tempo {
                     Some(t) => {
-                        window.paint_quad(rounded(r, 5.0, th.accent_wash));
+                        window.paint_quad(rounded(r, R1, th.accent_wash));
                         let before = tempo_before.get(m).copied().unwrap_or(song.tempo);
                         let mut label = wadawko_core::ops::measures::tempo_mark_label(t, before);
                         if t.span > 1 {
@@ -149,7 +150,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                         text(window, cx, &label.into(), 11, th.ink, 0, mx + TEMPO_X, oy + (SEC_DYN_H - 15.0) * 0.5, Some(tw));
                     }
                     None => {
-                        window.paint_quad(rounded(r, 5.0, th.paper_raise));
+                        window.paint_quad(rounded(r, R1, th.paper_raise));
                         text(window, cx, &"♩".into(), 12, th.ink_faint, 1, mx + TEMPO_X, oy + (SEC_DYN_H - 16.0) * 0.5, Some(tw));
                     }
                 }
@@ -211,17 +212,10 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                                     let gx1 = groups.get(gi + 1).map(|n| lx + n.0 * inner - 1.0).unwrap_or(x + cw - 2.0);
                                     let col = if g.1 { th.accent2 } else { th.accent };
                                     let col = Theme::alpha(col, (0.45 + 0.55 * g.2.min(1.0)).min(1.0));
-                                    window.paint_quad(quad(
-                                        rect(gx0, y + CELL_H - 15.0, (gx1 - gx0).max(2.0), 12.0),
-                                        gpui_kit::Corners { top_left: px(2.0), top_right: px(2.0), bottom_left: px(3.0), bottom_right: px(3.0) },
-                                        col,
-                                        px(0.0),
-                                        gpui_kit::transparent_black(),
-                                        BorderStyle::Solid,
-                                    ));
+                                    window.paint_quad(quad(rect(gx0, y + CELL_H - 15.0, (gx1 - gx0).max(2.0), 12.0), px(R0), col, px(0.0), gpui_kit::transparent_black(), BorderStyle::Solid));
                                 }
                                 if res.sfz {
-                                    window.paint_quad(rounded(rect(x + cw - 8.0, y + 3.0, 5.0, 5.0), 2.5, th.accent));
+                                    window.paint_quad(rounded(rect(x + cw - 8.0, y + 3.0, 5.0, 5.0), R0, th.accent));
                                 }
                             }
                             None => window.paint_quad(outline(rect(lx, y, inner, CELL_H), th.accent, BorderStyle::Solid)),
@@ -250,7 +244,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                 // sub-linha de dinâmica própria do instrumento
                 if rows.dynr[t] {
                     let dy = cells_top + rows.dyn_y(t);
-                    window.paint_quad(rounded(rect(mx + 2.0, dy, mw - 4.0, TDYN_H), 4.0, Theme::alpha(th.paper_raise, 0.6)));
+                    window.paint_quad(rounded(rect(mx + 2.0, dy, mw - 4.0, TDYN_H), R0, Theme::alpha(th.paper_raise, 0.6)));
                     let mark = meas.track_dynamic(&track.id);
                     paint_dyn(window, cx, &mut text, th, mx, dy, mw, TDYN_H, mark.and_then(|d| d.dynamic).map(|d| d.as_str()), mark.and_then(|d| d.hairpin), 0.0);
                 }
@@ -261,7 +255,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                     for k in c0..c1 {
                         let x = mx + k as f32 * cw;
                         let syl = krow.and_then(|r| r.get(k)).and_then(|c| c.as_deref());
-                        window.paint_quad(rounded(rect(x + 1.0, ky, cw - 2.0, KYAI_H), 4.0, if syl.is_some() { th.accent_wash } else { Theme::alpha(th.paper_raise, 0.55) }));
+                        window.paint_quad(rounded(rect(x + 1.0, ky, cw - 2.0, KYAI_H), R0, if syl.is_some() { th.accent_wash } else { Theme::alpha(th.paper_raise, 0.55) }));
                         let editing_here = a.lane == Lane::Kyai && a.cursor == Some(Cur { m, t, k }) && !a.edit.is_empty();
                         if let Some(syl) = syl
                             && cw >= 22.0
@@ -330,10 +324,10 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
             let (y, h) = if a.lane == Lane::Kyai && rows.kyai[c.t] { (cells_top + rows.kyai_y(c.t), KYAI_H) } else { (cells_top + rows.y[c.t], CELL_H) };
             let r = rect(x, y, cw, h);
             let wash = if matches!(a.vmode, VMode::Normal | VMode::Visual | VMode::VLine) { Theme::alpha(th.accent, 0.18) } else { gpui_kit::transparent_black() };
-            window.paint_quad(quad(r, px(3.0), wash, px(2.0), th.accent, BorderStyle::Solid));
+            window.paint_quad(quad(r, px(R0), wash, px(2.0), th.accent, BorderStyle::Solid));
             if !a.edit.is_empty() {
                 let er = rect(x, y, (a.edit.len() as f32 * 9.0 + 14.0).max(cw), h);
-                window.paint_quad(quad(er, px(3.0), th.accent_wash, px(2.0), th.accent, BorderStyle::Solid));
+                window.paint_quad(quad(er, px(R0), th.accent_wash, px(2.0), th.accent, BorderStyle::Solid));
                 let shown: SharedString = format!("{}▏", a.edit).into();
                 let mut run = window.text_style().to_run(shown.len());
                 run.color = th.ink;

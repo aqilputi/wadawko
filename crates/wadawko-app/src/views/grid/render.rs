@@ -13,7 +13,7 @@ use super::{CELL_H, DYNAMICS, GridEvent, GridView, InputTarget, KYAI_H, LABEL_W,
 use crate::keys::{self, HintAct};
 use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color};
-use crate::ui::small_btn;
+use crate::ui::{self, small_btn};
 
 type Op = Rc<dyn Fn(&mut GridView, &mut Context<GridView>)>;
 
@@ -26,7 +26,7 @@ fn chip(id: impl Into<gpui_kit::ElementId>, th: &Theme, on: bool) -> gpui_kit::S
         .flex()
         .flex_none()
         .items_center()
-        .rounded(px(6.0))
+        .rounded(px(ui::R1))
         .border_1()
         .text_size(px(12.0))
         .cursor_pointer()
@@ -38,7 +38,7 @@ fn popover(th: &Theme) -> gpui_kit::Div {
     div()
         .absolute()
         .p(px(10.0))
-        .rounded(px(10.0))
+        .rounded(px(ui::R0))
         .bg(th.paper)
         .border_1()
         .border_color(th.line_strong)
@@ -85,12 +85,12 @@ impl GridView {
             let pid = p.id.clone();
             let on = track.person_ids().contains(&p.id);
             let col = p.color.as_deref().and_then(parse_color).unwrap_or(th.ink_soft);
-            people = people.child(chip(("pers", t * 100 + i), th, on).gap(px(5.0)).child(div().size(px(8.0)).rounded(px(4.0)).bg(col)).child(SharedString::from(p.name.clone())).on_click(
-                cx.listener(move |this, _: &ClickEvent, _, cx| {
+            people = people.child(chip(("pers", t * 100 + i), th, on).gap(px(5.0)).child(div().size(px(8.0)).rounded_full().bg(col)).child(SharedString::from(p.name.clone())).on_click(cx.listener(
+                move |this, _: &ClickEvent, _, cx| {
                     let pid = pid.clone();
                     this.track_edit(t, cx, |s, tid| ops::people::toggle_track_person(s, tid, &pid));
-                }),
-            ));
+                },
+            )));
         }
 
         let (pitch, vary, gain) = kyai::kyai_voice_or_default(track.kyai.as_ref());
@@ -458,7 +458,7 @@ impl Render for GridView {
                 .flex()
                 .items_center()
                 .overflow_hidden()
-                .rounded(px(8.0))
+                .rounded(px(ui::R0))
                 .cursor_pointer()
                 .when(is_sel, |d| d.bg(th.accent_wash))
                 // clique em qualquer ponto da barra (nome, vazios, 𝄆 1× 𝄇…) seleciona SÓ esta
@@ -491,7 +491,7 @@ impl Render for GridView {
                                 .w(px(24.0))
                                 .h(px(24.0))
                                 .flex_none()
-                                .rounded(px(6.0))
+                                .rounded(px(ui::R1))
                                 .border_1()
                                 .border_color(th.line_strong)
                                 .flex()
@@ -598,7 +598,7 @@ impl Render for GridView {
                             .h(px(24.0))
                             .flex()
                             .items_center()
-                            .rounded(px(5.0))
+                            .rounded(px(ui::R1))
                             .border_1()
                             .border_color(th.line)
                             .text_size(px(11.0))
@@ -654,7 +654,7 @@ impl Render for GridView {
                                     .top(px(if t > 0 && rail.rows[t - 1] { 0.0 } else { 3.0 }))
                                     .h(px(if last { CELL_H - 3.0 } else { rows.row_h(t) }))
                                     .w(px(3.0))
-                                    .rounded(px(1.5))
+                                    .rounded(px(ui::R0))
                                     .bg(if ops::people::person_audible(&song, Some(&rail.person.id)) { col } else { Theme::alpha(col, 0.3) }),
                             );
                         }

@@ -145,7 +145,7 @@ impl Shell {
                 card()
                     .child(h("Testar tecla"))
                     .child(div().text_size(px(12.0)).text_color(th.ink_soft).child("Se Ctrl+Space não aparecer aqui, o fcitx5/ibus está capturando a tecla — use Alt+F (ou mude o atalho do IME)."))
-                    .child(div().px(px(10.0)).py(px(6.0)).rounded(px(6.0)).bg(th.paper_raise).text_size(px(14.0)).font_weight(FontWeight::MEDIUM).child(SharedString::from(probe))),
+                    .child(div().px(px(10.0)).py(px(6.0)).rounded(px(ui::R1)).bg(th.paper_raise).text_size(px(14.0)).font_weight(FontWeight::MEDIUM).child(SharedString::from(probe))),
             )
             .child(
                 card()

@@ -12,7 +12,7 @@ use crate::keys;
 use crate::shell::Shell;
 use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color};
-use crate::ui::{abtn, kbd, segmented};
+use crate::ui::{self, abtn, kbd, segmented};
 
 impl Shell {
     pub(crate) fn context_toolbar(&self, th: &Theme, cx: &mut Context<Self>) -> gpui_kit::Div {
@@ -26,7 +26,7 @@ impl Shell {
             (g.mode, g.zoom_pct(), g.anchor.is_some(), beats)
         };
         let inst_name = ops::kit::instrument_by_id(&song, Some(&self.add_instrument)).map(|d| d.name.clone()).unwrap_or_else(|| "Chū-daiko".into());
-        let mut toolbar = div().flex().flex_wrap().items_center().gap(px(8.0)).p(px(7.0)).rounded(px(10.0)).bg(th.paper).border_1().border_color(th.line);
+        let mut toolbar = div().flex().flex_wrap().items_center().gap(px(8.0)).p(px(7.0)).rounded(px(ui::R0)).bg(th.paper).border_1().border_color(th.line);
         if !self.vim_on {
             toolbar =
                 toolbar.child(segmented("mode", th, vec![("✎ editar", Box::new(keys::grid::ModeEdit)), ("⬚ selecionar", Box::new(keys::grid::ModeSelect))], (mode == Mode::Select) as usize, false));
@@ -86,13 +86,13 @@ impl Shell {
                         .flex()
                         .items_center()
                         .gap(px(5.0))
-                        .rounded(px(999.0))
+                        .rounded(px(ui::R1))
                         .border_1()
                         .text_size(px(12.0))
                         .cursor_pointer()
                         .when(on, |d| d.border_color(col).bg(Theme::alpha(col, 0.18)))
                         .when(!on, |d| d.border_color(th.line).hover(|s| s.bg(th.paper_hover)))
-                        .child(div().size(px(9.0)).rounded(px(5.0)).bg(col))
+                        .child(div().size(px(8.0)).rounded_full().bg(col))
                         .child(SharedString::from(p.name.clone()))
                         .on_click(move |_: &ClickEvent, _, cx| set(&state, &pid, cx)),
                     format!("pen-{i}"),

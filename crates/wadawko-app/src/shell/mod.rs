@@ -766,9 +766,14 @@ impl Shell {
                     }
                     let col = if f.rim { th.accent2 } else { th.accent };
                     window.with_content_mask(Some(gpui_kit::ContentMask { bounds: vb }), |window| {
-                        let halo = f.bounds.dilate(px(5.0 * f.strength));
-                        window.paint_quad(quad(halo, px(7.0), Theme::alpha(col, 0.28 * f.strength), px(0.0), gpui_kit::transparent_black(), gpui_kit::BorderStyle::Solid));
-                        window.paint_quad(quad(f.bounds, px(3.0), Theme::alpha(col, 0.6 * f.strength), px(3.0), Theme::alpha(col, f.strength.max(0.35)), gpui_kit::BorderStyle::Solid));
+                        window.paint_quad(quad(
+                            f.bounds,
+                            px(crate::ui::R0),
+                            Theme::alpha(col, 0.35 * f.strength),
+                            px(1.0),
+                            Theme::alpha(th.playhead, f.strength.max(0.35)),
+                            gpui_kit::BorderStyle::Solid,
+                        ));
                     });
                 }
                 let Some((x, b)) = ph else { return };

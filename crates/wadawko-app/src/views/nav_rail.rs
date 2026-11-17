@@ -8,6 +8,7 @@ use super::Page;
 use crate::keys;
 use crate::shell::Shell;
 use crate::theme::Theme;
+use crate::ui;
 
 impl Shell {
     pub(crate) fn nav_rail(&self, th: &Theme) -> gpui_kit::Div {
@@ -30,7 +31,7 @@ impl Shell {
                 .flex()
                 .items_center()
                 .gap(px(10.0))
-                .rounded(px(8.0))
+                .rounded(px(ui::R0))
                 .border_1()
                 .text_size(px(14.0))
                 .font_weight(FontWeight::MEDIUM)

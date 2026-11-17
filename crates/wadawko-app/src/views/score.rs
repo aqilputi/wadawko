@@ -471,7 +471,7 @@ impl Render for ScoreView {
                 .relative()
                 .w_full()
                 .h(px(h + 2.0 * PAD_Y))
-                .rounded(px(10.0))
+                .rounded(px(ui::R0))
                 .border_1()
                 .border_color(th.line)
                 .bg(th.paper)

@@ -19,6 +19,7 @@ use wadawko_core::ops;
 use crate::shell::Shell;
 use crate::state::AppState;
 use crate::theme::{Theme, parse_color};
+use crate::ui;
 use crate::views::widgets::{self, Slider};
 
 pub const VOL_MIN: f64 = -40.0;
@@ -150,7 +151,7 @@ pub fn bus_controls(prefix: &'static str, state: &Entity<AppState>, p: &Person, 
 pub fn group_card(th: &Theme, color: Hsla, body: gpui_kit::Div) -> gpui_kit::Div {
     div()
         .flex()
-        .rounded(px(10.0))
+        .rounded(px(ui::R0))
         .bg(th.paper)
         .border_1()
         .border_color(th.line)
@@ -239,7 +240,7 @@ impl MixerView {
             .flex_col()
             .items_center()
             .gap(px(10.0))
-            .rounded(px(10.0))
+            .rounded(px(ui::R0))
             .bg(th.paper_raise)
             .border_1()
             .border_color(th.line)
@@ -273,7 +274,7 @@ impl Render for MixerView {
                 .flex_wrap()
                 .items_center()
                 .gap(px(8.0))
-                .child(div().w(px(14.0)).h(px(14.0)).rounded(px(3.0)).bg(color).border_1().border_color(th.line_strong))
+                .child(div().w(px(14.0)).h(px(14.0)).rounded(px(ui::R1)).bg(color).border_1().border_color(th.line_strong))
                 .child(div().text_size(px(14.5)).font_weight(FontWeight::BOLD).text_color(if audible { th.ink } else { th.ink_faint }).child(SharedString::from(p.name.clone())))
                 .child(div().w(px(1.0)).h(px(20.0)).mx(px(6.0)).bg(th.line))
                 .child(bus_controls("mx-", &self.state, p, &th, 130.0));
