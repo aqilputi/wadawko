@@ -15,7 +15,7 @@ App desktop nativo em **Rust + [GPUI](https://www.gpui.rs/)** para Linux. O app 
 |---|---|
 | ![Partitura gerada da grade, com mão direita/esquerda, borda e acentos](docs/imagens/partitura.png) | ![Esteira: as notas vêm em direção a cada tambor, com pétalas a cada golpe](docs/imagens/esteira.png) |
 | **Paleta de comandos** (`Ctrl+K`) | **Mixer** |
-| ![Paleta de comandos com busca](docs/imagens/paleta.png) | ![Mixer com volume, pan, mudo e solo por linha](docs/imagens/mixer.png) |
+| ![Paleta de comandos com busca](docs/imagens/paleta.png) | ![Mixer com medidores de nível, strip por linha na cor dela e strip master](docs/imagens/mixer.png) |
 
 ## O que dá para fazer
 

@@ -3,13 +3,14 @@ type: Plan
 title: "Design estilo DAW e features de DAW"
 description: "Pesquisa de UX e linguagem visual de DAWs (Bitwig e outros), sistema de design escuro de cantos retos para o app, backlog priorizado de features de DAW e plano de implementação em etapas."
 tags: [planejamento, design, daw, ux, tema, mixer, features]
-status: draft
-estado: "pesquisa e plano prontos (2026-11-17); implementação a começar"
+status: stable
+estado: "implementado (2026-11-17): E0–E7 e F1–F4 no branch design-daw; backlog F5+ da parte 3 em aberto"
 ---
 
 # WaDAWko — design estilo DAW e features de DAW
 
-Data: 2026-11-17 · Status: plano · Pedido: *"features para uma verdadeira DAW, e uma
+Data: 2026-11-17 · Status: **implementado** (E0–E7, F1–F4; as decisões tomadas estão
+anotadas em cada etapa da parte 4) · Pedido: *"features para uma verdadeira DAW, e uma
 estilização com menos curvas, com design parecendo o Bitwig Studio: pesquisa de UX de DAW e
 de features que faltam; planejar e implementar."*
 
@@ -765,19 +766,23 @@ Strips e grupos conforme 2.4 (planos, cap retangular, escala de dB); cartões co
 
 ### Ordem e tempo
 
-| Ordem | Etapa | Tempo | Entrega visível |
-|---|---|---|---|
-| 1 | E0 linha de base | 0:15 | capturas de referência |
-| 2 | E1 tokens | 0:45 | app escuro neutro |
-| 3 | E2 raios | 0:30 | cantos retos |
-| 4 | E3 moldura | 2:00 | transporte central, rail estreita, abas, painel |
-| 5 | E4 grade | 2:00 | grade densa, rótulos com M/S quadrados |
-| 6 | F1 cor por trilha | 1:00 | barras de cor na lista, mixer, esteira |
-| 7 | F2 loop por trecho | 2:00 | arraste na régua, `[`/`]`, chip na barra |
-| 8 | F3 medidores | 2:00 | mixer com medidores e master, mini-medidores |
-| 9 | E5 + E6 restyle | 1:30 | mixer/kit/pessoas/esteira/partitura |
-| 10 | E7 fechamento | 0:45 | capturas, changelog, docs |
-| (11) | F4 inspector | 2:00 | painel contextual |
+| Ordem | Etapa | Tempo | Entrega visível | Status |
+|---|---|---|---|---|
+| 1 | E0 linha de base | 0:15 | capturas de referência | feito |
+| 2 | E1 tokens | 0:45 | app escuro neutro | feito (`d5db9e8`) |
+| 3 | E2 raios | 0:30 | cantos retos | feito (`abec86e`) |
+| 4 | E3 moldura | 2:00 | transporte central, rail estreita, abas, painel | feito (`50fdca1`) |
+| 5 | E4 grade | 2:00 | grade densa, rótulos com M/S quadrados | feito (`3df556d`) |
+| 6 | F1 cor por trilha | 1:00 | barras de cor na lista, mixer, esteira | feito (`337757f`) |
+| 7 | F2 loop por trecho | 2:00 | arraste na régua, `[`/`]`, chip na barra | feito (`2cf71d3`) |
+| 8 | F3 medidores | 2:00 | mixer com medidores e master, mini-medidores | feito (`58004a3`, inclui F6) |
+| 9 | E5 + E6 restyle | 1:30 | mixer/kit/pessoas/esteira/partitura | feito (`7f53a28`; E6 já vinha das E1/E2) |
+| 10 | E7 fechamento | 0:45 | capturas, changelog, docs | feito |
+| (11) | F4 inspector | 2:00 | painel contextual | feito (`1c78244`) |
+
+Ficam para depois (parte 3): F7 metrônomo com acentos, F7b lista de trechos de ensaio (o
+trecho de loop já existe — falta dar nome e guardar), F7c count-in por volta, F8 tap tempo,
+F9 templates, F10 MIDI, F14 tooltips com atalho, F16 altura de linha ajustável.
 
 Total sem o inspector: ~12 h 45. Se o tempo apertar, a ordem garante que cada parada deixa o app
 coerente: depois de 5 (E4) já é "o novo visual"; 6–8 são as features; 9–10 fecham.

@@ -2,6 +2,16 @@
 
 ## 2026-11-17
 
+**Atualização**: features de DAW do [plano](/planejamento/daw.md) implementadas (cor por
+trilha, loop por trecho na régua, medidores de nível com strip master, inspector contextual)
+e restyle dos cartões (E5/E6): [guia de uso](/guias/uso.md) (janela, cor da linha, loop por
+trecho, mixer com medidores, inspector), [formato da música](/referencia/formato-da-musica.md)
+(`color` na linha; o que não vai no arquivo), [arquitetura do app](/arquitetura/app.md)
+(tokens, `R0/R1`, `Transport.range`, medidores no overlay, chave do inspector),
+[atalhos](/referencia/atalhos.md) (gerada: `Ctrl+L`, `[`/`]`, "Linha: próxima cor"); capturas
+em `imagens/` refeitas com o mixer, a esteira e a partitura finais; decisões anotadas nas etapas
+F1–F4, E5 e E6 do plano e status das etapas atualizado.
+
 **Atualização**: capturas de tela em `imagens/` refeitas no visual "estilo DAW" (tema escuro,
 etapas E1–E4 do [plano](/planejamento/daw.md)), a partir de um banco só com as fixtures; as
 decisões tomadas na implementação ficaram anotadas nas etapas E1, E3 e E4 do plano.
