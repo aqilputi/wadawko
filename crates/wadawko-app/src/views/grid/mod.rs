@@ -27,14 +27,15 @@ use crate::stats::Stats;
 // ───────────────────────────── layout (px, como no CSS) ─────────────────────────────
 
 pub const LABEL_W: f32 = 216.0;
-pub const SEC_HEAD_H: f32 = 40.0;
-pub const SEC_DYN_H: f32 = 26.0;
-pub const TIMELINE_H: f32 = 30.0;
-pub const CELL_H: f32 = 42.0;
-pub const TDYN_H: f32 = 22.0;
-pub const KYAI_H: f32 = 24.0;
-pub const ROW_PAD: f32 = 12.0;
-pub const SEC_GAP: f32 = 34.0;
+pub const SEC_HEAD_H: f32 = 28.0;
+pub const SEC_DYN_H: f32 = 22.0;
+/// régua: os 6 px de cima são a faixa de loop (F2)
+pub const TIMELINE_H: f32 = 22.0;
+pub const CELL_H: f32 = 36.0;
+pub const TDYN_H: f32 = 20.0;
+pub const KYAI_H: f32 = 22.0;
+pub const ROW_PAD: f32 = 6.0;
+pub const SEC_GAP: f32 = 20.0;
 pub const CELL_X0: f32 = 16.0;
 pub const MEASURE_GAP: f32 = 16.0;
 pub const BASE_CW: f32 = 54.0;
@@ -306,6 +307,8 @@ pub struct GridView {
     /// seção sendo arrastada (reordenar) e seção sob o ponteiro
     pub drag_sec: Option<usize>,
     pub drag_over: Option<usize>,
+    /// seção cujo cabeçalho está sob o mouse (os botões dele só aparecem em hover)
+    pub hover_sec: Option<usize>,
     dragging: bool,
     pan: Option<(f32, f32)>,
     shaped: TextCache,
@@ -379,6 +382,7 @@ impl GridView {
             move_drag: None,
             ghost: Rc::new(Vec::new()),
             drag_sec: None,
+            hover_sec: None,
             drag_over: None,
             dragging: false,
             pan: None,

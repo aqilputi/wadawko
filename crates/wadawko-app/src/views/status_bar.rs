@@ -142,6 +142,6 @@ impl Shell {
             .child(div().flex_1())
             .child(div().text_color(th.ink_faint).child(SharedString::from(hud)))
             .child(sep())
-            .child(div().text_color(th.ink_faint).child(SharedString::from(src)))
+            .child(div().text_color(if src.starts_with("ERRO") { th.danger } else { th.ink_faint }).child(SharedString::from(src)))
     }
 }

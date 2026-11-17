@@ -148,12 +148,8 @@ pub fn kbd(text: &str, th: &Theme) -> impl IntoElement {
         .child(SharedString::from(text.to_string()))
 }
 
-/// Botão pequeno 20×16 (M/S/★/⚙/×) das linhas e cabeçalhos da grade; aceso com `accent`.
-pub fn small_btn(id: impl Into<gpui_kit::ElementId>, label: impl Into<SharedString>, th: &Theme, on: bool) -> gpui_kit::Stateful<gpui_kit::Div> {
-    small_btn_on(id, label, th, on, th.accent)
-}
-
-/// [`small_btn`] aceso com a cor dada (M = `warn`, S = `accent2`, ★ = `accent`).
+/// Botão pequeno 20×16 (M/S/★/⚙/×) das linhas e cabeçalhos da grade, aceso
+/// com a cor dada (M = `warn`, S = `accent2`, ★ = `accent`).
 pub fn small_btn_on(id: impl Into<gpui_kit::ElementId>, label: impl Into<SharedString>, th: &Theme, on: bool, color: gpui_kit::Hsla) -> gpui_kit::Stateful<gpui_kit::Div> {
     div()
         .id(id)

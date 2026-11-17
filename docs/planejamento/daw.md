@@ -596,6 +596,15 @@ Regras para o agente implementador:
    S `accent2`, ★ `accent`.
 4. **Pronto quando**: VP passa; capture `play` e `dyn`; `--demo playstat-grade` dentro de +5 %.
 
+> **Decisões na implementação (2026-11-17)**: os botões do cabeçalho ficam com opacidade 0 fora
+> do hover (continuam no layout, como alvo de salto e para o probe) e aparecem com
+> `GridView::hover_sec` (`on_hover` na barra, notifica só a grade); o ▾ de recolher e o `N×`
+> ficam sempre visíveis. A listra de 4 px usa `ink_faint` até a F1; os trilhos de pessoa vêm
+> 6 px à direita dela. Os botões de hairpin mantiveram 18 px (o hit test `dyn_part` já os
+> espera assim). A régua já pinta a hairline da faixa de loop (6 px de cima) e marcas de tempo
+> de 4 px no rodapé; sílaba inválida usa `danger`. `playstat-grade` (debug, janela em tela
+> cheia): 6,15–6,91 ms/frame antes → 6,64–6,69 depois.
+
 ### F1 — Cor por trilha · 1 h
 
 1. `wadawko-core/src/model.rs`: `Track.color: Option<String>` (`#[serde(default, skip_serializing_if)]`),

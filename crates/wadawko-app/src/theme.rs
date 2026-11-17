@@ -7,7 +7,6 @@
 use gpui_kit::{Hsla, rgb};
 
 #[derive(Clone, Copy)]
-#[allow(dead_code)] // tokens novos entram em uso na moldura (E3) e na grade (E4)
 pub struct Theme {
     pub dark: bool,
     /// moldura: barra de cima, nav rail, painel direito, abas/contexto, status bar
