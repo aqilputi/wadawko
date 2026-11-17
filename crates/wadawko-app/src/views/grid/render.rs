@@ -359,6 +359,7 @@ impl Render for GridView {
         let st = self.state.read(cx);
         let th = st.theme;
         let selected: Vec<String> = st.tp.selected.clone();
+        let (range, looping) = (st.tp.range, st.tp.looping);
         let song = self.song.clone();
         let secs = song.secs();
         let rows = self.rows();
@@ -691,7 +692,7 @@ impl Render for GridView {
                     .flex()
                     .flex_col()
                     .child(div().h(px(SEC_DYN_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).child("dinâmica · clique = pp…ff · < >"))
-                    .child(div().h(px(TIMELINE_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).child("↔ arraste · clique = tocar daqui"));
+                    .child(div().h(px(TIMELINE_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).child("↺ loop em cima · ↔ arraste · clique = tocar daqui"));
                 // listra de cor da linha (4 px, como o track header de uma DAW) + 2 px de respiro;
                 // os trilhos de pessoa vêm depois dela
                 const STRIPE_W: f32 = 6.0;
@@ -839,6 +840,9 @@ impl Render for GridView {
                     edit: SharedString::from(self.edit.clone()),
                     rows: rows.clone(),
                     move_drag: self.move_drag,
+                    range,
+                    looping,
+                    loop_preview: self.loop_drag.filter(|d| d.moved).map(|d| d.region()),
                     shaped: self.shaped.clone(),
                 };
                 let cells = div()

@@ -22,6 +22,36 @@ macro_rules! on {
 }
 
 impl Shell {
+    /// `Loop: seleção` (F2): o trecho passa a ser os compassos da seleção da
+    /// grade, ou só o compasso do cursor; liga o loop.
+    pub(crate) fn loop_selection(&mut self, cx: &mut Context<Self>) {
+        let (cur, sel) = {
+            let g = self.grid.read(cx);
+            (g.cursor, g.selection())
+        };
+        let Some(c) = cur else { return };
+        let (m0, m1) = sel.map_or((c.m, c.m), |(a, b)| (a.m.min(b.m), a.m.max(b.m)));
+        let r = wadawko_core::timeline::Region { start_bar: m0, end_bar: m1 + 1 };
+        self.state.update(cx, |s, cx| s.set_range(Some(r), cx));
+        self.flash(format!("loop: {}", crate::state::range_label(r)), cx);
+    }
+
+    /// `[` / `]` (F2): o compasso do cursor vira o início (`end = false`) ou o
+    /// fim do trecho; sem trecho, `[` vai até o fim da música e `]` vem do começo.
+    pub(crate) fn loop_edge(&mut self, end: bool, cx: &mut Context<Self>) {
+        let Some(c) = self.grid.read(cx).cursor else { return };
+        let n = self.song(cx).measures.len();
+        let cur = self.state.read(cx).tp.range;
+        let r = match (cur, end) {
+            (Some(r), false) => wadawko_core::timeline::Region { start_bar: c.m, end_bar: r.end_bar.max(c.m + 1) },
+            (Some(r), true) => wadawko_core::timeline::Region { start_bar: r.start_bar.min(c.m), end_bar: c.m + 1 },
+            (None, false) => wadawko_core::timeline::Region { start_bar: c.m, end_bar: n },
+            (None, true) => wadawko_core::timeline::Region { start_bar: 0, end_bar: c.m + 1 },
+        };
+        self.state.update(cx, |s, cx| s.set_range(Some(r), cx));
+        self.flash(format!("loop: {}", crate::state::range_label(r)), cx);
+    }
+
     fn go(&mut self, page: Page, tab: Option<Tab>) {
         self.page = page;
         if let Some(t) = tab {
@@ -142,9 +172,13 @@ impl Shell {
         });
         let d = on!(d, cx, transport::ClearRegion, |this, w, cx| this.state.update(cx, |s, cx| {
             s.tp.selected.clear();
+            s.set_range(None, cx);
             s.sync_audio();
             cx.notify()
         }));
+        let d = on!(d, cx, transport::LoopSelection, |this, w, cx| this.loop_selection(cx));
+        let d = on!(d, cx, transport::LoopStartHere, |this, w, cx| this.loop_edge(false, cx));
+        let d = on!(d, cx, transport::LoopEndHere, |this, w, cx| this.loop_edge(true, cx));
         let d = on!(d, cx, transport::PlayFue, |this, w, cx| this.state.update(cx, |s, _| {
             if let Some(a) = s.audio.as_mut() {
                 a.play_fue();

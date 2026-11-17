@@ -19,6 +19,8 @@ pub struct StatusModel {
     pos_text: Option<String>,
     bpm: String,
     tocando: String,
+    /// trecho de loop (`↺ c3–c6`)
+    loop_text: Option<String>,
     audio: Option<String>,
     export: Option<String>,
     toast: Option<String>,
@@ -92,6 +94,7 @@ impl Shell {
             pos_text,
             bpm: format!("{:.0} BPM", song.tempo),
             tocando,
+            loop_text: st.tp.range.map(|r| format!("↺ {}", crate::state::range_label(r))),
             audio,
             export: st.export_label(),
             toast: st.toast.as_ref().map(|t| t.0.clone()),
@@ -102,7 +105,7 @@ impl Shell {
 
     /// Status bar (h 22, `chrome`): segmentos separados por divisores de 1 px.
     pub(crate) fn status_bar(&self, th: &Theme, m: &StatusModel) -> gpui_kit::Div {
-        let StatusModel { vmode, showcmd, pos_text, bpm, tocando, audio, export, toast, hud, src } = m.clone();
+        let StatusModel { vmode, showcmd, pos_text, bpm, tocando, loop_text, audio, export, toast, hud, src } = m.clone();
         let vmode = vmode.unwrap_or(VMode::Simple);
         let (chip_bg, chip_fg) = match vmode {
             VMode::Normal => (th.ink, th.chrome),
@@ -136,6 +139,7 @@ impl Shell {
             .child(SharedString::from(bpm))
             .child(sep())
             .child(SharedString::from(tocando))
+            .when_some(loop_text, |d, t| d.child(sep()).child(div().text_color(th.accent2).font_weight(FontWeight::BOLD).child(SharedString::from(t))))
             .when_some(audio, |d, t| d.child(sep()).child(div().text_color(th.ink_faint).child(SharedString::from(t))))
             .when_some(export, |d, t| d.child(chip(th.accent_wash, th.accent).child(SharedString::from(format!("⏳ {t}")))))
             .when_some(toast, |d, t| d.child(chip(th.accent2_wash, th.accent2).font_weight(FontWeight::MEDIUM).truncate().child(SharedString::from(t))))

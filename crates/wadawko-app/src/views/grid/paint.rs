@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use gpui_kit::{App, BorderStyle, Bounds, Hsla, Pixels, SharedString, TextAlign, Window, fill, outline, point, px, quad, size};
 use wadawko_core::ops::people::cell_owner_of;
+use wadawko_core::timeline::Region;
 use wadawko_core::{Hairpin, Song, Zone, phrase};
 
 use super::{CELL_H, CELL_X0, Cur, KYAI_H, Lane, MEASURE_GAP, MoveDrag, Range4, Rows, SEC_DYN_H, TDYN_H, TEMPO_X, TIMELINE_H, TextCache, VMode, measure_xs, tempo_chip_fits, tempo_chip_w};
@@ -29,6 +30,11 @@ pub struct PaintArgs {
     pub edit: SharedString,
     pub rows: Rows,
     pub move_drag: Option<MoveDrag>,
+    /// trecho de loop (F2) e se o loop está ligado (apagado: banda esmaecida)
+    pub range: Option<Region>,
+    pub looping: bool,
+    /// trecho sendo arrastado na faixa de loop (prévia a 35 %)
+    pub loop_preview: Option<Region>,
     pub shaped: TextCache,
 }
 
@@ -160,9 +166,26 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
             let c0 = (((ox - mx) / cw).floor().max(0.0)) as usize;
             let c1 = ((((ox + w) - mx) / cw).ceil().max(0.0) as usize).min(len);
             let sub = meas.subdivision.max(1);
-            // régua: faixa de loop nos 6 px de cima (vazia = hairline `line`; F2 pinta o trecho)
+            // régua: faixa de loop nos 6 px de cima (vazia = hairline `line`; com trecho, banda
+            // `accent2` — 60 % com loop ligado, 25 % desligado — e alças 6×6 nas pontas; o
+            // trecho em arrasto é uma prévia a 35 %)
             let ry = oy + SEC_DYN_H;
             window.paint_quad(fill(rect(mx.max(ox), ry + 5.0, ((mx + mw).min(ox + w) - mx.max(ox)).max(0.0), 1.0), th.line));
+            for (reg, alpha, handles) in [(a.range, if a.looping { 0.6 } else { 0.25 }, true), (a.loop_preview, 0.35, false)] {
+                let Some(r) = reg else { continue };
+                if m < r.start_bar || m >= r.end_bar {
+                    continue;
+                }
+                // sem fresta entre compassos vizinhos do mesmo trecho
+                let x1 = if m + 1 < r.end_bar && m + 1 < sb { mx + mw + MEASURE_GAP } else { mx + mw };
+                window.paint_quad(fill(rect(mx, ry, x1 - mx, 6.0), Theme::alpha(th.accent2, alpha)));
+                if handles && m == r.start_bar {
+                    window.paint_quad(fill(rect(mx, ry, 6.0, 6.0), th.accent2));
+                }
+                if handles && m + 1 == r.end_bar {
+                    window.paint_quad(fill(rect(mx + mw - 6.0, ry, 6.0, 6.0), th.accent2));
+                }
+            }
             for k in c0..c1 {
                 let x = mx + k as f32 * cw;
                 if k % sub == 0 {

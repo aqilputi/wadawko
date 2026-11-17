@@ -654,6 +654,19 @@ Regras para o agente implementador:
 6. **Pronto quando**: VP passa com o passo novo; tocando com loop de 2 compassos, o playhead
    volta no lugar certo (ouça com `--mute` desligado uma vez); capture `play`.
 
+> **Decisões na implementação (2026-11-17)**: a faixa de loop tem 8 px de alvo (`LOOP_LANE_H`;
+> a banda pintada tem 6) — 6 px era pequeno demais para o mouse. O arrasto é acompanhado pelo
+> Shell em toda a janela (overlay com `on_mouse_event`, como o bloco arrastado): dá para
+> arrastar da régua de uma seção até a de outra (trecho atravessa seções). Sem arrasto: clique
+> fora do trecho marca só aquele compasso; dentro, alterna o loop; Alt+clique limpa. Banda a
+> 60 % com loop ligado, 25 % desligado; prévia do arrasto a 35 %. `set_range` mantém o playhead
+> onde está se ele ainda cai no trecho novo, senão `seek` ao início dele (não reinicia o play).
+> Teclas: `ctrl-l` em todos os modos (o `space t l` já era o toggle do loop, então o chord ficou
+> `space t shift-l`); `[`/`]` só no normal/visual. `transport::ClearRegion` limpa o trecho e as
+> seções. Modo `--demo loop` para captura. Probe: 3 passos novos (arrasto c2→c3 + Alt+clique;
+> `Loop: seleção` + limpar; playhead fica dentro do trecho tocando) — a janela do probe é estreita,
+> então o passo aproxima o zoom e rola até o compasso 2 antes de arrastar.
+
 ### F3 — Medidores de nível · 2 h
 
 1. `wadawko-audio/src/engine.rs`: `pub struct Meters { chan: [AtomicU32; MAX_CHANNELS],

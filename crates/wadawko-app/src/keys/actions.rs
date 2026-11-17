@@ -30,6 +30,9 @@ pub mod transport {
             TrainerPct,
             TrainerStep,
             ClearRegion,
+            LoopSelection,
+            LoopStartHere,
+            LoopEndHere,
             PlayFue
         ]
     );

@@ -13,10 +13,12 @@ use gpui_kit::{Context, EventEmitter};
 use wadawko_audio::{Audio, AudioConfig, CompileOptions, EngineEvent, PPQ, PlayOptions, Schedule, TrainerOptions};
 use wadawko_core::Song;
 use wadawko_core::ops::sections::selected_region;
+use wadawko_core::timeline::Region;
 use wadawko_export::{ExportJob, ExportOptions, ExportStage};
 use wadawko_samples::SampleBank;
 use wadawko_store::{ProjectStore, SongHistory};
 
+use crate::song_ext::SongExt;
 use crate::theme::Theme;
 
 /// O que mudou (para quem assina com `cx.subscribe(&state, …)`).
@@ -41,12 +43,32 @@ pub struct Transport {
     pub trainer_step: f64,
     /// ids das seções selecionadas para tocar (vazio = música inteira)
     pub selected: Vec<String>,
+    /// trecho de loop em compassos `[start_bar, end_bar)` (F2): arraste na
+    /// régua, `Loop: seleção`, `[`/`]`. Tem precedência sobre `selected`.
+    pub range: Option<Region>,
 }
 
 impl Default for Transport {
     fn default() -> Self {
-        Transport { looping: true, metronome: false, count_in: false, trainer: false, trainer_pct: 0.7, trainer_step: 0.05, selected: Vec::new() }
+        Transport { looping: true, metronome: false, count_in: false, trainer: false, trainer_pct: 0.7, trainer_step: 0.05, selected: Vec::new(), range: None }
     }
+}
+
+/// Região que o engine toca: o trecho de loop (`range`), senão as seções
+/// selecionadas, senão a música inteira (`None`).
+pub fn effective_region(range: Option<Region>, selected: Option<Region>) -> Option<Region> {
+    range.or(selected)
+}
+
+/// Prende um trecho ao número de compassos da música; vazio = `None`.
+pub fn clamp_region(r: Region, measures: usize) -> Option<Region> {
+    let end = r.end_bar.min(measures);
+    (r.start_bar < end).then_some(Region { start_bar: r.start_bar, end_bar: end })
+}
+
+/// Rótulo do trecho: `c3–c6` (1-based, fim inclusivo) ou `c3` para um compasso.
+pub fn range_label(r: Region) -> String {
+    if r.end_bar <= r.start_bar + 1 { format!("c{}", r.start_bar + 1) } else { format!("c{}–c{}", r.start_bar + 1, r.end_bar) }
 }
 
 /// Golpe disparado pelo engine (`EngineEvent::HitFired`), com o instante em que
@@ -205,9 +227,10 @@ impl AppState {
     }
 
     fn commit(&mut self, song: Arc<Song>, cx: &mut Context<Self>) {
-        // seções apagadas saem da seleção de região
+        // seções apagadas saem da seleção de região; o trecho encolhe com a música
         let ids: Vec<&str> = song.sections().iter().map(|s| s.id.as_str()).collect();
         self.tp.selected.retain(|id| ids.contains(&id.as_str()));
+        self.tp.range = self.tp.range.and_then(|r| clamp_region(r, song.measures.len()));
         if self.pen.as_deref().is_some_and(|p| song.person(p).is_none()) {
             self.pen = song.people().first().map(|p| p.id.clone());
         }
@@ -285,12 +308,17 @@ impl AppState {
         .detach();
     }
 
-    /// Recompila a música para o engine agora (região = seções selecionadas).
+    /// Região efetiva do playback: trecho de loop, senão seções selecionadas.
+    pub fn region(&self) -> Option<Region> {
+        effective_region(self.tp.range, selected_region(self.store.song(), &self.tp.selected))
+    }
+
+    /// Recompila a música para o engine agora (região = trecho ou seções selecionadas).
     pub fn sync_audio(&mut self) {
         self.audio_stale = false;
         let song = self.store.song().clone();
+        let region = self.region();
         let Some(audio) = self.audio.as_mut() else { return };
-        let region = selected_region(&song, &self.tp.selected);
         self.schedule = audio.set_song(&song, &CompileOptions { region, ..CompileOptions::default() });
         audio.apply_mix(&song);
         audio.set_metronome(self.tp.metronome);
@@ -363,6 +391,40 @@ impl AppState {
         self.tp.looping = on;
         if let Some(a) = self.audio.as_mut() {
             a.set_loop(on);
+        }
+        cx.notify();
+    }
+
+    /// Define (ou limpa) o trecho de loop (F2). Com trecho, o loop liga; se
+    /// estiver tocando, o playhead continua onde está quando ainda cai dentro
+    /// do trecho novo, senão volta ao início dele.
+    pub fn set_range(&mut self, range: Option<Region>, cx: &mut Context<Self>) {
+        let song = self.song().clone();
+        let range = range.and_then(|r| clamp_region(r, song.measures.len()));
+        let was_playing = self.playing();
+        let before = if was_playing { self.playhead().and_then(|p| p.cell) } else { None };
+        let changed = range != self.tp.range;
+        self.tp.range = range;
+        if changed {
+            self.sync_audio();
+        }
+        if range.is_some() && !self.tp.looping {
+            self.tp.looping = true;
+            if let Some(a) = self.audio.as_mut() {
+                a.set_loop(true);
+            }
+        }
+        if changed && was_playing {
+            let region = self.region();
+            let inside = |cell: usize| {
+                let (m, _) = song.unflat(cell);
+                region.is_none_or(|r| m >= r.start_bar && m < r.end_bar)
+            };
+            let target = match before {
+                Some(cell) if inside(cell) => cell,
+                _ => region.map_or(0, |r| song.flat(r.start_bar.min(song.measures.len().saturating_sub(1)), 0)),
+            };
+            self.seek_cell(target);
         }
         cx.notify();
     }
@@ -455,6 +517,7 @@ impl AppState {
         self.play_cmd_at = Instant::now();
         self.hits.clear();
         self.tp.selected.clear();
+        self.tp.range = None;
         self.pen = None;
         self.start_cell = 0;
         self.revision += 1;
@@ -707,6 +770,37 @@ pub fn next_selection(cur: &[String], id: &str, additive: bool) -> Vec<String> {
         Vec::new()
     } else {
         vec![id.to_string()]
+    }
+}
+
+#[cfg(test)]
+mod region_tests {
+    use super::*;
+
+    fn r(a: usize, b: usize) -> Region {
+        Region { start_bar: a, end_bar: b }
+    }
+
+    #[test]
+    fn range_wins_over_selected_sections() {
+        assert_eq!(effective_region(None, None), None);
+        assert_eq!(effective_region(None, Some(r(2, 4))), Some(r(2, 4)));
+        assert_eq!(effective_region(Some(r(0, 1)), Some(r(2, 4))), Some(r(0, 1)));
+        assert_eq!(effective_region(Some(r(0, 1)), None), Some(r(0, 1)));
+    }
+
+    #[test]
+    fn clamp_shrinks_with_the_song_and_drops_empty() {
+        assert_eq!(clamp_region(r(1, 3), 8), Some(r(1, 3)));
+        assert_eq!(clamp_region(r(1, 9), 4), Some(r(1, 4)));
+        assert_eq!(clamp_region(r(4, 9), 4), None);
+        assert_eq!(clamp_region(r(2, 2), 8), None);
+    }
+
+    #[test]
+    fn labels_are_one_based_and_inclusive() {
+        assert_eq!(range_label(r(2, 3)), "c3");
+        assert_eq!(range_label(r(2, 6)), "c3–c6");
     }
 }
 

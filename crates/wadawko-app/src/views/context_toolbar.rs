@@ -20,6 +20,7 @@ impl Shell {
         let song = st.song().clone();
         let pen = st.pen.clone();
         let selected = st.tp.selected.clone();
+        let range = st.tp.range;
         let (mode, zoom_pct, has_sel, beats) = {
             let g = self.grid.read(cx);
             let beats = g.cursor.and_then(|c| song.measures.get(c.m)).map_or(4, |m| m.beats);
@@ -107,8 +108,20 @@ impl Shell {
             toolbar = toolbar.child(pens);
         }
 
-        // região de playback (seções selecionadas)
-        if !selected.is_empty() {
+        // trecho de loop (F2): `↺ c3–c6 ✕` — clique limpa
+        if let Some(r) = range {
+            toolbar = toolbar.child(
+                abtn("loop-range", th, keys::transport::ClearRegion)
+                    .h(px(26.0))
+                    .text_size(px(12.0))
+                    .border_color(th.accent2)
+                    .text_color(th.accent2)
+                    .bg(th.accent2_wash)
+                    .child(SharedString::from(format!("↺ {}  ✕", crate::state::range_label(r)))),
+            );
+        }
+        // região de playback (seções selecionadas) — o trecho de loop, se houver, tem precedência
+        if !selected.is_empty() && range.is_none() {
             let names: Vec<String> = song.sections().iter().filter(|s| selected.contains(&s.id)).map(|s| s.name.clone()).collect();
             toolbar = toolbar.child(
                 abtn("region", th, keys::transport::ClearRegion)

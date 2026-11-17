@@ -278,7 +278,7 @@ impl Shell {
             chrome::key(|k| {
                 let g = self.grid.read(cx);
                 let beats = g.cursor.and_then(|c| st.song().measures.get(c.m)).map(|m| m.beats);
-                h(k, &(dark, rev, &st.pen, &st.tp.selected, self.vim_on, &self.add_instrument));
+                h(k, &(dark, rev, &st.pen, &st.tp.selected, self.vim_on, &self.add_instrument, format!("{:?}", st.tp.range)));
                 h(k, &(g.mode, g.zoom_pct(), g.anchor.is_some(), beats, viewport_w.round() as i32));
             }),
             chrome::key(|k| h(k, &(dark, &self.status))),
@@ -902,6 +902,32 @@ impl Shell {
                 );
             }
             None => self.swing.borrow_mut().reset(),
+        }
+
+        // ── arrasto na faixa de loop da régua: mover/soltar valem em toda a janela ──
+        if self.grid.read(cx).loop_drag.is_some() {
+            let grid = self.grid.clone();
+            root = root.child(
+                canvas(
+                    |_, _, _| {},
+                    move |_, _, window, _| {
+                        let g = grid.clone();
+                        window.on_mouse_event(move |ev: &gpui_kit::MouseMoveEvent, phase, _, cx| {
+                            if phase == gpui_kit::DispatchPhase::Bubble {
+                                g.update(cx, |g, cx| g.loop_drag_move(ev.position, cx));
+                            }
+                        });
+                        let g = grid.clone();
+                        window.on_mouse_event(move |ev: &gpui_kit::MouseUpEvent, phase, _, cx| {
+                            if phase == gpui_kit::DispatchPhase::Capture && ev.button == gpui_kit::MouseButton::Left {
+                                g.update(cx, |g, cx| g.finish_loop_drag(cx));
+                            }
+                        });
+                    },
+                )
+                .absolute()
+                .inset_0(),
+            );
         }
         root
     }
