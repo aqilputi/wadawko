@@ -572,6 +572,14 @@ Regras para o agente implementador:
    botão de play, ajuste o passo correspondente de `run_probe`); capture `play`, `palette`,
    `menu`; o mostrador de posição anda tocando.
 
+> **Decisões na implementação (2026-11-17)**: o loop no transporte é só o glifo `↺` (30 px) para
+> caber ao centro; o display traz o rótulo "BPM" em 9 px antes do número; `transport::GoToStart`
+> ("Ir ao início (sem tocar)") faz `start_cell = 0` + `seek_cell(0)`, sem tecla padrão; as abas
+> têm ids `tab-grade`/`tab-partitura`/`tab-esteira`; o bloco INSPECTOR provisório mostra o mesmo
+> texto de posição da status bar (`StatusModel::pos_text`), que entrou na chave de cache do
+> painel; o which-key foi reposicionado para a rail de 64 px e o painel de 280 px. Os ids que o
+> probe usa (`hamb`, `loop`, `title`, `play`, `bpm`) não mudaram.
+
 ### E4 — Grade: constantes, pintura, rótulos, régua · 2 h
 
 1. `grid/mod.rs`: `SEC_HEAD_H 28`, `SEC_DYN_H 22`, `TIMELINE_H 22`, `CELL_H 36`, `TDYN_H 20`,

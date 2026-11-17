@@ -91,6 +91,12 @@ impl Shell {
             s.start_cell = 0;
             s.play(0, cx)
         }));
+        // ⏮: leva o playhead ao início sem tocar (tocando, continua do início)
+        let d = on!(d, cx, transport::GoToStart, |this, w, cx| this.state.update(cx, |s, cx| {
+            s.start_cell = 0;
+            s.seek_cell(0);
+            cx.notify();
+        }));
         let d = on!(d, cx, transport::Stop, |this, w, cx| this.state.update(cx, |s, cx| s.stop(cx)));
         let d = on!(d, cx, transport::ToggleLoop, |this, w, cx| this.state.update(cx, |s, cx| {
             let on = !s.tp.looping;

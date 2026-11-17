@@ -22,6 +22,7 @@ pub static SPECS: &[Spec] = &[
     spec!("transport::TogglePlay", "Tocar / parar", "Transporte", "play pause stop espaço"),
     spec!("transport::PlayHere", "Tocar do cursor", "Transporte", "play daqui"),
     spec!("transport::PlayFromStart", "Tocar do início", "Transporte", "play começo"),
+    spec!("transport::GoToStart", "Ir ao início (sem tocar)", "Transporte", "rewind começo home playhead"),
     spec!("transport::Stop", "Parar", "Transporte", "stop"),
     spec!("transport::ToggleLoop", "Loop: ligar/desligar", "Transporte", "repetir"),
     spec!("transport::ToggleMetronome", "Metrônomo: ligar/desligar", "Transporte", "click"),

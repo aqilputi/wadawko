@@ -260,13 +260,16 @@ impl Shell {
         let current = st.store.current_id().to_string();
         let export = st.export_label();
         let keys = [
+            // barra de cima: inclui a posição do display (muda de célula em célula tocando)
             chrome::key(|k| {
                 h(k, &(dark, playing, rev, &current, st.playback_bpm.to_bits(), st.sounding_bpm.to_bits()));
                 h(k, &format!("{:?}", st.tp));
+                h(k, &self.transport_pos(cx));
             }),
             chrome::key(|k| h(k, &(dark, format!("{:?}", self.page)))),
+            // painel: músicas + o contexto do cursor do bloco INSPECTOR
             chrome::key(|k| {
-                h(k, &(dark, rev, &current, &export));
+                h(k, &(dark, rev, &current, &export, self.status.pos_text()));
                 for p in st.store.projects() {
                     h(k, &(&p.id, &p.title, p.updated_at));
                 }
@@ -724,15 +727,16 @@ impl Shell {
         self.status = self.status_model(playing, play_pos, cx);
         // moldura em cache: só re-renderiza quando a chave dela muda
         self.refresh_chrome(playing, f32::from(window.viewport_size().width), cx);
-        let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(200.0)).h_full().flex_none());
-        let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(57.0)).flex_none());
+        let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(64.0)).h_full().flex_none());
+        let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(44.0)).flex_none());
 
         // ── página ──
         // No editor, abas + barra de contexto ficam FIXAS no topo (fora da rolagem):
         // dá para usá-las com a grade rolada em qualquer seção.
         let (header, content) = match self.page {
             Page::Editor => {
-                let mut head = div().flex().flex_col().gap(px(12.0)).child(div().flex().child(self.view_tabs(&th)));
+                // faixa de abas (28 px) + barra de contexto, planas sobre `chrome`
+                let mut head = div().flex().flex_col().child(div().h(px(28.0)).flex_none().px(px(10.0)).flex().items_end().bg(th.chrome).border_b_1().border_color(th.line).child(self.view_tabs(&th)));
                 let body = match self.views.tab(self.tab) {
                     None => {
                         // em cache com a altura medida; sem medida (chave nova), desenha
@@ -805,18 +809,10 @@ impl Shell {
             .relative()
             .child(div().id("editor-scroll").size_full().overflow_y_scroll().track_scroll(&self.scroll).p(px(20.0)).when(header.is_some(), |d| d.pt(px(12.0))).child(content))
             .child(overlay);
-        let editor = div()
-            .flex_1()
-            .min_w_0()
-            .h_full()
-            .flex()
-            .flex_col()
-            .bg(th.bg)
-            .when_some(header, |d, h| d.child(div().flex_none().px(px(20.0)).pt(px(16.0)).pb(px(8.0)).border_b_1().border_color(th.line).child(h)))
-            .child(scroll_area);
+        let editor = div().flex_1().min_w_0().h_full().flex().flex_col().bg(th.bg).when_some(header, |d, h| d.child(div().flex_none().child(h))).child(scroll_area);
 
-        let panel = self.chrome[2].clone().cached(gpui_kit::StyleRefinement::default().w(px(260.0)).h_full().flex_none());
-        let status = self.chrome[chrome::Part::Status as usize].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(26.0)).flex_none());
+        let panel = self.chrome[2].clone().cached(gpui_kit::StyleRefinement::default().w(px(280.0)).h_full().flex_none());
+        let status = self.chrome[chrome::Part::Status as usize].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(22.0)).flex_none());
 
         // ── workspace (contexto de teclas da grade) ──
         let vmode = self.grid.read(cx).vmode;

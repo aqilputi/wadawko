@@ -15,6 +15,7 @@ pub mod transport {
             TogglePlay,
             PlayHere,
             PlayFromStart,
+            GoToStart,
             Stop,
             ToggleLoop,
             ToggleMetronome,

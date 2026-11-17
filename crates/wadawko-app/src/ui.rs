@@ -58,7 +58,6 @@ pub fn abtn_bare<A: Action + Clone>(id: &'static str, th: &Theme, a: A) -> gpui_
 }
 
 /// Botão de ícone 26×26 (glifo monocromático).
-#[allow(dead_code)] // entra em uso na moldura (E3)
 pub fn icon_btn<A: Action + Clone>(id: &'static str, glyph: &'static str, th: &Theme, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
     abtn(id, th, a).w(px(26.0)).px(px(0.0)).child(glyph)
 }
@@ -109,7 +108,6 @@ pub fn segmented(id: &'static str, th: &Theme, items: Vec<(&'static str, Box<dyn
 }
 
 /// Aba do editor: texto `ink_soft`, h 28, sem fundo; ativa = `ink` + sublinhado 2 px `accent`.
-#[allow(dead_code)] // entra em uso na moldura (E3)
 pub fn tab<A: Action + Clone>(id: &'static str, label: &'static str, on: bool, th: &Theme, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
     let a2 = a.clone();
     let ink = th.ink;
@@ -177,7 +175,6 @@ pub fn small_btn_on(id: impl Into<gpui_kit::ElementId>, label: impl Into<SharedS
 
 /// Cabeçalho de painel: h 22, fundo `header`, título em caixa alta de 10 px.
 /// Acrescente botões (h 18) à direita com `.child(...)`.
-#[allow(dead_code)] // entra em uso na moldura (E3)
 pub fn panel_header(title: &str, th: &Theme) -> gpui_kit::Div {
     div()
         .h(px(22.0))

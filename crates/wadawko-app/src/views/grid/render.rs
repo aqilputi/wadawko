@@ -42,7 +42,7 @@ fn popover(th: &Theme) -> gpui_kit::Div {
         .bg(th.paper)
         .border_1()
         .border_color(th.line_strong)
-        .shadow_lg()
+        .shadow_sm()
         .flex()
         .flex_col()
         .gap(px(8.0))
