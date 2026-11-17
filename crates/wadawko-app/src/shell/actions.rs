@@ -227,6 +227,7 @@ impl Shell {
         }));
         let d = on!(d, cx, project::ExportJson, |this, w, cx| this.export_json(cx));
         let d = on!(d, cx, project::ImportJson, |this, w, cx| this.import_json(cx));
+        let d = on!(d, cx, project::ImportLibrary, |this, w, cx| this.import_library(cx));
         let d = on!(d, cx, project::ExportMp3, |this, w, cx| this.export_audio("mp3", cx));
         let d = on!(d, cx, project::ExportWav, |this, w, cx| this.export_audio("wav", cx));
         let d = on!(d, cx, project::CancelExport, |this, w, cx| this.state.update(cx, |s, _| s.cancel_export()));

@@ -90,6 +90,7 @@ pub static SPECS: &[Spec] = &[
     spec!("project::Duplicate", "Duplicar música", "Música", "cópia"),
     spec!("project::ExportJson", "Exportar música (.taiko.json)", "Música", "salvar arquivo json export"),
     spec!("project::ImportJson", "Importar música (.taiko.json)", "Música", "abrir arquivo json import"),
+    spec!("project::ImportLibrary", "Importar músicas de outro banco ou backup…", "Música", "migrar app web banco db sqlite backup localstorage json import"),
     spec!("project::ExportMp3", "Exportar MP3", "Música", "audio render mp3"),
     spec!("project::ExportWav", "Exportar WAV", "Música", "audio render wav"),
     spec!("score::ExportSvg", "Exportar partitura (SVG)", "Música", "score pauta vetor imagem"),

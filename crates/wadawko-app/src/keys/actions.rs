@@ -51,7 +51,7 @@ pub mod hints {
 }
 pub mod project {
     use gpui_kit::actions;
-    actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ExportMp3, ExportWav, CancelExport]);
+    actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ImportLibrary, ExportMp3, ExportWav, CancelExport]);
 }
 pub mod section {
     use gpui_kit::actions;

@@ -499,6 +499,30 @@ impl AppState {
         cx.notify();
     }
 
+    /// Traz as músicas de outro banco (`.db`) ou de um backup JSON (a fusão não
+    /// sobrescreve nada; a música aberta continua aberta).
+    pub fn import_library(&mut self, path: &std::path::Path, cx: &mut Context<Self>) {
+        let r = self.store.import_library(path);
+        if let Some(rep) = self.report("não importei", r) {
+            let name = path.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+            let mut msg = match rep.added.len() {
+                0 => format!("nada novo em {name}"),
+                1 => format!("1 música importada de {name}: {}", rep.added[0].1),
+                n => format!("{n} músicas importadas de {name}"),
+            };
+            let kept = rep.unchanged.len() + rep.kept_existing.len();
+            if kept > 0 {
+                msg.push_str(&format!(" · {kept} já estava(m) aqui"));
+            }
+            if !rep.invalid.is_empty() {
+                msg.push_str(&format!(" · {} entrada(s) ilegível(is)", rep.invalid.len()));
+            }
+            self.flash(msg);
+            self.revision += 1;
+        }
+        cx.notify();
+    }
+
     pub fn duplicate_project(&mut self, cx: &mut Context<Self>) {
         let id = self.store.current_id().to_string();
         let r = self.store.duplicate_project(&id);

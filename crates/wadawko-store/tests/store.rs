@@ -826,3 +826,47 @@ fn migration_rejects_non_database() {
     assert!(!dst.exists(), "falha não deixa destino pela metade");
     assert_eq!(std::fs::read_dir(tmp.join("out")).unwrap().count(), 0);
 }
+
+// ───────────────────────────── importar biblioteca (banco ou backup) ─────────────────────────────
+
+#[test]
+fn import_library_from_db_and_backup_merges_without_touching_the_open_song() {
+    let tmp = TempDir::new("import-lib");
+    // banco "antigo" com as músicas do backup
+    let old = tmp.join("old.db");
+    {
+        let db = Db::open(&old).unwrap();
+        import_backup_file(&db, backup_fixture(), BackupOptions::default()).unwrap();
+    }
+    // instalação nova: só a música de exemplo, editada e ainda não gravada
+    let mut store = ProjectStore::open_path(tmp.join("new.db")).unwrap();
+    let current = store.current_id().to_string();
+    let n0 = store.projects().len();
+    let mut song = (**store.song()).clone();
+    song.title = "Editada".into();
+    store.update_song(std::sync::Arc::new(song));
+
+    let report = store.import_library(&old).unwrap();
+    assert_eq!(report.added.len(), 2, "{report:?}");
+    assert_eq!(store.projects().len(), n0 + 2);
+    assert_eq!(store.current_id(), current, "a música aberta não muda");
+    assert_eq!(store.song().title, "Editada");
+    // a origem só foi lida
+    assert_eq!(list_projects(&Db::open_read_only(&old).unwrap()).unwrap().len(), 2);
+
+    // de novo (agora pelo backup JSON): nada a acrescentar
+    let again = store.import_library(backup_fixture()).unwrap();
+    assert!(again.added.is_empty() && again.unchanged.len() == 2, "{again:?}");
+    store.save().unwrap();
+    drop(store);
+    // reabrindo: as músicas importadas e a edição continuam lá
+    let store = ProjectStore::open_path(tmp.join("new.db")).unwrap();
+    assert_eq!(store.projects().len(), n0 + 2);
+    assert_eq!(store.song().title, "Editada");
+
+    // arquivo que não é banco nem JSON
+    let junk = tmp.join("x.txt");
+    std::fs::write(&junk, "nada").unwrap();
+    let mut store = store;
+    assert!(store.import_library(&junk).is_err());
+}
