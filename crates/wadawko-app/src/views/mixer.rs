@@ -18,7 +18,7 @@ use wadawko_core::ops;
 
 use crate::shell::Shell;
 use crate::state::AppState;
-use crate::theme::{Theme, parse_color};
+use crate::theme::{Theme, parse_color, track_color};
 use crate::ui;
 use crate::views::widgets::{self, Slider};
 
@@ -191,15 +191,33 @@ impl MixerView {
         let on_solo = Rc::new(move |_: &mut Window, cx: &mut App| widgets::edit(&st, cx, |song| toggle_track_solo(song, &tid)));
 
         let small = |s: String| div().text_size(px(10.5)).font_weight(FontWeight::BOLD).text_color(th.ink_soft).child(SharedString::from(s));
+        // cabeçalho de 22 px preenchido com a cor da linha (F1), como o mixer de uma DAW
+        let tcol = track_color(t);
         let head = div()
             .w_full()
-            .min_h(px(40.0))
+            .flex_none()
             .flex()
             .flex_col()
             .items_center()
-            .text_center()
-            .child(div().text_size(px(12.5)).font_weight(FontWeight::BOLD).text_color(th.ink).child(SharedString::from(t.name.clone())))
-            .child(div().text_size(px(10.0)).text_color(th.ink_soft).child(SharedString::from(if shared { format!("{label} · compart.") } else { label.to_string() })));
+            .child(
+                div()
+                    .w_full()
+                    .h(px(22.0))
+                    .px(px(6.0))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .bg(if audible { tcol } else { Theme::alpha(tcol, 0.45) })
+                    .text_size(px(11.0))
+                    .font_weight(FontWeight::BOLD)
+                    .text_color(Theme::on_track_color())
+                    .child(div().truncate().child(SharedString::from(t.name.clone()))),
+            )
+            .child(div().w_full().px(px(6.0)).pt(px(4.0)).text_center().text_size(px(10.0)).text_color(th.ink_soft).child(div().truncate().child(SharedString::from(if shared {
+                format!("{label} · compart.")
+            } else {
+                label.to_string()
+            }))));
 
         // controles esmaecem quando a linha não soa; M/S ficam nítidos para dar para desfazer
         let faders = div()
@@ -208,7 +226,6 @@ impl MixerView {
             .items_center()
             .gap(px(8.0))
             .when(!audible, |d| d.opacity(0.4))
-            .child(head)
             .child(widgets::slider(
                 Slider {
                     id: format!("mx-vol-{key}").into(),
@@ -234,26 +251,26 @@ impl MixerView {
         div()
             .flex_none()
             .w(px(104.0))
-            .px(px(8.0))
-            .py(px(12.0))
             .flex()
             .flex_col()
             .items_center()
-            .gap(px(10.0))
             .rounded(px(ui::R0))
             .bg(th.paper_raise)
             .border_1()
             .border_color(th.line)
+            .overflow_hidden()
             .when(shared, |d| d.border_dashed().border_color(person.map_or(th.line_strong, |p| person_color(p, th))))
-            .child(faders)
-            .child(div().flex().gap(px(5.0)).child(widgets::mini(format!("mx-m-{key}"), "M", th, t.muted, th.accent, on_mute)).child(widgets::mini(
-                format!("mx-s-{key}"),
-                "S",
-                th,
-                t.solo,
-                th.accent2,
-                on_solo,
-            )))
+            .child(head)
+            .child(div().px(px(8.0)).pt(px(8.0)).pb(px(12.0)).flex().flex_col().items_center().gap(px(10.0)).child(faders).child(
+                div().flex().gap(px(5.0)).child(widgets::mini(format!("mx-m-{key}"), "M", th, t.muted, th.warn, on_mute)).child(widgets::mini(
+                    format!("mx-s-{key}"),
+                    "S",
+                    th,
+                    t.solo,
+                    th.accent2,
+                    on_solo,
+                )),
+            ))
     }
 }
 

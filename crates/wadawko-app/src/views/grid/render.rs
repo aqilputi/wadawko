@@ -12,7 +12,7 @@ use super::paint::{PaintArgs, paint_section};
 use super::{CELL_H, DYNAMICS, GridEvent, GridView, InputTarget, KYAI_H, LABEL_W, Menu, SEC_DYN_H, SEC_GAP, SEC_HEAD_H, TDYN_H, TIMELINE_H, sec_key};
 use crate::keys::{self, HintAct};
 use crate::song_ext::SongExt;
-use crate::theme::{Theme, parse_color};
+use crate::theme::{Theme, parse_color, track_color};
 use crate::ui::{self, small_btn_on};
 
 type Op = Rc<dyn Fn(&mut GridView, &mut Context<GridView>)>;
@@ -76,6 +76,36 @@ impl GridView {
                 this.track_edit(t, cx, |s, tid| ops::tracks::set_track_instrument(s, tid, &did));
             })));
         }
+
+        // cor da linha (F1): 12 swatches da paleta + "padrão" (cor do instrumento)
+        let cur_col = track.color_or_default().to_string();
+        let weak = cx.weak_entity();
+        let mut colors = row().child(lbl("cor"));
+        for (i, c) in wadawko_core::model::TRACK_COLORS.iter().enumerate() {
+            let on = c.eq_ignore_ascii_case(&cur_col);
+            let hsla = parse_color(c).unwrap_or(th.ink_soft);
+            let (c1, c2) = (c.to_string(), c.to_string());
+            let w = weak.clone();
+            colors = colors.child(keys::hintable(
+                div()
+                    .id(("col", t * 100 + i))
+                    .relative()
+                    .flex_none()
+                    .size(px(14.0))
+                    .rounded(px(ui::R1))
+                    .bg(hsla)
+                    .border_2()
+                    .border_color(if on { th.ink } else { gpui_kit::transparent_black() })
+                    .cursor_pointer()
+                    .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| this.track_edit(t, cx, |s, tid| ops::tracks::set_track_color(s, tid, Some(&c1))))),
+                format!("col-{t}-{i}"),
+                Rc::new(move |_, cx: &mut App| {
+                    let c2 = c2.clone();
+                    let _ = w.update(cx, |this, cx| this.track_edit(t, cx, |s, tid| ops::tracks::set_track_color(s, tid, Some(&c2))));
+                }),
+            ));
+        }
+        colors = colors.child(click("r-col-def", "padrão".into(), track.color.is_none(), cx, Rc::new(move |this, cx| this.track_edit(t, cx, |s, tid| ops::tracks::set_track_color(s, tid, None)))));
 
         let mut people = row().child(lbl("pessoas"));
         if song.people().is_empty() {
@@ -180,6 +210,7 @@ impl GridView {
                     )),
             )
             .child(insts)
+            .child(colors)
             .child(people)
             .child(
                 row()
@@ -688,8 +719,9 @@ impl Render for GridView {
                             );
                         }
                     }
-                    // cor da trilha: até a F1 (cor por trilha), `ink_faint`
-                    let stripe = div().absolute().left_0().top_0().h(px(CELL_H)).w(px(4.0)).bg(if audible { th.ink_faint } else { Theme::alpha(th.ink_faint, 0.4) });
+                    // listra na cor da linha (F1), esmaecida quando a linha não soa
+                    let tcol = track_color(tr);
+                    let stripe = div().absolute().left_0().top_0().h(px(CELL_H)).w(px(4.0)).bg(if audible { tcol } else { Theme::alpha(tcol, 0.4) });
                     let mut label = div().relative().h(px(rows.row_h(t))).flex().flex_col().child(stripe).child(rail_el).child(
                         div()
                             .h(px(CELL_H))

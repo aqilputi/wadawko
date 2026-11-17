@@ -31,7 +31,7 @@ use wadawko_core::{Song, Zone};
 use crate::shell::Shell;
 use crate::song_ext::SongExt;
 use crate::state::AppState;
-use crate::theme::{Theme, parse_color};
+use crate::theme::{Theme, parse_color, track_color};
 
 /// velocidade constante da esteira (px/s). BPM alto = notas mais juntas.
 pub const PX_PER_SEC: f32 = 380.0;
@@ -686,6 +686,8 @@ fn paint_lane(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: &mut Ap
         if amount > 0.0 {
             ring(window, dcx, mid, fd + 6.0, 3.0, mul_alpha(th.accent, amount));
         }
+        // anel externo na cor da linha (F1), por fora do aro `ink` do tambor
+        ring(window, dcx, mid, fd + 3.0, 2.0, mul_alpha(track_color(track), if song.audible(t) { 1.0 } else { 0.35 }));
         disc(window, dcx, mid, fd, th.paper_raise, 3.0, th.ink);
         ring(window, dcx, mid, fd - 6.0, 4.0, th.paper);
         disc(window, dcx, mid, fd - 14.0, th.paper_hover, 0.0, gpui_kit::transparent_black());

@@ -60,7 +60,7 @@ pub mod section {
 }
 pub mod track {
     use gpui_kit::actions;
-    actions!(track, [Add, Remove, ToggleMute, ToggleSolo, CycleInstrument, Rename, MoveUp, MoveDown, ToggleMain, ToggleDynRow, ToggleKyaiRow, Settings]);
+    actions!(track, [Add, Remove, ToggleMute, ToggleSolo, CycleInstrument, Rename, MoveUp, MoveDown, ToggleMain, ToggleDynRow, ToggleKyaiRow, Settings, CycleColor]);
 }
 pub mod score {
     use gpui_kit::actions;

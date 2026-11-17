@@ -620,6 +620,15 @@ Regras para o agente implementador:
 4. **Pronto quando**: VP passa; capture `play`, `mixer`, `esteira`; abrir uma música antiga mostra
    cores por instrumento sem editar o arquivo.
 
+> **Decisões na implementação (2026-11-17)**: `track_color(track)` não precisa da música nem do
+> tema (as 12 cores foram escolhidas para os dois fundos); `Track::color_or_default()` dá a cor
+> efetiva no core. O roxo da paleta ficou `#ab63d9` (o `#a35ad6` da tabela dava 4,38 de contraste
+> com o texto escuro do cabeçalho do strip; teste `track_colors_carry_dark_text` garante ≥ 4,5
+> para as 12). O texto sobre a cor da linha é sempre escuro (`Theme::on_track_color()`), nos dois
+> temas. Na esteira a cor é um anel de 2 px por fora do aro `ink` do tambor (esmaecido quando a
+> linha não soa). Os swatches do popover ⚙ são alvos de salto (`col-{t}-{i}`), e o probe usa
+> isso: abre o ⚙ pela ação `track::Settings`, clica num swatch e confere `track.color` + Ctrl+Z.
+
 ### F2 — Loop por arraste na régua e loop da seleção · 2 h
 
 1. `state.rs`: `Transport.range: Option<Region>`; `AppState::set_range(Option<Region>, cx)` →

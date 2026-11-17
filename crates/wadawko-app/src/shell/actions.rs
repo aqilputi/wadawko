@@ -379,6 +379,7 @@ impl Shell {
             this.grid.update(cx, |g, cx| g.motion(M::Down, 1, false, cx))
         });
         let d = on!(d, cx, track::ToggleMain, |this, w, cx| this.track_edit(cx, ops::tracks::toggle_main_track));
+        let d = on!(d, cx, track::CycleColor, |this, w, cx| this.track_edit(cx, ops::tracks::cycle_track_color));
         let d = on!(d, cx, track::ToggleDynRow, |this, w, cx| this.toggle_row(false, cx));
         let d = on!(d, cx, track::ToggleKyaiRow, |this, w, cx| this.toggle_row(true, cx));
         let d = on!(d, cx, track::Settings, |this, w, cx| {

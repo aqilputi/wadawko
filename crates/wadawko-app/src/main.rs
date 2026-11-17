@@ -628,6 +628,30 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             println!("PROBE ctrl-z no andamento: {t2:?} · {s2:.2} s (igual ao início: {})", (s2 - s0).abs() < 1e-6);
             check("rallentando alonga a música e Ctrl+Z volta", t1.is_some() && s1 > s0 && t2 == t0 && (s2 - s0).abs() < 1e-6);
         }
+        // cor da linha (F1): ⚙ da linha do cursor abre o popover; clicar num swatch
+        // grava `track.color`; Ctrl+Z volta ao que era
+        {
+            use wadawko_core::model::TRACK_COLORS;
+            let t = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map_or(0, |c| c.t));
+            let color = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().tracks.get(t).and_then(|x| x.color.clone()));
+            let c0 = color(cx);
+            let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::track::Settings), cx));
+            wait(cx, 200).await;
+            let cur = cx.update(|cx| state.read(cx).song().tracks.get(t).map(|x| x.color_or_default().to_string()).unwrap_or_default());
+            let i = TRACK_COLORS.iter().position(|c| !c.eq_ignore_ascii_case(&cur)).unwrap_or(0);
+            let sw = hint(&format!("col-{t}-{i}"));
+            if let Some(b) = sw {
+                click(b.center(), none, cx).await;
+            }
+            let c1 = color(cx);
+            key("ctrl-z", cx);
+            wait(cx, 100).await;
+            let c2 = color(cx);
+            println!("PROBE cor da linha {t}: {c0:?} → {c1:?} → ctrl-z {c2:?} · swatch {i} achado: {}", sw.is_some());
+            check("⚙ → swatch muda a cor da linha e Ctrl+Z volta", sw.is_some() && c1.as_deref() == Some(TRACK_COLORS[i]) && c2 == c0);
+            key("escape", cx);
+            wait(cx, 100).await;
+        }
         // calibração: botão do cabeçalho fixo (+ seção) com clique sintético
         if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("addsec").map(|t| t.bounds.center())) {
             let n0 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));

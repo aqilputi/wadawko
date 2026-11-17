@@ -142,6 +142,13 @@ impl Theme {
         Hsla { a, ..c }
     }
 
+    /// Texto sobre uma superfície preenchida com a cor de uma linha
+    /// (`TRACK_COLORS`): sempre escuro — todas as 12 cores dão ≥ 4,5 de
+    /// contraste com ele, nos dois temas.
+    pub fn on_track_color() -> Hsla {
+        rgb(0x141414).into()
+    }
+
     /// Todos os tokens, com nome (para os testes).
     #[cfg(test)]
     pub fn tokens(&self) -> Vec<(&'static str, Hsla)> {
@@ -175,6 +182,13 @@ impl Theme {
             ("meter_hi", self.meter_hi),
         ]
     }
+}
+
+/// Cor da linha (F1): o campo `color` da linha, ou a cor padrão do instrumento
+/// base (`wadawko_core::model::default_track_color`). Uma cor ilegível cai na
+/// padrão do instrumento.
+pub fn track_color(track: &wadawko_core::Track) -> Hsla {
+    track.color.as_deref().and_then(parse_color).or_else(|| parse_color(wadawko_core::model::default_track_color(track.instrument))).unwrap_or_else(|| rgb(0x8d99a6).into())
 }
 
 /// `#rrggbb` (cor de pessoa do JSON) → Hsla.
@@ -222,6 +236,30 @@ mod tests {
         assert!(parse_color("vermelho").is_none());
         for c in wadawko_core::model::PERSON_COLORS {
             assert!(parse_color(c).is_some(), "{c}");
+        }
+        for c in wadawko_core::model::TRACK_COLORS {
+            assert!(parse_color(c).is_some(), "{c}");
+        }
+    }
+
+    /// Cor da linha: campo → padrão do instrumento → cor ilegível cai no padrão.
+    #[test]
+    fn track_color_falls_back_to_instrument_default() {
+        use wadawko_core::model::{InstrumentId, Track, default_track_color};
+        let mut t = Track::new("a", "A", InstrumentId::Odaiko);
+        assert_eq!(track_color(&t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
+        t.color = Some("#123456".into());
+        assert_eq!(track_color(&t), parse_color("#123456").unwrap());
+        t.color = Some("roxo".into());
+        assert_eq!(track_color(&t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
+    }
+
+    /// O texto escuro sobre qualquer cor de linha lê bem (cabeçalho do strip do mixer).
+    #[test]
+    fn track_colors_carry_dark_text() {
+        for c in wadawko_core::model::TRACK_COLORS {
+            let ratio = contrast(Theme::on_track_color(), parse_color(c).unwrap());
+            assert!(ratio >= 4.5, "{c}: contraste {ratio:.2}");
         }
     }
 

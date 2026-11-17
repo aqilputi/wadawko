@@ -119,6 +119,7 @@ pub static SPECS: &[Spec] = &[
     spec!("track::ToggleDynRow", "Dinâmica própria da linha: mostrar/esconder", "Estrutura", "f p hairpin"),
     spec!("track::ToggleKyaiRow", "Kiai da linha: mostrar/esconder", "Estrutura", "grito voz"),
     spec!("track::Settings", "Editar linha (nome, instrumento, pessoas…)", "Estrutura", "popover engrenagem"),
+    spec!("track::CycleColor", "Linha: próxima cor", "Estrutura", "cor trilha track color paleta"),
     spec!("measure::ToggleCresc", "Crescendo no compasso", "Estrutura", "hairpin <"),
     spec!("measure::ToggleDim", "Diminuendo no compasso", "Estrutura", "hairpin >"),
     spec!("measure::BeatsUp", "Compasso: +1 tempo (ex.: 4/4 → 5/4)", "Estrutura", "fórmula de compasso tempos 5/4 time signature"),
