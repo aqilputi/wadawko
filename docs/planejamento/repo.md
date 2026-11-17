@@ -144,8 +144,11 @@ gera os índices.
 Abrir como **issues** com milestones, em vez de listas em markdown:
 - **Verificações manuais** que faltam: fps em X11, sincronia som × imagem a olho, 10 min tocando
   sem xrun, Ctrl+C para fora do app (área de transferência do Wayland).
-- **Desempenho:** barra de contexto e status bar ainda redesenham a cada frame (~4,7 ms/frame
-  tocando); grade re-renderizada em hover de botões (~2.500 elementos) — virtualizar por seção.
+- **Desempenho:** ~~barra de contexto e status bar redesenhando a cada frame~~ (em cache desde
+  2026-11-17, −19% de CPU por frame tocando); falta a grade re-renderizada em hover de botões
+  (~2.500 elementos) — uma view em cache por seção.
+- **Probe na CI:** rodar `--demo probe` (já sai com código ≠ 0 em falha) num job com
+  compositor headless + lavapipe.
 - **Fase 6 (bonecos)** — adiada; rig, estações, lane de movimentos, export de vídeo.
 - Itens "só planejados" do `/planejamento/gpui.md` §1.2: vocabulário editável, dinâmica por
   célula, export MIDI/TJA/PDF, MIDI input, i18n, compartilhar por URL.
