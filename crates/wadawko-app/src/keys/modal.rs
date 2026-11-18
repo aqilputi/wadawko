@@ -315,6 +315,23 @@ impl Shell {
                 }),
                 None => self.flash("treino: passo entre 1 e 50 (% por volta)", cx),
             },
+            InputTarget::MetroPattern => match wadawko_audio::Metronome::parse_pattern(t) {
+                Some((pattern, len)) => {
+                    let m = wadawko_audio::Metronome { pattern, len, ..self.state.read(cx).tp.metro };
+                    self.state.update(cx, |s, cx| s.set_metronome_config(m, cx));
+                    self.save_settings(cx);
+                    self.flash(format!("metrônomo: {}", m.pattern_text()), cx);
+                }
+                None => self.flash("padrão: A = forte, B = fraco, . = mudo (até 16 tempos; vazio = automático)", cx),
+            },
+            InputTarget::MetroVolume => match num {
+                Some(v) => {
+                    let m = wadawko_audio::Metronome { gain: (v / 100.0).clamp(0.0, 2.0) as f32, ..self.state.read(cx).tp.metro };
+                    self.state.update(cx, |s, cx| s.set_metronome_config(m, cx));
+                    self.save_settings(cx);
+                }
+                None => self.flash("volume do metrônomo: 0 a 200 (%)", cx),
+            },
             _ => {}
         }
     }
@@ -407,11 +424,15 @@ impl Shell {
                     "loop" => self.state.update(cx, |s, cx| s.set_loop(on, cx)),
                     "metro" | "metronomo" => self.state.update(cx, |s, cx| s.set_metronome(on, cx)),
                     "countin" => self.state.update(cx, |s, _| s.tp.count_in = on),
+                    "countinloop" | "voltas" => {
+                        self.state.update(cx, |s, cx| s.set_count_in_loop(on, cx));
+                        self.save_settings(cx);
+                    }
                     "treino" | "trainer" => self.state.update(cx, |s, _| s.tp.trainer = on),
                     "swing" => {
                         self.edit(cx, |s| s.swing = on.then_some(1.0));
                     }
-                    _ => self.flash(format!(":set {arg}? (vim, dark, light, loop, metro, countin, treino, swing — com no na frente para desligar)"), cx),
+                    _ => self.flash(format!(":set {arg}? (vim, dark, light, loop, metro, countin, countinloop, treino, swing — com no na frente para desligar)"), cx),
                 }
             }
             "e" | "edit" | "abrir" => {
@@ -491,6 +512,8 @@ impl Shell {
             PromptKind::Input(InputTarget::Bpm) => ("BPM:", "30–300 · Enter confirma"),
             PromptKind::Input(InputTarget::TrainerPct) => ("treino, começa em %:", "20–100 · Enter confirma"),
             PromptKind::Input(InputTarget::TrainerStep) => ("treino, +% por volta:", "1–50 · Enter confirma"),
+            PromptKind::Input(InputTarget::MetroPattern) => ("acentos:", "A forte · B fraco · . mudo (ex.: ABBB, A.B.) · vazio = automático"),
+            PromptKind::Input(InputTarget::MetroVolume) => ("metrônomo, volume %:", "0–200 · Enter confirma"),
         };
         div()
             .absolute()

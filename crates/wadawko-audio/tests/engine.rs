@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use common::{bank, peak, rms};
 use wadawko_audio::schedule::{PREVIEW_SLOT, hit_event};
-use wadawko_audio::{Command, CompileOptions, Controller, Engine, EngineConfig, EngineEvent, EventKind, MasterMode, PPQ, PlayOptions, Region, SampleSet, TrainerOptions, engine_pair};
+use wadawko_audio::{Command, CompileOptions, Controller, Engine, EngineConfig, EngineEvent, EventKind, MasterMode, Metronome, PPQ, PlayOptions, Region, SampleSet, TrainerOptions, engine_pair};
 use wadawko_core::demo::demo_song;
 use wadawko_core::model::{BUILTIN_INSTRUMENTS, Person, Section};
 use wadawko_core::ops::cells::set_cell;
@@ -218,6 +218,62 @@ fn metronome_toggles_live() {
     ctl.set_metronome(false);
     pump(&mut eng, 0.2);
     assert_eq!(peak(&pump(&mut eng, 2.0)), 0.0);
+}
+
+/// pico nos 50 ms depois de cada um dos `n` tempos (0,6 s a 100 BPM), a partir de `start` frames
+fn beat_peaks(out: &[f32], start: usize, n: usize) -> Vec<f32> {
+    (0..n)
+        .map(|i| {
+            let at = start + (i as f64 * 0.6 * SR as f64) as usize;
+            peak(&out[at * 2..(at + 2400) * 2])
+        })
+        .collect()
+}
+
+#[test]
+fn metronome_pattern_and_subdivision() {
+    let (mut eng, mut ctl) = pair(MasterMode::Clean);
+    let song = one_track(&[], 1);
+    ctl.set_song(&song, &CompileOptions::default());
+    ctl.set_metronome(true);
+    let (pattern, len) = Metronome::parse_pattern("A.BA").unwrap();
+    ctl.set_metronome_config(Metronome { pattern, len, ..Metronome::default() });
+    ctl.play(PlayOptions::default());
+    let out = pump(&mut eng, 2.5);
+    let p = beat_peaks(&out, 288, 4);
+    assert!(p[0] > 0.05 && p[3] > 0.05 && p[2] > 0.02, "{p:?}");
+    assert_eq!(p[1], 0.0, "tempo 2 mudo");
+    assert!(p[0] > 1.4 * p[2], "acento mais forte que o fraco: {p:?}");
+    // subdivisão 2: um clique fraco no contratempo (0,3 s depois do tempo)
+    ctl.stop();
+    pump(&mut eng, 0.5);
+    ctl.set_metronome_config(Metronome { subdiv: 2, ..Metronome::default() });
+    ctl.play(PlayOptions::default());
+    let out = pump(&mut eng, 2.5);
+    let on = beat_peaks(&out, 288, 4);
+    let off = beat_peaks(&out, 288 + 14_400, 4);
+    assert!(off.iter().all(|&x| x > 0.01), "contratempos soam: {off:?}");
+    assert!(on.iter().zip(&off).all(|(a, b)| a > b), "o tempo é mais forte que a subdivisão");
+}
+
+#[test]
+fn count_in_on_every_loop_lap() {
+    let (mut eng, mut ctl) = pair(MasterMode::Clean);
+    let song = one_track(&[(0, "DON")], 1);
+    ctl.set_song(&song, &CompileOptions::default());
+    ctl.play(PlayOptions { looping: true, count_in_loop: true, ..Default::default() });
+    // sem count-in inicial: 1º DON na hora; a cada volta, 1 compasso (2,4 s) de contagem
+    pump(&mut eng, 2.4 * 4.0 + 0.3);
+    let events = ctl.poll_events();
+    let dons: Vec<u64> = hits(&events).iter().map(|h| h.3).collect();
+    assert_eq!(dons.len(), 3, "{dons:?}");
+    assert_eq!(dons[0], 288);
+    assert!(dons.windows(2).all(|w| w[1] - w[0] == 2 * 115_200), "volta + contagem: {dons:?}");
+    // desligar ao vivo: a próxima volta emenda direto
+    ctl.set_count_in_loop(false);
+    pump(&mut eng, 2.4 * 3.0);
+    let dons: Vec<u64> = hits(&ctl.poll_events()).iter().map(|h| h.3).collect();
+    assert!(dons.windows(2).all(|w| w[1] - w[0] == 115_200), "{dons:?}");
 }
 
 fn stereo_rms(out: &[f32]) -> (f32, f32) {

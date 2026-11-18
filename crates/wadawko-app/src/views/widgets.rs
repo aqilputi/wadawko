@@ -4,7 +4,8 @@
 //!
 //! Teclado: clicar (ou saltar com Ctrl+Space) num slider o deixa "em foco"
 //! (anel azul); ←/↓ diminuem e →/↑ aumentam um passo; Esc tira o foco. As setas
-//! são interceptadas na fase de captura em [`bind`], só nas páginas destas views.
+//! são interceptadas na fase de captura em [`bind`], só nas páginas destas views
+//! e no inspector do Editor (clicar na grade solta o slider).
 
 use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
@@ -309,12 +310,15 @@ fn page_prefix(page: Page) -> Option<&'static str> {
         Page::Mixer => Some("mx-"),
         Page::Pessoas => Some("pp-"),
         Page::Kit => Some("kit-"),
+        // inspector do painel direito (sliders `ins-`); clicar na grade solta o foco
+        Page::Editor => Some("ins-"),
         _ => None,
     }
 }
 
-/// Setas ajustam o slider em foco (captura: antes dos handlers da grade), só
-/// nas páginas Mixer/Pessoas/Kit e só se o slider em foco for da página atual.
+/// Setas ajustam o slider em foco (captura: antes dos handlers da grade), nas
+/// páginas Mixer/Pessoas/Kit e no inspector do Editor, só se o slider em foco
+/// for da página atual.
 /// Esc tira o foco (sem consumir o Esc).
 pub fn bind(d: gpui_kit::Stateful<gpui_kit::Div>, cx: &mut Context<Shell>) -> gpui_kit::Stateful<gpui_kit::Div> {
     macro_rules! arrow {

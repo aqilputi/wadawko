@@ -5,6 +5,15 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ## [Não lançado]
 
 ### Adicionado
+- **Metrônomo com acentos**: padrão por tempo (`A` forte, `B` fraco, `.` mudo — ex.: `A.B.`),
+  subdivisão (colcheias, tercinas, semicolcheias) e volume; chips na barra de cima quando o
+  metrônomo está ligado, salvo nas configurações. O count-in segue os acentos e a fórmula do
+  compasso.
+- **Count-in a cada volta do loop** (⏱↺): um compasso de contagem antes de cada repetição.
+- **Tap tempo**: botão TAP no mostrador, `Alt+T` (vim: `Space t .`).
+- **Tooltips** nos botões com o nome do comando e o atalho atual.
+- Sliders do **inspector** respondem às setas (clique ou `Ctrl+Space` no slider; `Esc` ou
+  clique na grade solta).
 - **Cor por trilha**: cada linha tem uma cor (padrão pelo instrumento base; 12 cores na paleta
   do ⚙ da linha, ou "Linha: próxima cor" na paleta de comandos) — listra na lista de linhas,
   cabeçalho do strip no mixer, anel do tambor na esteira. Campo opcional `color` na linha.

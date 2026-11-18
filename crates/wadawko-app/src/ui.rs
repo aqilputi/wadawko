@@ -54,7 +54,51 @@ pub fn abtn<A: Action + Clone>(id: &'static str, th: &Theme, a: A) -> gpui_kit::
 /// [`abtn`] sem estilo de hover (o chamador define o seu).
 pub fn abtn_bare<A: Action + Clone>(id: &'static str, th: &Theme, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
     let a2 = a.clone();
-    keys::hintable(btn_bare(id, th).on_click(move |_, w, cx| w.dispatch_action(a.boxed_clone(), cx)), id, keys::dispatch(a2))
+    let tip = a.boxed_clone();
+    keys::hintable(with_tip(btn_bare(id, th), th, tip).on_click(move |_, w, cx| w.dispatch_action(a.boxed_clone(), cx)), id, keys::dispatch(a2))
+}
+
+/// Tooltip de um controle que despacha `a` (F14): o título do comando (o mesmo
+/// da paleta) e o atalho de maior precedência no keymap ATUAL — lido na hora
+/// de mostrar, então reflete o keymap do usuário recarregado. Sem título
+/// conhecido, não põe tooltip. Não chame `.tooltip` de novo no elemento.
+pub fn with_tip(el: gpui_kit::Stateful<gpui_kit::Div>, th: &Theme, a: Box<dyn Action>) -> gpui_kit::Stateful<gpui_kit::Div> {
+    let Some(title) = keys::title_for(a.name()) else { return el };
+    let th = *th;
+    el.tooltip(move |_w, cx| {
+        let shortcut = keys::binding_text(a.as_ref(), cx);
+        cx.new(|_| Tip { title, shortcut, th }).into()
+    })
+}
+
+/// A caixinha do tooltip: `paper_raise`, borda `line_strong`, R1; atalho em `kbd`.
+struct Tip {
+    title: &'static str,
+    shortcut: Option<String>,
+    th: Theme,
+}
+
+impl gpui_kit::Render for Tip {
+    fn render(&mut self, _: &mut Window, _: &mut gpui_kit::Context<Self>) -> impl IntoElement {
+        let th = &self.th;
+        div()
+            .ml(px(8.0))
+            .mt(px(10.0))
+            .px(px(6.0))
+            .py(px(3.0))
+            .flex()
+            .items_center()
+            .gap(px(6.0))
+            .rounded(px(R1))
+            .border_1()
+            .border_color(th.line_strong)
+            .bg(th.paper_raise)
+            .shadow_md()
+            .text_size(px(11.0))
+            .text_color(th.ink)
+            .child(self.title)
+            .when_some(self.shortcut.clone(), |d, k| d.child(kbd(&k, th)))
+    }
 }
 
 /// Botão de ícone 26×26 (glifo monocromático).
@@ -83,9 +127,9 @@ pub fn segmented(id: &'static str, th: &Theme, items: Vec<(&'static str, Box<dyn
         let on = i == active;
         let a2 = a.boxed_clone();
         let hid = format!("{id}-{i}");
+        let tip = a.boxed_clone();
         row = row.child(keys::hintable(
-            div()
-                .id((id, i))
+            with_tip(div().id((id, i)), th, tip)
                 .relative()
                 .h_full()
                 .px(px(10.0))
@@ -111,8 +155,7 @@ pub fn segmented(id: &'static str, th: &Theme, items: Vec<(&'static str, Box<dyn
 pub fn tab<A: Action + Clone>(id: &'static str, label: &'static str, on: bool, th: &Theme, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
     let a2 = a.clone();
     let ink = th.ink;
-    let el = div()
-        .id(id)
+    let el = with_tip(div().id(id), th, a.boxed_clone())
         .relative()
         .flex_none()
         .h(px(28.0))

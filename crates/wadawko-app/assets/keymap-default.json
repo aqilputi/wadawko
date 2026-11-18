@@ -51,7 +51,8 @@
       "ctrl-s": "project::Save",
       "tab": "grid::NextCell",
       "shift-tab": "grid::PrevCell",
-      "ctrl-l": "transport::LoopSelection"
+      "ctrl-l": "transport::LoopSelection",
+      "alt-t": "transport::TapTempo"
     }
   },
   {
@@ -126,6 +127,11 @@
       "]": "transport::LoopEndHere",
       "space t m": "transport::ToggleMetronome",
       "space t c": "transport::ToggleCountIn",
+      "space t r": "transport::ToggleCountInLoop",
+      "space t a": "transport::MetroPattern",
+      "space t d": "transport::MetroSubdiv",
+      "space t v": "transport::MetroVolume",
+      "space t .": "transport::TapTempo",
       "space t t": "transport::ToggleTrainer",
       "space t w": "transport::ToggleSwing",
       "space t +": "transport::BpmUp",

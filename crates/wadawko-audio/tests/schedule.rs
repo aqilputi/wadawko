@@ -76,7 +76,7 @@ fn demo_order_ticks_and_counts() {
     assert_eq!(hits_of(&s, 1).len(), 27);
     assert_eq!(hits_of(&s, 2).len(), 5);
     // metrônomo: 4 cliques por compasso, acento no tempo 1
-    let clicks: Vec<(f64, bool)> = s.events.iter().filter_map(|e| if let EventKind::Click { accent } = e.kind { Some((e.tick, accent)) } else { None }).collect();
+    let clicks: Vec<(f64, bool)> = s.events.iter().filter_map(|e| if let EventKind::Click { beat, sub: 0 } = e.kind { Some((e.tick, beat == 0)) } else { None }).collect();
     assert_eq!(clicks.len(), 16);
     assert!(clicks.iter().all(|&(t, a)| t % PPQ == 0.0 && a == (t % BAR_TICKS == 0.0)));
     // chū, compasso 1: DON · don · doko don → colcheias de 480 ticks; "doko" = 2 golpes na célula
@@ -487,7 +487,7 @@ fn compassos_de_formulas_diferentes_tem_duracoes_diferentes() {
     let ticks: Vec<f64> = hits_of(&s, 0).iter().map(|(t, _)| *t).collect();
     assert_eq!(ticks, vec![3.0 * PPQ, 8.0 * PPQ, 11.0 * PPQ]);
     // metrônomo: 12 cliques, acento no 1º tempo de cada compasso (tempos 0, 4 e 9)
-    let clicks: Vec<(f64, bool)> = s.events.iter().filter_map(|e| if let EventKind::Click { accent } = e.kind { Some((e.tick / PPQ, accent)) } else { None }).collect();
+    let clicks: Vec<(f64, bool)> = s.events.iter().filter_map(|e| if let EventKind::Click { beat, sub: 0 } = e.kind { Some((e.tick / PPQ, beat == 0)) } else { None }).collect();
     assert_eq!(clicks.len(), 12);
     let accents: Vec<f64> = clicks.iter().filter(|(_, a)| *a).map(|(t, _)| *t).collect();
     assert_eq!(accents, vec![0.0, 4.0, 9.0]);

@@ -1,6 +1,8 @@
 //! Handlers de TODAS as ações globais, registrados no `div` raiz (valem com o
 //! foco em qualquer lugar; a paleta, os botões e os hints despacham as mesmas ações).
 
+use std::time::{Duration, Instant};
+
 use gpui_kit::{Context, Window, prelude::*};
 use wadawko_core::{Hairpin, Song, ops};
 
@@ -21,7 +23,49 @@ macro_rules! on {
     };
 }
 
+/// Nome da subdivisão do metrônomo.
+pub(crate) fn subdiv_name(d: u8) -> &'static str {
+    match d {
+        2 => "colcheias (2 por tempo)",
+        3 => "tercinas (3 por tempo)",
+        4 => "semicolcheias (4 por tempo)",
+        _ => "só os tempos",
+    }
+}
+
+/// BPM das batidas do tap tempo: média dos intervalos (até as 8 últimas
+/// batidas); `None` com menos de 2.
+pub(crate) fn tap_bpm(taps: &[Instant]) -> Option<f64> {
+    let t = &taps[taps.len().saturating_sub(8)..];
+    if t.len() < 2 {
+        return None;
+    }
+    let secs = (t[t.len() - 1] - t[0]).as_secs_f64() / (t.len() - 1) as f64;
+    (secs > 0.0).then(|| 60.0 / secs)
+}
+
 impl Shell {
+    /// Tap tempo (F8): cada batida entra na média; uma pausa de mais de 2 s
+    /// recomeça a contagem. A partir da 2ª batida o BPM da música muda.
+    pub(crate) fn tap_tempo(&mut self, cx: &mut Context<Self>) {
+        let now = Instant::now();
+        if self.taps.last().is_some_and(|&t| now - t > Duration::from_secs(2)) {
+            self.taps.clear();
+        }
+        self.taps.push(now);
+        if self.taps.len() > 8 {
+            self.taps.remove(0);
+        }
+        match tap_bpm(&self.taps) {
+            Some(b) => {
+                let b = b.clamp(30.0, 300.0).round();
+                self.state.update(cx, |s, cx| s.set_bpm(b, cx));
+                self.flash(format!("tap: {b:.0} BPM ({} batidas)", self.taps.len()), cx);
+            }
+            None => self.flash("tap: continue batendo no ritmo…", cx),
+        }
+    }
+
     /// `Loop: seleção` (F2): o trecho passa a ser os compassos da seleção da
     /// grade, ou só o compasso do cursor; liga o loop.
     pub(crate) fn loop_selection(&mut self, cx: &mut Context<Self>) {
@@ -140,6 +184,28 @@ impl Shell {
             s.tp.count_in = !s.tp.count_in;
             cx.notify()
         }));
+        let d = on!(d, cx, transport::ToggleCountInLoop, |this, w, cx| {
+            let on = !this.state.read(cx).tp.count_in_loop;
+            this.state.update(cx, |s, cx| s.set_count_in_loop(on, cx));
+            this.save_settings(cx);
+            this.flash(if on { "count-in a cada volta do loop" } else { "count-in só no começo" }, cx)
+        });
+        let d = on!(d, cx, transport::MetroPattern, |this, w, cx| {
+            let v = this.state.read(cx).tp.metro.pattern_text();
+            this.ask(InputTarget::MetroPattern, if v == "auto" { String::new() } else { v }, w, cx)
+        });
+        let d = on!(d, cx, transport::MetroVolume, |this, w, cx| {
+            let v = format!("{:.0}", this.state.read(cx).tp.metro.gain * 100.0);
+            this.ask(InputTarget::MetroVolume, v, w, cx)
+        });
+        let d = on!(d, cx, transport::MetroSubdiv, |this, w, cx| {
+            let mut m = this.state.read(cx).tp.metro;
+            m.subdiv = m.subdiv % 4 + 1;
+            this.state.update(cx, |s, cx| s.set_metronome_config(m, cx));
+            this.save_settings(cx);
+            this.flash(format!("metrônomo: {}", subdiv_name(m.subdiv)), cx)
+        });
+        let d = on!(d, cx, transport::TapTempo, |this, w, cx| this.tap_tempo(cx));
         let d = on!(d, cx, transport::ToggleTrainer, |this, w, cx| this.state.update(cx, |s, cx| {
             s.tp.trainer = !s.tp.trainer;
             cx.notify()
@@ -694,5 +760,25 @@ impl Shell {
                 }
             });
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tap_tempo_media_dos_intervalos() {
+        let t0 = Instant::now();
+        let at = |ms: u64| t0 + Duration::from_millis(ms);
+        assert_eq!(tap_bpm(&[t0]), None);
+        // 500 ms entre batidas = 120 BPM
+        assert!((tap_bpm(&[at(0), at(500), at(1000), at(1500)]).unwrap() - 120.0).abs() < 1e-9);
+        // batidas irregulares: vale a média (1,2 s / 2 = 600 ms = 100 BPM)
+        assert!((tap_bpm(&[at(0), at(550), at(1200)]).unwrap() - 100.0).abs() < 1e-9);
+        // só as 8 últimas contam: as 2 primeiras (lentas) ficam de fora
+        let mut v = vec![at(0), at(2000)];
+        v.extend((0..8).map(|i| at(4000 + i * 400)));
+        assert!((tap_bpm(&v).unwrap() - 150.0).abs() < 1e-9);
     }
 }

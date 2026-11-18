@@ -34,8 +34,10 @@ pub struct PlayOptions {
     /// célula-fonte global de onde começar (ignorada quando o schedule tem região)
     pub start_cell: usize,
     pub looping: bool,
-    /// 1 compasso (4 cliques) antes de começar
+    /// 1 compasso de cliques antes de começar
     pub count_in: bool,
+    /// count-in também a cada volta do loop
+    pub count_in_loop: bool,
     /// só vale com região + loop, como no web app
     pub trainer: Option<TrainerOptions>,
 }
@@ -173,7 +175,14 @@ impl Controller {
             None => base,
         } as f32;
         let from_tick = if s.has_region { 0.0 } else { s.time.cell_tick(opts.start_cell) };
-        self.send(Command::Play(PlayCmd { from_tick, bpm, looping: opts.looping, count_in: opts.count_in, trainer: trainer.map(|t| Trainer { base_bpm: base as f32, step: t.step as f32 }) }));
+        self.send(Command::Play(PlayCmd {
+            from_tick,
+            bpm,
+            looping: opts.looping,
+            count_in: opts.count_in,
+            count_in_loop: opts.count_in_loop,
+            trainer: trainer.map(|t| Trainer { base_bpm: base as f32, step: t.step as f32 }),
+        }));
         bpm
     }
 
@@ -209,6 +218,16 @@ impl Controller {
 
     pub fn set_metronome(&mut self, on: bool) {
         self.send(Command::SetMetronome(on));
+    }
+
+    /// padrão de acentos, subdivisão e volume do metrônomo
+    pub fn set_metronome_config(&mut self, m: crate::Metronome) {
+        self.send(Command::SetMetronomeConfig(m));
+    }
+
+    /// count-in a cada volta do loop (vale já no loop em curso)
+    pub fn set_count_in_loop(&mut self, on: bool) {
+        self.send(Command::SetCountInLoop(on));
     }
 
     /// volume geral de saída (linear; 0 = mudo)
