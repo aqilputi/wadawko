@@ -30,6 +30,7 @@ pub struct PeopleView {
 }
 
 /// Quantas pessoas tocam a linha (≥ 2 = compartilhada).
+#[cfg(test)]
 pub fn owner_count(song: &Song, track_id: &str) -> usize {
     song.track(track_id).map_or(0, |t| t.person_ids().len())
 }
@@ -153,7 +154,7 @@ impl PeopleView {
         // ── checklist de instrumentos ──
         let mut list = div().flex().flex_col().gap(px(2.0));
         for t in &song.tracks {
-            let on = t.person_ids().iter().any(|id| *id == p.id);
+            let on = t.person_ids().contains(&p.id);
             let shared = on && t.is_shared();
             let (st, pid, tid) = (state.clone(), p.id.clone(), t.id.clone());
             let act: widgets::Act = Rc::new(move |_: &mut Window, cx: &mut App| widgets::edit(&st, cx, |song| ops::people::toggle_track_person(song, &tid, &pid)));

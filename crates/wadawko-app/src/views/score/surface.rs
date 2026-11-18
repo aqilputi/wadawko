@@ -59,11 +59,6 @@ pub struct PaintCache {
 }
 
 impl PaintCache {
-    pub fn clear(&mut self) {
-        self.lines.clear();
-        self.outlines.clear();
-    }
-
     /// Não deixa o cache crescer sem limite (zoom contínuo gera tamanhos novos).
     pub fn trim(&mut self) {
         if self.lines.len() > 6000 {
@@ -72,10 +67,6 @@ impl PaintCache {
         if self.outlines.len() > 600 {
             self.outlines.clear();
         }
-    }
-
-    pub fn len(&self) -> (usize, usize) {
-        (self.lines.len(), self.outlines.len())
     }
 }
 
@@ -118,9 +109,9 @@ fn tessellate(path: &Path, scale_factor: f32) -> Option<gpui_kit::Path<Pixels>> 
 fn translated(mut path: gpui_kit::Path<Pixels>, dx: f32, dy: f32) -> gpui_kit::Path<Pixels> {
     let d = point(px(dx), px(dy));
     for v in &mut path.vertices {
-        v.xy_position = v.xy_position + d;
+        v.xy_position += d;
     }
-    path.bounds.origin = path.bounds.origin + d;
+    path.bounds.origin += d;
     path
 }
 

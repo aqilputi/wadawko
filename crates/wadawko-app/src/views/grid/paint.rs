@@ -12,6 +12,9 @@ use super::{CELL_H, CELL_X0, Cur, KYAI_H, Lane, MEASURE_GAP, MoveDrag, Range4, R
 use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color};
 
+/// desenha um texto (com cache de modelagem): (texto, tamanho, cor, chave da cor, x, y, centralizar em largura)
+type PaintText<'a> = dyn FnMut(&mut Window, &mut App, &SharedString, u32, Hsla, u8, f32, f32, Option<f32>) + 'a;
+
 pub struct PaintArgs {
     pub s: usize,
     pub song: Arc<Song>,
@@ -50,7 +53,7 @@ fn line(window: &mut Window, a: (f32, f32), b: (f32, f32), color: Hsla) {
 fn paint_dyn(
     window: &mut Window,
     cx: &mut App,
-    text: &mut dyn FnMut(&mut Window, &mut App, &SharedString, u32, Hsla, u8, f32, f32, Option<f32>),
+    text: &mut PaintText<'_>,
     th: &Theme,
     mx: f32,
     y: f32,

@@ -333,7 +333,8 @@ fn read_only_store_never_writes() {
     assert!(!store.has_unsaved_changes());
     assert!(store.save().is_err());
     assert!(store.new_project().is_err());
-    assert!(store.delete_project(&store.current_id().to_string()).is_err());
+    let id = store.current_id().to_owned();
+    assert!(store.delete_project(&id).is_err());
     assert!(store.set_theme(Theme::Dark).is_err());
     store.flush().unwrap();
     drop(store);
@@ -672,7 +673,7 @@ fn import_backup_merges_without_destroying() {
 
     let report = import_backup_file(&db, backup_fixture(), BackupOptions::default()).unwrap();
     assert_eq!(report.added.len(), 1);
-    assert_eq!(report.kept_existing, [clash.clone()]);
+    assert_eq!(report.kept_existing, std::slice::from_ref(&clash));
     assert!(report.other_set.is_empty() && !report.workspace_created);
     assert_eq!(read_song(&db, &clash).unwrap(), newer, "a existente não foi tocada");
     assert_eq!(db.get(THEME_KEY).unwrap().as_deref(), Some("dark"));

@@ -120,7 +120,7 @@ fn merge_runs(mergeable: &[bool], base: usize, top: bool, out: &mut Vec<(usize, 
     if n == 1 {
         return;
     }
-    if n % 2 == 0 {
+    if n.is_multiple_of(2) {
         merge_runs(&mergeable[..n / 2], base, false, out);
         merge_runs(&mergeable[n / 2..], base + n / 2, false, out);
     } else {
