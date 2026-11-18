@@ -127,6 +127,12 @@ pub struct Shell {
     pub pending_since: Instant,
     /// instantes das últimas batidas do tap tempo (F8)
     pub taps: Vec<Instant>,
+    /// modo projeção aberto (F7d); `true` no 2º campo = fomos nós que pusemos em tela cheia
+    pub director: Option<bool>,
+    /// pedido de sair do modo projeção (o Esc não tem a janela; o render fecha)
+    pub director_close: bool,
+    /// janela estreita: a barra de cima compacta (ver `views::topbar`)
+    pub top_narrow: bool,
     pub prompt: Option<keys::modal::Prompt>,
     pub last_change: Option<keys::modal::Change>,
     pub recording: bool,
@@ -250,6 +256,9 @@ impl Shell {
             pending: Vec::new(),
             pending_since: Instant::now(),
             taps: Vec::new(),
+            director: None,
+            director_close: false,
+            top_narrow: false,
             prompt: None,
             last_change: None,
             recording: false,
@@ -279,7 +288,7 @@ impl Shell {
         let keys = [
             // barra de cima: inclui a posição do display (muda de célula em célula tocando)
             chrome::key(|k| {
-                h(k, &(dark, playing, rev, &current, st.playback_bpm.to_bits(), st.sounding_bpm.to_bits()));
+                h(k, &(dark, playing, rev, &current, st.playback_bpm.to_bits(), st.sounding_bpm.to_bits(), self.top_narrow));
                 h(k, &format!("{:?}", st.tp));
                 h(k, &self.transport_pos(cx));
             }),
@@ -530,6 +539,9 @@ impl Shell {
     }
 
     pub fn cancel(&mut self, cx: &mut Context<Self>) {
+        if self.director.is_some() {
+            self.director_close = true;
+        }
         self.count = None;
         self.root_hints = false;
         self.grid.update(cx, |g, cx| {
@@ -780,6 +792,7 @@ impl Shell {
         let row_meters = if self.on_grid() { self.row_meters(cx) } else { Vec::new() };
         self.status = self.status_model(playing, play_pos, cx);
         // moldura em cache: só re-renderiza quando a chave dela muda
+        self.top_narrow = f32::from(window.viewport_size().width) < crate::views::topbar::NARROW_W;
         self.refresh_chrome(playing, f32::from(window.viewport_size().width), cx);
         let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(64.0)).h_full().flex_none());
         let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(44.0)).flex_none());
@@ -914,6 +927,20 @@ impl Shell {
         // ── linha de prompt (: / ? " m ' e renomear) ──
         if let Some(p) = &self.prompt {
             root = root.child(div().id("prompt").absolute().inset_0().key_context("Prompt").track_focus(&self.prompt_focus).on_key_down(cx.listener(Self::prompt_key)).child(self.prompt_bar(p, &th)));
+        }
+
+        // ── modo projeção (F7d): por cima de tudo ──
+        if self.director_close {
+            self.director_close = false;
+            if let Some(ours) = self.director.take()
+                && ours
+                && window.is_fullscreen()
+            {
+                window.toggle_fullscreen();
+            }
+        }
+        if self.director.is_some() {
+            root = root.child(self.director(cx));
         }
 
         // ── paleta (Ctrl+K) ──

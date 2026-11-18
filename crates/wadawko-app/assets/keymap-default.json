@@ -54,6 +54,7 @@
       "ctrl-l": "transport::LoopSelection",
       "alt-t": "transport::TapTempo",
       "ctrl-alt-up": "view::RowTaller",
+      "f10": "view::Director",
       "ctrl-alt-down": "view::RowShorter",
       "ctrl-shift-l": "practice::Save"
     }

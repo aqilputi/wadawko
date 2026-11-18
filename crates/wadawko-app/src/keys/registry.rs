@@ -48,6 +48,7 @@ pub static SPECS: &[Spec] = &[
     spec!("view::ZoomIn", "Zoom +", "Ver", "aproximar"),
     spec!("view::ZoomOut", "Zoom −", "Ver", "afastar"),
     spec!("view::ZoomReset", "Zoom 100%", "Ver", "resetar"),
+    spec!("view::Director", "Modo projeção (tela cheia para a TV do ensaio)", "Ver", "director projetar tv telão ensaio grande"),
     spec!("view::RowTaller", "Linhas mais altas", "Ver", "altura zoom vertical linha"),
     spec!("view::RowShorter", "Linhas mais baixas (cabem mais linhas)", "Ver", "altura zoom vertical linha compacta"),
     spec!("view::RowReset", "Altura das linhas: padrão", "Ver", "altura zoom vertical linha resetar"),

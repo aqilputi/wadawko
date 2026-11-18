@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-18T20:21:53Z
+  at: 2026-11-18T20:35:04Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -80,6 +80,7 @@ Valem na área do editor (grade, partitura, esteira), com ou sem vim.
 | `Ctrl+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
 | `Alt+T` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
 | `Ctrl+Alt+↑` | `view::RowTaller` | Linhas mais altas |
+| `f10` | `view::Director` | Modo projeção (tela cheia para a TV do ensaio) |
 | `Ctrl+Alt+↓` | `view::RowShorter` | Linhas mais baixas (cabem mais linhas) |
 | `Ctrl+Shift+L` | `practice::Save` | Trechos: guardar o trecho de loop com um nome… |
 

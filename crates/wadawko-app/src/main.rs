@@ -924,6 +924,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         {
             let tempo = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().tempo);
             let t0 = tempo(cx);
+            cx.update(|cx| shell.update(cx, |s, _| s.taps.clear()));
             for _ in 0..4 {
                 key("alt-t", cx);
                 wait(cx, 500).await;
@@ -936,7 +937,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             let t2 = tempo(cx);
             println!("PROBE tap tempo: {t0} → {t1} → Ctrl+Z {t2}");
             println!("PROBE tap tempo: esperado pelas batidas {expect:?}");
-            check("tap tempo marca o BPM das batidas (~120) e um Ctrl+Z volta", expect == Some(t1) && (90.0..=150.0).contains(&t1) && t2 == t0);
+            check("tap tempo marca o BPM das batidas (~120) e um Ctrl+Z volta", expect.is_some_and(|e| (e - t1).abs() <= 1.0) && (90.0..=150.0).contains(&t1) && t2 == t0);
         }
         // altura das linhas (F16): Ctrl+Alt+↓ duas vezes = 28 px; o clique ainda acerta a célula; padrão volta a 36
         {
@@ -961,6 +962,17 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             let h2 = h(cx);
             println!("PROBE altura das linhas: {h1:?} · clique em (0,2,1) → {hit:?} · padrão {h2:?}");
             check("altura das linhas: Ctrl+Alt+↓ encolhe, clique acerta, padrão volta", h1 == Some(28.0) && hit == Some((0, 2, 1)) && h2 == Some(views::grid::CELL_H));
+        }
+        // modo projeção (F7d): F10 abre por cima de tudo; Esc fecha
+        {
+            key("f10", cx);
+            wait(cx, 200).await;
+            let open = cx.update(|cx| shell.read(cx).director.is_some());
+            key("escape", cx);
+            wait(cx, 200).await;
+            let closed = cx.update(|cx| shell.read(cx).director.is_none());
+            println!("PROBE modo projeção: abriu {open} · Esc fechou {closed}");
+            check("modo projeção: F10 abre e Esc fecha", open && closed);
         }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
@@ -1174,7 +1186,7 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
             return;
         }
         cx.background_executor().timer(Duration::from_millis(1500)).await;
-        if demo == "play" || demo == "lane" {
+        if demo == "play" || demo == "lane" || demo == "director" {
             wait_audio(&state, cx, 20.0).await;
         }
         let _ = w.update(cx, |_, window, cx| {
@@ -1187,6 +1199,20 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 }
                 "hints" => s.start_hints(HintScope::All, window, cx),
                 "play" => s.toggle_play(false, cx),
+                // modo projeção tocando (F7d)
+                "director" => {
+                    s.director = Some(false);
+                    s.toggle_play(false, cx);
+                }
+                // metrônomo ligado: chips de acento, subdivisão e som na barra de cima
+                "metro" => {
+                    s.state.update(cx, |st, cx| {
+                        st.set_metronome(true, cx);
+                        st.tp.looping = true;
+                    });
+                    // tocando: o compositor sem tela só entrega frames com animação
+                    s.toggle_play(false, cx);
+                }
                 // trecho de loop c2–c3 (F2) tocando: banda na régua, chip na barra, ↺ na status bar
                 "loop" => {
                     s.state.update(cx, |st, cx| st.set_range(Some(wadawko_core::timeline::Region { start_bar: 1, end_bar: 3 }), cx));

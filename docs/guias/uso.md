@@ -22,7 +22,8 @@ comando também roda pela **paleta** (`Ctrl+K`): digite parte do nome e Enter.
   tempo.subdivisão do cursor; tocando, do playhead) e o BPM (roda do mouse ±1, clique para
   digitar) com o **TAP** (bata no ritmo para marcar o BPM), reto/swing; à direita metrônomo
   (ligado, mostra o padrão de acentos e a subdivisão), count-in, count-in a cada volta (com
-  loop), treino e o tema. Parar o mouse sobre um botão mostra o nome do comando e o atalho.
+  loop), treino e o tema (em janela estreita, abaixo de 1200 px, a barra fica compacta: reto/swing
+  vira um botão, o metrônomo mostra só o padrão e o tema vai para a paleta). Parar o mouse sobre um botão mostra o nome do comando e o atalho.
 - **Painel da direita**: o **inspector** (propriedades da seção, do compasso, da linha e da
   célula do cursor — edite ali mesmo: ritornello, compassos, fórmula, dinâmica, andamento,
   M/S/★, volume, pan, pessoas, sfz/acento) e as músicas do banco (`+ nova`, trocar, renomear,
@@ -143,6 +144,9 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   compasso de contagem, para o grupo respirar entre as voltas. Combina com o treino.
 - **Altura das linhas**: `Ctrl+Alt+↑/↓` (vim: `z k`/`z j`, `z =` volta ao padrão) — linhas
   baixas cabem mais na tela (abaixo de 32 px some o nome do instrumento). Fica salva.
+- **Modo projeção** (`F10`, ou `Ctrl+K` → "Modo projeção"): tela cheia em letras grandes para a TV
+  do ensaio — seção atual e a volta (`2/3`), compasso, os tempos acendendo, a próxima seção e o
+  BPM que está soando; a lista de linhas com as cores embaixo. `Espaço` toca/para, `Esc` sai.
 - **Tap tempo**: bata no **TAP** (ou `Alt+T`; no vim `Space t .`) no ritmo — da 2ª batida em
   diante o BPM segue a média das últimas 8; parar 2 s recomeça. Um `Ctrl+Z` desfaz o tap inteiro.
 - **Loop por trecho** ("esses dois compassos de novo"): **arraste na faixa de cima da régua**

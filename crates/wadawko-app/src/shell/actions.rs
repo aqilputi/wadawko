@@ -312,6 +312,18 @@ impl Shell {
             g.zoom_reset();
             cx.notify()
         }));
+        let d = on!(d, cx, view::Director, |this, w, cx| {
+            if this.director.is_some() {
+                this.director_close = true;
+            } else {
+                // tela cheia (se já não estava); ao sair, só desfaz se fomos nós
+                let ours = !w.is_fullscreen();
+                if ours {
+                    w.toggle_fullscreen();
+                }
+                this.director = Some(ours);
+            }
+        });
         let d = on!(d, cx, view::RowTaller, |this, w, cx| this.set_row_h(Some(crate::views::grid::CELL_H_STEP), cx));
         let d = on!(d, cx, view::RowShorter, |this, w, cx| this.set_row_h(Some(-crate::views::grid::CELL_H_STEP), cx));
         let d = on!(d, cx, view::RowReset, |this, w, cx| this.set_row_h(None, cx));
