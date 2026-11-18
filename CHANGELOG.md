@@ -45,6 +45,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 - Licença do código: **MIT OR Apache-2.0** (`LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`).
 
 ### Mudado
+- **Desempenho**: cada seção da grade é desenhada em cache; passar o mouse num botão
+  re-renderiza só aquela seção (≈11× menos trabalho por hover).
 - **Visual "estilo DAW"**: tema escuro por padrão (bancos sem tema salvo), cinzas neutros em
   níveis, cantos retos, transporte no centro da barra de cima, barra lateral estreita (64 px),
   painel direito de 280 px com cabeçalhos de painel (INSPECTOR, MÚSICAS), grade mais densa

@@ -365,6 +365,10 @@ pub struct GridView {
     pub drag_over: Option<usize>,
     /// seção cujo cabeçalho está sob o mouse (os botões dele só aparecem em hover)
     pub hover_sec: Option<usize>,
+    /// uma view em cache por seção (`render::SectionView`)
+    pub(crate) sec_views: Vec<Entity<render::SectionView>>,
+    /// chave do último desenho de cada seção
+    sec_keys: Vec<u64>,
     dragging: bool,
     pan: Option<(f32, f32)>,
     shaped: TextCache,
@@ -442,6 +446,8 @@ impl GridView {
             ghost: Rc::new(Vec::new()),
             drag_sec: None,
             hover_sec: None,
+            sec_views: Vec::new(),
+            sec_keys: Vec::new(),
             drag_over: None,
             dragging: false,
             pan: None,

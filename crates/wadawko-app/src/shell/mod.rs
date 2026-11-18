@@ -7,6 +7,7 @@
 //! `Entity<AppState>` (`state.rs`).
 
 mod actions;
+pub(crate) use actions::tap_bpm;
 pub mod chrome;
 pub mod io;
 
@@ -40,6 +41,11 @@ pub static DBG_FOLLOW_V: AtomicU64 = AtomicU64::new(0);
 pub static DBG_GRID_RENDERS: AtomicU64 = AtomicU64::new(0);
 /// soma (µs) do tempo gasto no render da raiz e o máximo
 pub static RENDER_US: AtomicU64 = AtomicU64::new(0);
+/// tempo total (µs) gasto em `GridView::render` (diagnóstico do `--demo hoverstat`)
+pub static GRID_RENDER_US: AtomicU64 = AtomicU64::new(0);
+/// renders de seções da grade (`SectionView`) e tempo total em µs
+pub static SEC_RENDERS: AtomicU64 = AtomicU64::new(0);
+pub static SEC_RENDER_US: AtomicU64 = AtomicU64::new(0);
 pub static RENDER_MAX_US: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Copy, PartialEq)]
@@ -792,7 +798,11 @@ impl Shell {
                             head.child(div().w_full().on_children_prepainted(move |b, _, _| cell.set(b.first().map_or(0.0, |b| f32::from(b.size.height)))).child(bar.clone()))
                         };
                         let grid_h = self.grid.read(cx).grid_height();
-                        self.grid.clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(grid_h))).into_any_element()
+                        // a grade NÃO fica em cache aqui: no gpui, uma view em cache que
+                        // re-renderiza redesenha todo o seu subárvore (`refreshing`), o que
+                        // anularia o cache por seção (`grid::render::SectionView`). O render
+                        // da grade em si é barato; o caro (as seções) fica em cache.
+                        div().w_full().h(px(grid_h)).child(self.grid.clone()).into_any_element()
                     }
                     Some(view) => view,
                 };
