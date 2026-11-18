@@ -126,6 +126,10 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   o 1 e o 3; `.B.B` para ouvir só o 2 e o 4. O chip **÷** troca a subdivisão: só os tempos →
   colcheias → tercinas → semicolcheias. Volume pela paleta ("Metrônomo: volume…"). Tudo vale
   na hora, tocando, e fica salvo nas configurações.
+- **Trechos de ensaio** (painel TRECHOS, à direita): com um trecho de loop marcado, `+ guardar`
+  (ou `Ctrl+Shift+L`; vim: `Space t g`) pede um nome — "solo do Ōdaiko", "entrada do B". Um clique
+  na lista põe aquele trecho em loop; também aparecem na paleta (`Ctrl+K` → "Trecho: …"). ✎
+  renomeia, ✕ remove (Ctrl+Z volta). Ficam salvos na música e acompanham as seções.
 - **Count-in a cada volta** (⏱↺, aparece com o loop ligado): antes de cada repetição toca um
   compasso de contagem, para o grupo respirar entre as voltas. Combina com o treino.
 - **Tap tempo**: bata no **TAP** (ou `Alt+T`; no vim `Space t .`) no ritmo — da 2ª batida em

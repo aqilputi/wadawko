@@ -66,6 +66,19 @@ impl Shell {
         }
     }
 
+    /// Põe em loop o trecho de ensaio `id` (F7b).
+    pub(crate) fn loop_spot(&mut self, id: &str, cx: &mut Context<Self>) {
+        let song = self.song(cx);
+        let Some(sp) = ops::practice::spots(&song).iter().find(|s| s.id == id).cloned() else { return };
+        match ops::practice::resolve(&song, &sp) {
+            Some(r) => {
+                self.state.update(cx, |s, cx| s.set_range(Some(r), cx));
+                self.flash(format!("trecho: {} ({})", sp.name, crate::state::range_label(r)), cx);
+            }
+            None => self.flash(format!("trecho \"{}\": a seção dele não existe mais", sp.name), cx),
+        }
+    }
+
     /// `Loop: seleção` (F2): o trecho passa a ser os compassos da seleção da
     /// grade, ou só o compasso do cursor; liga o loop.
     pub(crate) fn loop_selection(&mut self, cx: &mut Context<Self>) {
@@ -158,7 +171,7 @@ impl Shell {
     }
 
     pub(crate) fn actions(&self, d: gpui_kit::Stateful<gpui_kit::Div>, cx: &mut Context<Self>) -> gpui_kit::Stateful<gpui_kit::Div> {
-        use crate::keys::{grid as ga, hints, keys as kb, measure, nav, project, section, song, track, transport, view, vim};
+        use crate::keys::{grid as ga, hints, keys as kb, measure, nav, practice, project, section, song, track, transport, view, vim};
         let d = on!(d, cx, transport::TogglePlay, |this, w, cx| this.toggle_play(false, cx));
         let d = on!(d, cx, transport::PlayHere, |this, w, cx| this.toggle_play(true, cx));
         let d = on!(d, cx, transport::PlayFromStart, |this, w, cx| this.state.update(cx, |s, cx| {
@@ -204,6 +217,16 @@ impl Shell {
             this.state.update(cx, |s, cx| s.set_metronome_config(m, cx));
             this.save_settings(cx);
             this.flash(format!("metrônomo: {}", subdiv_name(m.subdiv)), cx)
+        });
+        let d = on!(d, cx, practice::Save, |this, w, cx| {
+            // sem trecho de loop: usa a seleção (ou o compasso do cursor), como o Ctrl+L
+            if this.state.read(cx).tp.range.is_none() {
+                this.loop_selection(cx);
+            }
+            match this.state.read(cx).tp.range {
+                Some(_) => this.ask(InputTarget::PracticeName(None), String::new(), w, cx),
+                None => this.flash("sem trecho de loop: arraste na régua ou ponha o cursor num compasso", cx),
+            }
         });
         let d = on!(d, cx, transport::TapTempo, |this, w, cx| this.tap_tempo(cx));
         let d = on!(d, cx, transport::ToggleTrainer, |this, w, cx| this.state.update(cx, |s, cx| {

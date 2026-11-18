@@ -32,6 +32,7 @@ fazem round-trip** (preservados intactos), então arquivos de versões futuras n
 | `people` | `Person[]`? | |
 | `instruments` | `InstrumentDef[]`? | instrumentos custom do Kit |
 | `mainTrackIds` / `mainTrackId` | texto[]? / texto? | linhas principais (★) da partitura |
+| `practice` | `PracticeSpot[]`? | trechos de ensaio com nome (só o app nativo usa; o web preserva) |
 
 ## Linha (`Track`)
 
@@ -67,6 +68,9 @@ transporte — não ficam no arquivo.
 
 - `Section`: `id`, `name`, `start` (índice do compasso), `repeat` (ritornello, padrão 1).
 - `Person`: `id`, `name`, `color` (`#rrggbb`), `muted`, `solo`, `volume`.
+- `PracticeSpot`: `id`, `name`, `start` e `end` (inclusivos), cada um `{ section, bar }` — id da
+  seção e compasso contado dentro dela (`section` vazio = música sem seções, conta do início).
+  Assim o trecho acompanha mover/clonar seções; se a seção some, o trecho fica "perdido".
 - `InstrumentDef`: `id`, `name`, `base` (sample), `builtin`, `head`/`rim` com `pitch`
   (semitons), `gain` (dB), `decay` (0…1, 0,5 = natural), `overtones` (0…1) e `tone`
   (`{ type: lowpass|highpass|bandpass, cutoff, q }`).

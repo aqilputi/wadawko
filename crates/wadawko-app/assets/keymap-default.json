@@ -52,7 +52,8 @@
       "tab": "grid::NextCell",
       "shift-tab": "grid::PrevCell",
       "ctrl-l": "transport::LoopSelection",
-      "alt-t": "transport::TapTempo"
+      "alt-t": "transport::TapTempo",
+      "ctrl-shift-l": "practice::Save"
     }
   },
   {
@@ -128,6 +129,7 @@
       "space t m": "transport::ToggleMetronome",
       "space t c": "transport::ToggleCountIn",
       "space t r": "transport::ToggleCountInLoop",
+      "space t g": "practice::Save",
       "space t a": "transport::MetroPattern",
       "space t d": "transport::MetroSubdiv",
       "space t v": "transport::MetroVolume",

@@ -5,6 +5,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ## [Não lançado]
 
 ### Adicionado
+- **Trechos de ensaio com nome** (painel TRECHOS): guarde o trecho de loop com um nome e volte a
+  ele com um clique ou pela paleta. Campo opcional `practice` na música.
 - **Metrônomo com acentos**: padrão por tempo (`A` forte, `B` fraco, `.` mudo — ex.: `A.B.`),
   subdivisão (colcheias, tercinas, semicolcheias) e volume; chips na barra de cima quando o
   metrônomo está ligado, salvo nas configurações. O count-in segue os acentos e a fórmula do

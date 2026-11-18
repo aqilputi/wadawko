@@ -571,6 +571,30 @@ impl Section {
     }
 }
 
+// ───────────────────────────── trechos de ensaio ─────────────────────────────
+
+/// Ponta de um trecho de ensaio: compasso `bar` contado dentro da seção
+/// `section` (id; vazio = música sem seções, conta do início). Ancorar na
+/// seção faz o trecho acompanhar mover/clonar seções e acrescentar compassos.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PracticeAnchor {
+    #[serde(default)]
+    pub section: String,
+    pub bar: usize,
+}
+
+/// Trecho de ensaio com nome (F7b: "o solo do Ōdaiko"): `start..=end`, as duas
+/// pontas inclusivas.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PracticeSpot {
+    pub id: String,
+    pub name: String,
+    pub start: PracticeAnchor,
+    pub end: PracticeAnchor,
+    #[serde(flatten)]
+    pub extra: Extra,
+}
+
 // ───────────────────────────── música ─────────────────────────────
 
 /// A música inteira (formato `version: 1`).
@@ -603,6 +627,9 @@ pub struct Song {
     /// formato antigo (um só instrumento em destaque); lido como `[mainTrackId]`
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub main_track_id: Option<String>,
+    /// trechos de ensaio com nome (F7b)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub practice: Option<Vec<PracticeSpot>>,
     #[serde(flatten)]
     pub extra: Extra,
 }
@@ -621,6 +648,7 @@ impl Default for Song {
             instruments: None,
             main_track_ids: None,
             main_track_id: None,
+            practice: None,
             extra: Extra::new(),
         }
     }

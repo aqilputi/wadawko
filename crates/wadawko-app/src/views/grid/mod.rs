@@ -234,6 +234,8 @@ pub enum InputTarget {
     MetroPattern,
     /// volume do metrônomo, em %
     MetroVolume,
+    /// nome do trecho de ensaio: `None` = guardar o trecho de loop atual; `Some(id)` = renomear
+    PracticeName(Option<String>),
 }
 
 pub enum GridEvent {

@@ -29,6 +29,7 @@ pub static SPECS: &[Spec] = &[
     spec!("transport::LoopStartHere", "Loop: começa no compasso do cursor", "Transporte", "repetir trecho início ["),
     spec!("transport::LoopEndHere", "Loop: termina no compasso do cursor", "Transporte", "repetir trecho fim ]"),
     spec!("transport::ToggleMetronome", "Metrônomo: ligar/desligar", "Transporte", "click"),
+    spec!("practice::Save", "Trechos: guardar o trecho de loop com um nome…", "Transporte", "ensaio trecho salvar nome loop região practice"),
     spec!("transport::ToggleCountIn", "Count-in: ligar/desligar", "Transporte", "contagem"),
     spec!("transport::ToggleCountInLoop", "Count-in a cada volta do loop: ligar/desligar", "Transporte", "contagem respirar repetir pausa"),
     spec!("transport::MetroPattern", "Metrônomo: padrão de acentos… (ABBB)", "Transporte", "click acento forte fraco mudo tempos"),

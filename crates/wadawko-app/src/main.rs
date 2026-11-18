@@ -932,6 +932,38 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             println!("PROBE tap tempo: {t0} → {t1} → Ctrl+Z {t2}");
             check("tap tempo marca ~120 BPM e um Ctrl+Z volta", (110.0..=130.0).contains(&t1) && t2 == t0);
         }
+        // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
+        {
+            let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());
+            let r0 = wadawko_core::timeline::Region { start_bar: 0, end_bar: 2 };
+            cx.update(|cx| state.update(cx, |s, cx| s.set_range(Some(r0), cx)));
+            wait(cx, 100).await;
+            let before = n_spots(cx).len();
+            key("ctrl-shift-l", cx);
+            wait(cx, 120).await;
+            for k in ["e", "n", "t", "r", "a", "d", "a", "enter"] {
+                key(k, cx);
+            }
+            wait(cx, 200).await;
+            let after = n_spots(cx);
+            let saved = after.last().map(|s| s.name.clone());
+            cx.update(|cx| state.update(cx, |s, cx| s.set_range(None, cx)));
+            wait(cx, 200).await;
+            let target = format!("spot-{}", after.len().saturating_sub(1));
+            if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get(target.as_str()).map(|t| t.bounds.center())) {
+                mouse(down(p, none), cx);
+                wait(cx, 60).await;
+                mouse(up(p, none), cx);
+                wait(cx, 150).await;
+            }
+            let r1 = cx.update(|cx| state.read(cx).tp.range);
+            key("ctrl-z", cx);
+            wait(cx, 120).await;
+            let undone = n_spots(cx).len();
+            cx.update(|cx| state.update(cx, |s, cx| s.set_range(None, cx)));
+            println!("PROBE trechos: {before} → {} ({saved:?}) · clique na lista → {r1:?} · Ctrl+Z → {undone}", after.len());
+            check("trechos: guardar com nome, clicar põe em loop, Ctrl+Z desfaz", after.len() == before + 1 && saved.as_deref() == Some("entrada") && r1 == Some(r0) && undone == before);
+        }
         key("ctrl-k", cx);
         wait(cx, 100).await;
         let pal = cx.update(|cx| shell.read(cx).palette.is_some());

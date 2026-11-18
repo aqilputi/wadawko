@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-18T19:01:18Z
+  at: 2026-11-18T19:29:53Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -79,6 +79,7 @@ Valem na área do editor (grade, partitura, esteira), com ou sem vim.
 | `Shift+Tab` | `grid::PrevCell` | grava e volta uma célula |
 | `Ctrl+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
 | `Alt+T` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
+| `Ctrl+Shift+L` | `practice::Save` | Trechos: guardar o trecho de loop com um nome… |
 
 ## Editor — modo simples (vim desligado)
 
@@ -157,6 +158,7 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `t` `m` | `transport::ToggleMetronome` | Metrônomo: ligar/desligar |
 | `Space` `t` `c` | `transport::ToggleCountIn` | Count-in: ligar/desligar |
 | `Space` `t` `r` | `transport::ToggleCountInLoop` | Count-in a cada volta do loop: ligar/desligar |
+| `Space` `t` `g` | `practice::Save` | Trechos: guardar o trecho de loop com um nome… |
 | `Space` `t` `a` | `transport::MetroPattern` | Metrônomo: padrão de acentos… (ABBB) |
 | `Space` `t` `d` | `transport::MetroSubdiv` | Metrônomo: subdivisão (1 → 2 → 3 → 4 por tempo) |
 | `Space` `t` `v` | `transport::MetroVolume` | Metrônomo: volume… |
