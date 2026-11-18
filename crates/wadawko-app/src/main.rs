@@ -997,6 +997,43 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             println!("PROBE modo projeção: abriu {open} · Esc fechou {closed}");
             check("modo projeção: F10 abre e Esc fecha", open && closed);
         }
+        // efeitos por célula (tracker T8): Ctrl+Shift+R duas vezes = R3 na célula do cursor → 3 golpes; Ctrl+Z volta
+        {
+            let target = cx.update(|cx| {
+                let song = state.read(cx).song().clone();
+                // 1ª célula com nota (linha 0 em diante)
+                (0..song.tracks.len()).find_map(|t| (0..song.measures.first().map_or(0, |m| m.cell_count())).find(|&k| song.cell(t, 0, k).is_some()).map(|k| Cur { m: 0, t, k }))
+            });
+            if let Some(c) = target {
+                cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                    g.cursor = Some(c);
+                    g.anchor = None;
+                    cx.notify();
+                }));
+                let fx_of = |cx: &mut AsyncApp| cx.update(|cx| {
+                    let song = state.read(cx).song().clone();
+                    song.measures[0].fx_at(&song.tracks[c.t].id, c.k).map(str::to_string)
+                });
+                let count = |cx: &mut AsyncApp| cx.update(|cx| {
+                    state.update(cx, |s, _| s.sync_audio());
+                    let st = state.read(cx);
+                    let cell = st.song().flat(0, c.k) as u32;
+                    st.schedule.hits().filter(|(_, h)| h.track as usize == c.t && h.cell == cell).count()
+                });
+                let n0 = count(cx);
+                key("ctrl-shift-r", cx);
+                key("ctrl-shift-r", cx);
+                wait(cx, 120).await;
+                let (f1, n1) = (fx_of(cx), count(cx));
+                // cada toque é um passo de desfazer
+                key("ctrl-z", cx);
+                key("ctrl-z", cx);
+                wait(cx, 120).await;
+                let (f2, n2) = (fx_of(cx), count(cx));
+                println!("PROBE efeitos: célula {c:?} · {n0} golpe(s) → {f1:?} {n1} golpes → Ctrl+Z {f2:?} {n2}");
+                check("efeitos: Ctrl+Shift+R ×2 = R3 (3 golpes) e Ctrl+Z ×2 volta", f1.as_deref() == Some("R3") && n1 == 3 && f2.is_none() && n2 == n0);
+            }
+        }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
             let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());

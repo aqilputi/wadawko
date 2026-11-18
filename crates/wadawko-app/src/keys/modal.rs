@@ -340,6 +340,16 @@ impl Shell {
             InputTarget::PracticeName(Some(id)) if !t.trim().is_empty() => {
                 self.edit(cx, |s| ops::practice::rename_spot(s, &id, t));
             }
+            InputTarget::CellFx(m, ti, k) => match wadawko_core::fx::normalize(t) {
+                Ok(norm) => {
+                    let tid = self.song(cx).tracks.get(ti).map(|x| x.id.clone()).unwrap_or_default();
+                    self.edit(cx, |s| {
+                        let _ = ops::cells::set_fx(s, &tid, m, k, norm.as_deref());
+                    });
+                    self.flash(norm.map_or_else(|| "efeitos removidos".to_string(), |n| format!("efeitos: {n}")), cx);
+                }
+                Err(e) => self.flash(format!("efeito inválido — {e}"), cx),
+            },
             InputTarget::MetroVolume => match num {
                 Some(v) => {
                     let m = wadawko_audio::Metronome { gain: (v / 100.0).clamp(0.0, 2.0) as f32, ..self.state.read(cx).tp.metro };
@@ -531,6 +541,7 @@ impl Shell {
             PromptKind::Input(InputTarget::MetroPattern) => ("acentos:", "A forte · B fraco · . mudo (ex.: ABBB, A.B.) · vazio = automático"),
             PromptKind::Input(InputTarget::PracticeName(None)) => ("nome do trecho:", "ex.: solo do Ōdaiko · vazio = c3–c6 · Enter guarda"),
             PromptKind::Input(InputTarget::PracticeName(Some(_))) => ("trecho:", "Enter confirma · Esc cancela"),
+            PromptKind::Input(InputTarget::CellFx(..)) => ("efeitos:", "V0–9 força · R2–9 rulo (< >) · F flam · D±5 atraso · X corte · H0–9 humano · vazio limpa"),
             PromptKind::Input(InputTarget::MetroVolume) => ("metrônomo, volume %:", "0–200 · Enter confirma"),
         };
         div()

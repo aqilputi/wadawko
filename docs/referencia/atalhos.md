@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-18T22:23:41Z
+  at: 2026-11-18T23:47:57Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -79,6 +79,14 @@ Valem na área do editor (grade, partitura, esteira), com ou sem vim.
 | `Shift+Tab` | `grid::PrevCell` | grava e volta uma célula |
 | `Ctrl+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
 | `Alt+T` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
+| `Ctrl+Shift+R` | `fx::Roll` | Efeito: rulo (×2 → 3 → 4 → 6 → 8 → nenhum) |
+| `Ctrl+Shift+F` | `fx::Flam` | Efeito: flam (liga/desliga) |
+| `Ctrl+Shift+X` | `fx::Cut` | Efeito: corte / abafar (liga/desliga) |
+| `Ctrl+Shift+.` | `fx::Later` | Efeito: atrasar 10 % |
+| `Ctrl+Shift+,` | `fx::Earlier` | Efeito: antecipar 10 % |
+| `Ctrl+Shift+V` | `fx::Softer` | Efeito: mais fraco (força 9 → 0 = ghost) |
+| `Ctrl+Shift+0` | `fx::Clear` | Efeitos: limpar |
+| `Ctrl+Shift+Y` | `fx::Edit` | Efeitos da célula… (V R F D X H) |
 | `Ctrl+Alt+↑` | `view::RowTaller` | Linhas mais altas |
 | `f10` | `view::Director` | Modo projeção (tela cheia para a TV do ensaio) |
 | `Ctrl+Alt+↓` | `view::RowShorter` | Linhas mais baixas (cabem mais linhas) |
@@ -164,6 +172,17 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `t` `m` | `transport::ToggleMetronome` | Metrônomo: ligar/desligar |
 | `Space` `t` `c` | `transport::ToggleCountIn` | Count-in: ligar/desligar |
 | `Space` `t` `r` | `transport::ToggleCountInLoop` | Count-in a cada volta do loop: ligar/desligar |
+| `Space` `f` `r` | `fx::Roll` | Efeito: rulo (×2 → 3 → 4 → 6 → 8 → nenhum) |
+| `Space` `f` `Shift+R` | `fx::RollCresc` | Efeito: rulo crescendo / decrescendo |
+| `Space` `f` `f` | `fx::Flam` | Efeito: flam (liga/desliga) |
+| `Space` `f` `d` | `fx::Later` | Efeito: atrasar 10 % |
+| `Space` `f` `Shift+D` | `fx::Earlier` | Efeito: antecipar 10 % |
+| `Space` `f` `x` | `fx::Cut` | Efeito: corte / abafar (liga/desliga) |
+| `Space` `f` `v` | `fx::Softer` | Efeito: mais fraco (força 9 → 0 = ghost) |
+| `Space` `f` `h` | `fx::Exact` | Efeito: exato, sem humanização (liga/desliga) |
+| `Space` `f` `c` | `fx::Clear` | Efeitos: limpar |
+| `Space` `f` `e` | `fx::Edit` | Efeitos da célula… (V R F D X H) |
+| `Space` `v` `x` | `fx::ToggleColumn` | Efeitos: mostrar a coluna em todas as linhas |
 | `Space` `t` `g` | `practice::Save` | Trechos: guardar o trecho de loop com um nome… |
 | `Space` `t` `a` | `transport::MetroPattern` | Metrônomo: padrão de acentos… (ABBB) |
 | `Space` `t` `d` | `transport::MetroSubdiv` | Metrônomo: subdivisão (1 → 2 → 3 → 4 por tempo) |
@@ -357,6 +376,7 @@ Apertar o prefixo e esperar mostra as continuações possíveis.
 | `Space` `d` | dinâmica |
 | `Space` `m` | música |
 | `Space` `z` | zoom |
+| `Space` `f` | efeitos |
 | `g` | ir |
 | `z` | zoom/dobrar |
 | `d` | apagar |

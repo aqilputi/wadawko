@@ -123,6 +123,26 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   canal 10 (bateria GM), com andamento, fórmulas de compasso e marcadores de seção. Notas: ōdaiko
   35, ō-nagadō 41, nagadō 43, chū 45, okedō 47, hira 50, shime 38, borda 37, kane 56/80.
 
+# Efeitos por célula
+
+Como os comandos de um tracker, curtos e legíveis, até 3 por célula (ex.: `R4< D+1`):
+
+| Comando | Faz |
+|---|---|
+| `V0`–`V9` | força × n/10 (`V0` = ghost) |
+| `R2`–`R9`, `R4<`, `R4>` | rulo: repete o golpe n vezes na célula, mãos alternando; `<`/`>` crescendo/decrescendo |
+| `F` (`F1`–`F3`) | flam: um golpe de apoio antes, na outra mão |
+| `D+1`…`D+5`, `D-1`…`D-5` | atrasa/antecipa em décimos da célula |
+| `X` (`X1`–`X9`) | corte: abafa a pele no meio da célula (nota curta) |
+| `H0`–`H9` | humanização (`H0` = exato, para uníssonos) |
+
+No editor vertical a coluna **fx** aparece ao lado da nota nas linhas que têm efeito (ou em todas:
+`Ctrl+K` → "Efeitos: mostrar a coluna", vim `space v x`); clique nela para digitar. Atalhos na
+célula ou na seleção: `Ctrl+Shift+R` rulo (2 → 3 → 4 → 6 → 8 → nenhum), `Ctrl+Shift+F` flam,
+`Ctrl+Shift+.`/`,` atrasa/antecipa, `Ctrl+Shift+X` corte, `Ctrl+Shift+V` mais fraco, `Ctrl+Shift+0`
+limpa, `Ctrl+Shift+Y` digita; no vim, `space f …`. O inspector mostra os efeitos da célula com
+botões prontos. O áudio, a esteira e o MIDI tocam os efeitos; a partitura ainda não os desenha.
+
 # Tocar e ensaiar
 
 - `Space` toca/para (no modo simples, quando não está digitando). A grade acompanha o

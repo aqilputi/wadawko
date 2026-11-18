@@ -348,6 +348,33 @@ impl Shell {
                     .child(ibtn("ins-unacc", "a", Box::new(keys::grid::Unaccent)))
                     .child(ibtn("ins-del", "× apagar", Box::new(keys::grid::DeleteCell))),
             );
+            // efeitos por célula (tracker §4.4): o texto (clique = editar) e os prontos
+            let fxt = meas.fx_at(&tid, c.k).map(str::to_string);
+            let desc = fxt.as_deref().and_then(|t| wadawko_core::fx::parse(t).ok()).map(|v| v.iter().map(|f| f.label()).collect::<Vec<_>>().join(" · "));
+            body = body
+                .child(
+                    row()
+                        .child(lbl("efeitos"))
+                        .child(ibtn("ins-fx", "✎", Box::new(keys::fx::Edit)))
+                        .child(
+                            div()
+                                .text_size(px(11.5))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(if fxt.is_some() { th2.accent2 } else { th2.ink_faint })
+                                .child(SharedString::from(fxt.clone().unwrap_or_else(|| "nenhum".into()))),
+                        )
+                        .when_some(desc, |d, t| d.child(div().w_full().text_size(px(10.5)).text_color(th2.ink_soft).child(SharedString::from(t)))),
+                )
+                .child(
+                    row()
+                        .child(ibtn("ins-fx-r", "rulo", Box::new(keys::fx::Roll)))
+                        .child(ibtn("ins-fx-f", "flam", Box::new(keys::fx::Flam)))
+                        .child(ibtn("ins-fx-d", "atrasa", Box::new(keys::fx::Later)))
+                        .child(ibtn("ins-fx-x", "corte", Box::new(keys::fx::Cut)))
+                        .child(ibtn("ins-fx-v", "fraco", Box::new(keys::fx::Softer)))
+                        .child(ibtn("ins-fx-h", "exato", Box::new(keys::fx::Exact)))
+                        .when(fxt.is_some(), |d| d.child(ibtn("ins-fx-c", "× limpar", Box::new(keys::fx::Clear)))),
+                );
         }
         body
     }

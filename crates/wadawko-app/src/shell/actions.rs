@@ -190,7 +190,7 @@ impl Shell {
     }
 
     pub(crate) fn actions(&self, d: gpui_kit::Stateful<gpui_kit::Div>, cx: &mut Context<Self>) -> gpui_kit::Stateful<gpui_kit::Div> {
-        use crate::keys::{grid as ga, hints, keys as kb, measure, nav, practice, project, section, song, track, transport, view, vim};
+        use crate::keys::{fx, grid as ga, hints, keys as kb, measure, nav, practice, project, section, song, track, transport, view, vim};
         let d = on!(d, cx, transport::TogglePlay, |this, w, cx| this.toggle_play(false, cx));
         let d = on!(d, cx, transport::PlayHere, |this, w, cx| this.toggle_play(true, cx));
         let d = on!(d, cx, transport::PlayFromStart, |this, w, cx| this.state.update(cx, |s, cx| {
@@ -337,6 +337,24 @@ impl Shell {
             this.save_settings(cx);
             this.flash(format!("editor: {}", layout.name()), cx);
             this.reveal_cursor(cx)
+        });
+        let d = on!(d, cx, fx::Edit, |this, w, cx| this.fx_edit(w, cx));
+        let d = on!(d, cx, fx::Roll, |this, w, cx| this.fx_action("roll", cx));
+        let d = on!(d, cx, fx::RollCresc, |this, w, cx| this.fx_action("roll_cresc", cx));
+        let d = on!(d, cx, fx::Flam, |this, w, cx| this.fx_action("flam", cx));
+        let d = on!(d, cx, fx::Later, |this, w, cx| this.fx_action("later", cx));
+        let d = on!(d, cx, fx::Earlier, |this, w, cx| this.fx_action("earlier", cx));
+        let d = on!(d, cx, fx::Cut, |this, w, cx| this.fx_action("cut", cx));
+        let d = on!(d, cx, fx::Softer, |this, w, cx| this.fx_action("softer", cx));
+        let d = on!(d, cx, fx::Exact, |this, w, cx| this.fx_action("exact", cx));
+        let d = on!(d, cx, fx::Clear, |this, w, cx| this.fx_action("clear", cx));
+        let d = on!(d, cx, fx::ToggleColumn, |this, w, cx| {
+            let on = this.grid.update(cx, |g, cx| {
+                g.show_fx_all = !g.show_fx_all;
+                cx.notify();
+                g.show_fx_all
+            });
+            this.flash(if on { "coluna de efeitos em todas as linhas" } else { "coluna de efeitos só onde há efeito" }, cx)
         });
         let d = on!(d, cx, view::Director, |this, w, cx| {
             if this.director.is_some() {

@@ -250,6 +250,10 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                                 if res.sfz {
                                     window.paint_quad(rounded(rect(x + cw - 7.0, y + 3.0, 4.0, 4.0), R0, th.accent));
                                 }
+                                // efeitos da célula (o editor vertical tem a sub-coluna): marca no canto
+                                if meas.fx_at(&track.id, k).is_some() {
+                                    window.paint_quad(rounded(rect(x + cw - 7.0, y + rows.cell_h - 8.0, 5.0, 5.0), R0, th.accent2));
+                                }
                             }
                             // sílaba que o vocabulário não reconhece: contorno `danger`
                             None => window.paint_quad(outline(rect(lx, y, inner, rows.cell_h), th.danger, BorderStyle::Solid)),

@@ -74,6 +74,8 @@ pub struct Rows {
     pub y: Vec<f32>,
     pub dynr: Vec<bool>,
     pub kyai: Vec<bool>,
+    /// sub-coluna de efeitos (editor vertical): a linha tem efeitos ou foi ligada
+    pub fx: Vec<bool>,
     pub h: f32,
     /// altura da célula (linha principal) — `CELL_H` por padrão
     pub cell_h: f32,
@@ -256,6 +258,8 @@ pub enum InputTarget {
     MetroVolume,
     /// nome do trecho de ensaio: `None` = guardar o trecho de loop atual; `Some(id)` = renomear
     PracticeName(Option<String>),
+    /// texto de efeitos de uma célula (compasso, linha, célula)
+    CellFx(usize, usize, usize),
 }
 
 pub enum GridEvent {
@@ -370,6 +374,10 @@ pub struct GridView {
     /// linhas com a sub-linha de dinâmica / kiai aberta à mão (por id da linha)
     pub show_dyn: HashSet<String>,
     pub show_kyai: HashSet<String>,
+    /// linhas com a sub-coluna de efeitos ligada (ela também aparece sozinha onde há efeito)
+    pub show_fx: HashSet<String>,
+    /// sub-coluna de efeitos em todas as linhas (`fx::ToggleColumn`)
+    pub show_fx_all: bool,
     /// registradores: '"' sem nome, '0' último yank, 'a'..'z', '+' área de transferência
     pub registers: HashMap<char, Register>,
     /// registrador escolhido com `"x` para a próxima operação
@@ -421,6 +429,8 @@ pub enum Hit {
     Cell(Cur),
     TrackDyn(usize, usize, DynPart, Point<Pixels>),
     Kyai(Cur),
+    /// sub-coluna de efeitos da célula (editor vertical)
+    Fx(Cur),
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -473,6 +483,8 @@ impl GridView {
             collapsed: HashSet::new(),
             show_dyn: HashSet::new(),
             show_kyai: HashSet::new(),
+            show_fx: HashSet::new(),
+            show_fx_all: false,
             registers: HashMap::new(),
             reg_sel: None,
             insert_log: Vec::new(),
@@ -527,7 +539,9 @@ impl GridView {
     }
 
     pub fn rows(&self) -> Rows {
-        Rows::new(&self.song, &self.show_dyn, &self.show_kyai, self.cell_h)
+        let mut r = Rows::new(&self.song, &self.show_dyn, &self.show_kyai, self.cell_h);
+        r.fx = self.song.tracks.iter().map(|t| self.show_fx_all || self.show_fx.contains(&t.id) || ops::cells::track_has_fx(&self.song, &t.id)).collect();
+        r
     }
 
     pub fn is_collapsed(&self, sec: &Sec) -> bool {
@@ -1605,6 +1619,22 @@ impl GridView {
                 }
                 self.cursor = Some(c);
                 self.dragging = true;
+            }
+            Some(Hit::Fx(c)) => {
+                // clique na sub-coluna de efeitos: o cursor vai para a célula e abre o campo
+                self.commit_edit_in_place(cx);
+                self.lane = Lane::Cells;
+                self.anchor = None;
+                self.cursor = Some(c);
+                if ev.button == MouseButton::Right {
+                    self.edit(cx, |s| {
+                        let _ = ops::cells::set_fx(s, &s.tracks[c.t].id.clone(), c.m, c.k, None);
+                    });
+                    return;
+                }
+                let cur = self.song.measures.get(c.m).and_then(|m| m.fx_at(&self.song.tracks[c.t].id, c.k)).unwrap_or("").to_string();
+                cx.emit(GridEvent::Ask(InputTarget::CellFx(c.m, c.t, c.k), cur));
+                cx.notify();
             }
             Some(Hit::LoopLane) if ev.button == MouseButton::Left => self.loop_lane_down(s, ev, cx),
             Some(Hit::Timeline(cell)) if ev.button == MouseButton::Left => {

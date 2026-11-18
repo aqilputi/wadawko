@@ -7,6 +7,7 @@
 //! `Entity<AppState>` (`state.rs`).
 
 mod actions;
+mod fxedit;
 pub(crate) use actions::tap_bpm;
 pub mod chrome;
 pub mod io;

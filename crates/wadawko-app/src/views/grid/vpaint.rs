@@ -12,7 +12,7 @@ use wadawko_core::ops::people::cell_owner_of;
 use wadawko_core::timeline::Region;
 use wadawko_core::{Hairpin, Song, Zone, phrase};
 
-use super::vgeom::{Cols, DYN_W, GUTTER_W, KYAI_W, LEFT_W, LOOP_W, LOOP_X, MEAS_W, measure_ys};
+use super::vgeom::{Cols, DYN_W, FX_W, GUTTER_W, KYAI_W, LEFT_W, LOOP_W, LOOP_X, MEAS_W, measure_ys};
 use super::{Cur, Lane, MoveDrag, Range4, TextCache, VMode};
 use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color};
@@ -274,6 +274,24 @@ pub fn vpaint_section(b: Bounds<Pixels>, a: &VPaintArgs, window: &mut Window, cx
                         }
                         if dim {
                             window.paint_quad(fill(rect(x, y, nw, ih), Theme::alpha(th.bg, 0.6)));
+                        }
+                        // sub-coluna de efeitos: o texto (`R4<`) em accent2; inválido = contorno danger
+                        if let Some(fxx) = cols.fx_x[t] {
+                            let fxt = meas.fx_at(&track.id, k);
+                            let fxx = x + fxx;
+                            window.paint_quad(fill(rect(fxx + 1.0, y, FX_W - 1.0, ih), Theme::alpha(th.paper_raise, 0.55)));
+                            match fxt {
+                                Some(t) => {
+                                    let ok = wadawko_core::fx::parse(t).is_ok();
+                                    window.paint_quad(rounded(rect(fxx + 3.0, y + 3.0, FX_W - 6.0, ih - 6.0), R1, th.accent2_wash));
+                                    if !ok {
+                                        window.paint_quad(outline(rect(fxx + 3.0, y + 3.0, FX_W - 6.0, ih - 6.0), th.danger, BorderStyle::Solid));
+                                    }
+                                    text(window, cx, &SharedString::from(t.to_string()), 10, if ok { th.accent2 } else { th.danger }, 4, fxx, ty(y, 10), Some(FX_W));
+                                }
+                                None if beat_start => text(window, cx, &"·".into(), 10, th.ink_faint, 1, fxx, ty(y, 10), Some(FX_W)),
+                                None => {}
+                            }
                         }
                         // sub-coluna de dinâmica da linha: chip (1ª linha), < > (2ª)
                         if let Some(dx) = cols.dyn_x[t] {

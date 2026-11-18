@@ -63,6 +63,10 @@ pub mod project {
     use gpui_kit::actions;
     actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ImportLibrary, ExportMp3, ExportWav, ExportMidi, CancelExport]);
 }
+pub mod fx {
+    use gpui_kit::actions;
+    actions!(fx, [Edit, Roll, RollCresc, Flam, Later, Earlier, Cut, Softer, Exact, Clear, ToggleColumn]);
+}
 pub mod practice {
     use gpui_kit::actions;
     actions!(practice, [Save]);

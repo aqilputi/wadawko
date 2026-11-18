@@ -106,7 +106,12 @@ impl Cols {
         let mut c = Cols { note_w, ..Cols::default() };
         for t in 0..rows.y.len() {
             let mut gw = note_w;
-            c.fx_x.push(None);
+            let f = rows.fx.get(t).copied().unwrap_or(false).then(|| {
+                let x = gw;
+                gw += FX_W;
+                x
+            });
+            c.fx_x.push(f);
             let d = rows.dynr[t].then(|| {
                 let x = gw;
                 gw += DYN_W;
@@ -271,7 +276,7 @@ impl GridView {
             Sub::Note => Some(Hit::Cell(Cur { m, t, k })),
             Sub::Dyn(lx) => Some(Hit::TrackDyn(m, t, dyn_sub_part(lx, k), pos)),
             Sub::Kyai => Some(Hit::Kyai(Cur { m, t, k })),
-            Sub::Fx => None,
+            Sub::Fx => Some(Hit::Fx(Cur { m, t, k })),
         }
     }
 
