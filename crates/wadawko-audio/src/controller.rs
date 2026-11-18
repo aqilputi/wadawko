@@ -16,7 +16,7 @@ use wadawko_core::{InstrumentDef, Song, Track, Zone};
 use wadawko_samples::{RoundRobin, SampleBank};
 
 use crate::dsp::Rng;
-use crate::engine::{Clock, Command, Engine, EngineConfig, EngineEvent, Garbage, PlayCmd, PreviewSeq, SampleSet, Trainer};
+use crate::engine::{Clock, Command, Engine, EngineConfig, EngineEvent, Garbage, Meters, PlayCmd, PreviewSeq, SampleSet, Trainer};
 use crate::fue::fue_total_secs;
 use crate::kyai_voice::kyai_grains;
 use crate::schedule::{CompileOptions, Compiler, EventKind, PREVIEW_KYAI_SLOT, PREVIEW_SLOT, Schedule, channel_key, db_gain, hit_event, sfz_dyn, track_audible, zone_chain};
@@ -45,6 +45,7 @@ pub struct Controller {
     events: rtrb::Consumer<EngineEvent>,
     garbage: rtrb::Consumer<Garbage>,
     clock: Arc<Clock>,
+    meters: Arc<Meters>,
     compiler: Compiler,
     schedule: Arc<Schedule>,
     preview_rr: HashMap<String, RoundRobin>,
@@ -61,11 +62,13 @@ pub fn engine_pair(bank: &SampleBank, samples: Arc<SampleSet>, cfg: EngineConfig
     let clock = Clock::new(cfg.sample_rate, 100.0);
     let mut engine = Engine::with_clock(cfg, samples, clock.clone());
     engine.attach(rx, ev_tx, g_tx);
+    let meters = engine.meters().clone();
     let ctl = Controller {
         tx,
         events: ev_rx,
         garbage: g_rx,
         clock,
+        meters,
         compiler: Compiler::new(bank, cfg.sample_rate),
         schedule: Arc::new(Schedule::empty()),
         preview_rr: HashMap::new(),
@@ -79,6 +82,11 @@ pub fn engine_pair(bank: &SampleBank, samples: Arc<SampleSet>, cfg: EngineConfig
 impl Controller {
     pub fn clock(&self) -> &Arc<Clock> {
         &self.clock
+    }
+
+    /// Picos de nível por canal/barramento/master (F3); leia com `Meters::take`.
+    pub fn meters(&self) -> &Arc<Meters> {
+        &self.meters
     }
 
     pub fn sample_rate(&self) -> u32 {

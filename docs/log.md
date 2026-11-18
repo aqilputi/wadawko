@@ -2,6 +2,27 @@
 
 ## 2026-11-17
 
+**Atualização**: features de DAW do [plano](/planejamento/daw.md) implementadas (cor por
+trilha, loop por trecho na régua, medidores de nível com strip master, inspector contextual)
+e restyle dos cartões (E5/E6): [guia de uso](/guias/uso.md) (janela, cor da linha, loop por
+trecho, mixer com medidores, inspector), [formato da música](/referencia/formato-da-musica.md)
+(`color` na linha; o que não vai no arquivo), [arquitetura do app](/arquitetura/app.md)
+(tokens, `R0/R1`, `Transport.range`, medidores no overlay, chave do inspector),
+[atalhos](/referencia/atalhos.md) (gerada: `Ctrl+L`, `[`/`]`, "Linha: próxima cor"); capturas
+em `imagens/` refeitas com o mixer, a esteira e a partitura finais; decisões anotadas nas etapas
+F1–F4, E5 e E6 do plano e status das etapas atualizado.
+
+**Atualização**: capturas de tela em `imagens/` refeitas no visual "estilo DAW" (tema escuro,
+etapas E1–E4 do [plano](/planejamento/daw.md)), a partir de um banco só com as fixtures; as
+decisões tomadas na implementação ficaram anotadas nas etapas E1, E3 e E4 do plano.
+
+**Criação** do plano [design estilo DAW e features de DAW](/planejamento/daw.md): pesquisa da
+linguagem visual do Bitwig (e Live, Renoise, Reaper, FL) e de UX/features de DAWs e notadores de
+percussão; sistema de design escuro de cantos retos (tokens, componentes, layout com transporte
+central, nav rail estreita, inspector); backlog de features priorizado com o corte para
+implementar agora (cor por trilha, loop por trecho na régua, medidores de nível) e plano de
+implementação em etapas verificáveis.
+
 **Atualização**: licença (MIT OR Apache-2.0) em créditos; repositório sem app web e sem
 `spike/` (visão geral, instalar e compilar, desempenho, arquitetura); importar músicas de outro
 banco ou backup pela Config (dados e arquivos, instalar e compilar); AppImage, Flatpak e ícone

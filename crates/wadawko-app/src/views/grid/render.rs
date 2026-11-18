@@ -4,7 +4,7 @@
 use std::rc::Rc;
 use std::time::Instant;
 
-use gpui_kit::{App, Bounds, ClickEvent, Context, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Render, ScrollEvent, SharedString, Window, canvas, div, prelude::*, px};
+use gpui_kit::{App, Bounds, ClickEvent, Context, FontWeight, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Render, ScrollEvent, SharedString, Window, canvas, div, prelude::*, px};
 use wadawko_core::ops;
 use wadawko_core::{Song, TempoMark, kyai};
 
@@ -12,8 +12,8 @@ use super::paint::{PaintArgs, paint_section};
 use super::{CELL_H, DYNAMICS, GridEvent, GridView, InputTarget, KYAI_H, LABEL_W, Menu, SEC_DYN_H, SEC_GAP, SEC_HEAD_H, TDYN_H, TIMELINE_H, sec_key};
 use crate::keys::{self, HintAct};
 use crate::song_ext::SongExt;
-use crate::theme::{Theme, parse_color};
-use crate::ui::small_btn;
+use crate::theme::{Theme, parse_color, track_color};
+use crate::ui::{self, small_btn_on};
 
 type Op = Rc<dyn Fn(&mut GridView, &mut Context<GridView>)>;
 
@@ -26,7 +26,7 @@ fn chip(id: impl Into<gpui_kit::ElementId>, th: &Theme, on: bool) -> gpui_kit::S
         .flex()
         .flex_none()
         .items_center()
-        .rounded(px(6.0))
+        .rounded(px(ui::R1))
         .border_1()
         .text_size(px(12.0))
         .cursor_pointer()
@@ -38,11 +38,11 @@ fn popover(th: &Theme) -> gpui_kit::Div {
     div()
         .absolute()
         .p(px(10.0))
-        .rounded(px(10.0))
+        .rounded(px(ui::R0))
         .bg(th.paper)
         .border_1()
         .border_color(th.line_strong)
-        .shadow_lg()
+        .shadow_sm()
         .flex()
         .flex_col()
         .gap(px(8.0))
@@ -77,6 +77,36 @@ impl GridView {
             })));
         }
 
+        // cor da linha (F1): 12 swatches da paleta + "padrão" (cor do instrumento)
+        let cur_col = track.color_or_default().to_string();
+        let weak = cx.weak_entity();
+        let mut colors = row().child(lbl("cor"));
+        for (i, c) in wadawko_core::model::TRACK_COLORS.iter().enumerate() {
+            let on = c.eq_ignore_ascii_case(&cur_col);
+            let hsla = parse_color(c).unwrap_or(th.ink_soft);
+            let (c1, c2) = (c.to_string(), c.to_string());
+            let w = weak.clone();
+            colors = colors.child(keys::hintable(
+                div()
+                    .id(("col", t * 100 + i))
+                    .relative()
+                    .flex_none()
+                    .size(px(14.0))
+                    .rounded(px(ui::R1))
+                    .bg(hsla)
+                    .border_2()
+                    .border_color(if on { th.ink } else { gpui_kit::transparent_black() })
+                    .cursor_pointer()
+                    .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| this.track_edit(t, cx, |s, tid| ops::tracks::set_track_color(s, tid, Some(&c1))))),
+                format!("col-{t}-{i}"),
+                Rc::new(move |_, cx: &mut App| {
+                    let c2 = c2.clone();
+                    let _ = w.update(cx, |this, cx| this.track_edit(t, cx, |s, tid| ops::tracks::set_track_color(s, tid, Some(&c2))));
+                }),
+            ));
+        }
+        colors = colors.child(click("r-col-def", "padrão".into(), track.color.is_none(), cx, Rc::new(move |this, cx| this.track_edit(t, cx, |s, tid| ops::tracks::set_track_color(s, tid, None)))));
+
         let mut people = row().child(lbl("pessoas"));
         if song.people().is_empty() {
             people = people.child(div().text_size(px(11.0)).text_color(th.ink_faint).child("nenhuma pessoa na música (página Pessoas)"));
@@ -85,12 +115,12 @@ impl GridView {
             let pid = p.id.clone();
             let on = track.person_ids().contains(&p.id);
             let col = p.color.as_deref().and_then(parse_color).unwrap_or(th.ink_soft);
-            people = people.child(chip(("pers", t * 100 + i), th, on).gap(px(5.0)).child(div().size(px(8.0)).rounded(px(4.0)).bg(col)).child(SharedString::from(p.name.clone())).on_click(
-                cx.listener(move |this, _: &ClickEvent, _, cx| {
+            people = people.child(chip(("pers", t * 100 + i), th, on).gap(px(5.0)).child(div().size(px(8.0)).rounded_full().bg(col)).child(SharedString::from(p.name.clone())).on_click(cx.listener(
+                move |this, _: &ClickEvent, _, cx| {
                     let pid = pid.clone();
                     this.track_edit(t, cx, |s, tid| ops::people::toggle_track_person(s, tid, &pid));
-                }),
-            ));
+                },
+            )));
         }
 
         let (pitch, vary, gain) = kyai::kyai_voice_or_default(track.kyai.as_ref());
@@ -180,6 +210,7 @@ impl GridView {
                     )),
             )
             .child(insts)
+            .child(colors)
             .child(people)
             .child(
                 row()
@@ -328,6 +359,7 @@ impl Render for GridView {
         let st = self.state.read(cx);
         let th = st.theme;
         let selected: Vec<String> = st.tp.selected.clone();
+        let (range, looping) = (st.tp.range, st.tp.looping);
         let song = self.song.clone();
         let secs = song.secs();
         let rows = self.rows();
@@ -346,9 +378,10 @@ impl Render for GridView {
         let bar_used = bar;
         let rails = ops::people::rails_for_tracks(&song);
         let rail_w = rails.len() as f32 * 5.0 + if rails.is_empty() { 0.0 } else { 4.0 };
+        self.geom.borrow_mut().label_pad = 6.0 + rail_w;
 
-        // botão pequeno = clique + alvo de salto com a MESMA operação
-        let mk = |id: String, label: &'static str, on: bool, op: Op| {
+        // botão pequeno (20×16) = clique + alvo de salto com a MESMA operação; aceso na cor dada
+        let mkc = |id: String, label: &'static str, on: bool, color: Hsla, op: Op| {
             let w1 = weak.clone();
             let w2 = weak.clone();
             let op2 = op.clone();
@@ -356,7 +389,7 @@ impl Render for GridView {
                 let _ = w2.update(cx, |this, cx| op2(this, cx));
             });
             keys::hintable(
-                small_btn(SharedString::from(id.clone()), label, &th, on).on_click(move |_: &ClickEvent, _, cx: &mut App| {
+                small_btn_on(SharedString::from(id.clone()), label, &th, on, color).on_click(move |_: &ClickEvent, _, cx: &mut App| {
                     // não deixa o clique chegar à barra da seção (que (des)seleciona)
                     cx.stop_propagation();
                     let _ = w1.update(cx, |this, cx| op(this, cx));
@@ -365,6 +398,7 @@ impl Render for GridView {
                 act,
             )
         };
+        let mk = |id: String, label: &'static str, on: bool, op: Op| mkc(id, label, on, th.accent, op);
 
         let mut root = div()
             .id("grid-root")
@@ -452,15 +486,34 @@ impl Render for GridView {
             let sec_name = sec.name.clone();
             let key_col = key.clone();
 
+            let hov = self.hover_sec == Some(s);
+            // botão do cabeçalho (h 20): só aparece com o mouse sobre a barra (continua alvo de salto)
+            let mkh = |id: String, label: &'static str, op: Op| mk(id, label, false, op).h(px(20.0)).w(px(22.0)).when(!hov, |d| d.opacity(0.0));
+
             let header = div()
                 .id(("sec-head", s))
+                .relative()
                 .h(px(SEC_HEAD_H))
                 .flex()
                 .items_center()
                 .overflow_hidden()
-                .rounded(px(8.0))
+                .rounded(px(ui::R0))
+                .bg(th.paper)
+                .border_b_1()
+                .border_color(th.line)
                 .cursor_pointer()
-                .when(is_sel, |d| d.bg(th.accent_wash))
+                // região selecionada: wash azul + barra esquerda de 2 px
+                .when(is_sel, |d| d.bg(th.accent2_wash).child(div().absolute().left_0().top_0().bottom_0().w(px(2.0)).bg(th.accent2)))
+                .when(hov && !is_sel, |d| d.bg(th.paper_hover))
+                .on_hover(cx.listener(move |this, over: &bool, _, cx| {
+                    if *over && this.hover_sec != Some(s) {
+                        this.hover_sec = Some(s);
+                        cx.notify();
+                    } else if !*over && this.hover_sec == Some(s) {
+                        this.hover_sec = None;
+                        cx.notify();
+                    }
+                }))
                 // clique em qualquer ponto da barra (nome, vazios, 𝄆 1× 𝄇…) seleciona SÓ esta
                 // seção para tocar; com Ctrl, junta/tira das outras. Os botões param a propagação.
                 .on_click(cx.listener(move |this, ev: &ClickEvent, _, cx| {
@@ -482,23 +535,24 @@ impl Render for GridView {
                     div()
                         .w(px(LABEL_W))
                         .flex_none()
+                        .pl(px(6.0))
                         .flex()
                         .items_center()
-                        .gap(px(8.0))
+                        .gap(px(6.0))
                         .child(
                             div()
                                 .id(("sec-grip", s))
-                                .w(px(24.0))
-                                .h(px(24.0))
+                                .w(px(20.0))
+                                .h(px(20.0))
                                 .flex_none()
-                                .rounded(px(6.0))
+                                .rounded(px(ui::R1))
                                 .border_1()
                                 .border_color(th.line_strong)
                                 .flex()
                                 .items_center()
                                 .justify_center()
                                 .text_color(th.ink_soft)
-                                .text_size(px(12.0))
+                                .text_size(px(11.0))
                                 .cursor_grab()
                                 .child("⠿")
                                 .on_mouse_down(
@@ -521,10 +575,10 @@ impl Render for GridView {
                                     .flex_1()
                                     .min_w_0()
                                     .truncate()
-                                    .text_size(px(15.0))
-                                    .font_weight(FontWeight::MEDIUM)
+                                    .text_size(px(12.0))
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(if cur_sec || is_sel { th.ink } else { th.ink_soft })
                                     .cursor_pointer()
-                                    .when(cur_sec || is_sel, |d| d.text_color(th.accent))
                                     .child(SharedString::from(if is_sel { format!("▶ {}", sec.name) } else { sec.name.clone() })),
                                 format!("s{s}-name"),
                                 Rc::new(move |_, cx: &mut App| {
@@ -536,10 +590,9 @@ impl Render for GridView {
                                 }),
                             )
                         })
-                        .child(mk(
+                        .child(mkh(
                             format!("s{s}-ren"),
                             "✎",
-                            false,
                             Rc::new(move |_this, cx| {
                                 if let Some(id) = &sid_ren {
                                     cx.emit(GridEvent::Ask(InputTarget::SectionName(id.clone()), sec_name.clone()));
@@ -554,32 +607,36 @@ impl Render for GridView {
                         .min_w_0()
                         .overflow_hidden()
                         .items_center()
-                        .gap(px(6.0))
-                        .when(bar == BarFit::Full, |d| d.child(div().text_color(th.accent).text_size(px(14.0)).child("𝄆")))
-                        .child(mk(format!("s{s}-rep-"), "−", false, rep_op(-1)))
-                        .child(div().text_size(px(13.0)).text_color(if rep > 1 { th.accent } else { th.ink_soft }).child(SharedString::from(format!("{rep}×"))))
-                        .child(mk(format!("s{s}-rep+"), "+", false, rep_op(1)))
-                        .when(bar == BarFit::Full, |d| d.child(div().text_color(th.accent).text_size(px(14.0)).child("𝄇")))
-                        .child(mk(
-                            format!("s{s}-col"),
-                            if collapsed { "▸" } else { "▾" },
-                            false,
-                            Rc::new(move |this, cx| {
-                                if !this.collapsed.remove(&key_col) {
-                                    this.collapsed.insert(key_col.clone());
-                                }
-                                cx.notify();
-                            }),
-                        ))
+                        .gap(px(4.0))
+                        .when(bar == BarFit::Full, |d| d.child(div().text_color(th.ink_faint).text_size(px(12.0)).child("𝄆")))
+                        .child(mkh(format!("s{s}-rep-"), "−", rep_op(-1)))
+                        .child(div().text_size(px(11.0)).font_weight(FontWeight::BOLD).text_color(if rep > 1 { th.accent } else { th.ink_soft }).child(SharedString::from(format!("{rep}×"))))
+                        .child(mkh(format!("s{s}-rep+"), "+", rep_op(1)))
+                        .when(bar == BarFit::Full, |d| d.child(div().text_color(th.ink_faint).text_size(px(12.0)).child("𝄇")))
+                        .child(
+                            mk(
+                                format!("s{s}-col"),
+                                if collapsed { "▸" } else { "▾" },
+                                false,
+                                Rc::new(move |this, cx| {
+                                    if !this.collapsed.remove(&key_col) {
+                                        this.collapsed.insert(key_col.clone());
+                                    }
+                                    cx.notify();
+                                }),
+                            )
+                            .h(px(20.0))
+                            .w(px(22.0)),
+                        )
                         // compassos: completo "− 4 compassos +", compacto "− 4c +", apertado some
                         // (continua no Ctrl+K e nos atalhos de section::MeasureAdd/Remove)
                         .when(bar != BarFit::Tight, |d| {
                             let n = sec.end - sec.start;
                             let label = if bar == BarFit::Full { format!("{n} compasso{}", if n == 1 { "" } else { "s" }) } else { format!("{n}c") };
                             d.child(div().w(px(if bar == BarFit::Full { 8.0 } else { 2.0 })))
-                                .child(mk(format!("s{s}-m-"), "−", false, meas_op(false)))
-                                .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(SharedString::from(label)))
-                                .child(mk(format!("s{s}-m+"), "+", false, meas_op(true)))
+                                .child(mkh(format!("s{s}-m-"), "−", meas_op(false)))
+                                .child(div().text_size(px(10.0)).text_color(th.ink_faint).child(SharedString::from(label)))
+                                .child(mkh(format!("s{s}-m+"), "+", meas_op(true)))
                         }),
                 )
                 .child({
@@ -594,16 +651,18 @@ impl Render for GridView {
                             .id(("clone", s))
                             .relative()
                             .flex_none()
-                            .px(px(8.0))
-                            .h(px(24.0))
+                            .px(px(6.0))
+                            .h(px(20.0))
                             .flex()
                             .items_center()
-                            .rounded(px(5.0))
+                            .rounded(px(ui::R1))
                             .border_1()
-                            .border_color(th.line)
-                            .text_size(px(11.0))
+                            .border_color(th.line_strong)
+                            .bg(th.paper_raise)
+                            .text_size(px(10.0))
                             .text_color(th.ink_soft)
                             .cursor_pointer()
+                            .when(!hov, |d| d.opacity(0.0))
                             .hover(|st| st.bg(th.paper_hover))
                             .child(if bar == BarFit::Full { "⧉ clonar" } else { "⧉" })
                             .on_click(move |_: &ClickEvent, _, cx: &mut App| {
@@ -616,7 +675,7 @@ impl Render for GridView {
                         }),
                     )
                 })
-                .child(mk(format!("s{s}-rm"), "✕", false, with_sec(ops::sections::remove_section)).ml(px(10.0)).mr(px(12.0)));
+                .child(mkh(format!("s{s}-rm"), "✕", with_sec(ops::sections::remove_section)).ml(px(8.0)).mr(px(8.0)));
 
             let mut block = div().flex().flex_col().mb(px(SEC_GAP)).child(header);
             y_acc += SEC_HEAD_H;
@@ -633,8 +692,13 @@ impl Render for GridView {
                     .flex_none()
                     .flex()
                     .flex_col()
-                    .child(div().h(px(SEC_DYN_H)).flex().items_center().text_size(px(10.5)).text_color(th.ink_faint).child("dinâmica · clique = pp…ff · < >"))
-                    .child(div().h(px(TIMELINE_H)).flex().items_center().text_size(px(10.5)).text_color(th.ink_faint).child("↔ arraste · clique = tocar daqui"));
+                    .child(div().h(px(SEC_DYN_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).child("dinâmica · clique = pp…ff · < >"))
+                    .child(
+                        div().h(px(TIMELINE_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).truncate().child("↺ loop em cima · ↔ arraste · clique = tocar daqui"),
+                    );
+                // listra de cor da linha (4 px, como o track header de uma DAW) + 2 px de respiro;
+                // os trilhos de pessoa vêm depois dela
+                const STRIPE_W: f32 = 6.0;
                 for (t, tr) in song.tracks.iter().enumerate() {
                     let audible = song.audible(t);
                     let cur_row = self.cursor.map(|c| c.t) == Some(t) && cur_sec;
@@ -642,7 +706,7 @@ impl Render for GridView {
                     let is_main = ops::tracks::is_main_track(&song, &tr.id);
                     let tid = tr.id.clone();
                     // trilhos de pessoa: uma barra colorida por pessoa que toca a linha
-                    let mut rail_el = div().absolute().left_0().top_0().bottom_0().w(px(rail_w));
+                    let mut rail_el = div().absolute().left(px(STRIPE_W)).top_0().bottom_0().w(px(rail_w));
                     for (ri, rail) in rails.iter().enumerate() {
                         if rail.rows.get(t).copied().unwrap_or(false) {
                             let col = rail.person.color.as_deref().and_then(parse_color).unwrap_or(th.ink_soft);
@@ -654,32 +718,43 @@ impl Render for GridView {
                                     .top(px(if t > 0 && rail.rows[t - 1] { 0.0 } else { 3.0 }))
                                     .h(px(if last { CELL_H - 3.0 } else { rows.row_h(t) }))
                                     .w(px(3.0))
-                                    .rounded(px(1.5))
+                                    .rounded(px(ui::R0))
                                     .bg(if ops::people::person_audible(&song, Some(&rail.person.id)) { col } else { Theme::alpha(col, 0.3) }),
                             );
                         }
                     }
-                    let mut label = div().relative().h(px(rows.row_h(t))).flex().flex_col().child(rail_el).child(
+                    // listra na cor da linha (F1), esmaecida quando a linha não soa
+                    let tcol = track_color(tr);
+                    let stripe = div().absolute().left_0().top_0().h(px(CELL_H)).w(px(4.0)).bg(if audible { tcol } else { Theme::alpha(tcol, 0.4) });
+                    let mut label = div().relative().h(px(rows.row_h(t))).flex().flex_col().child(stripe).child(rail_el).child(
                         div()
                             .h(px(CELL_H))
-                            .pl(px(rail_w))
+                            .pl(px(STRIPE_W + rail_w))
                             .flex()
                             .items_center()
-                            .gap(px(4.0))
-                            .pr(px(10.0))
-                            .when(!audible, |d| d.opacity(0.5))
+                            .gap(px(3.0))
+                            .pr(px(8.0))
                             .child(
                                 div()
                                     .flex_1()
                                     .min_w_0()
                                     .flex()
                                     .flex_col()
-                                    .child(div().text_size(px(14.0)).font_weight(FontWeight::BOLD).when(cur_row, |d| d.text_color(th.accent)).truncate().child(SharedString::from(if is_main {
-                                        format!("★ {}", tr.name)
-                                    } else {
-                                        tr.name.clone()
-                                    })))
-                                    .child(div().text_size(px(11.0)).text_color(th.ink_faint).truncate().child(SharedString::from(ops::kit::instrument_label(&song, tr).to_string()))),
+                                    .child(
+                                        div()
+                                            .text_size(px(12.0))
+                                            .font_weight(FontWeight::BOLD)
+                                            .text_color(if cur_row {
+                                                th.accent
+                                            } else if audible {
+                                                th.ink
+                                            } else {
+                                                th.ink_faint
+                                            })
+                                            .truncate()
+                                            .child(SharedString::from(if is_main { format!("★ {}", tr.name) } else { tr.name.clone() })),
+                                    )
+                                    .child(div().text_size(px(10.0)).text_color(th.ink_faint).truncate().child(SharedString::from(ops::kit::instrument_label(&song, tr).to_string()))),
                             )
                             .child(mk(
                                 id("set"),
@@ -701,10 +776,12 @@ impl Render for GridView {
                                     cx.notify();
                                 }),
                             ))
-                            .child(mk(
+                            // M âmbar, S azul, ★ accent (convenção de DAW)
+                            .child(mkc(
                                 id("mute"),
                                 "M",
                                 tr.muted,
+                                th.warn,
                                 Rc::new(move |this, cx| {
                                     this.track_edit(t, cx, |s, tid| {
                                         if let Some(tr) = s.track_mut(tid) {
@@ -713,10 +790,11 @@ impl Render for GridView {
                                     })
                                 }),
                             ))
-                            .child(mk(
+                            .child(mkc(
                                 id("solo"),
                                 "S",
                                 tr.solo,
+                                th.accent2,
                                 Rc::new(move |this, cx| {
                                     this.track_edit(t, cx, |s, tid| {
                                         if let Some(tr) = s.track_mut(tid) {
@@ -732,7 +810,7 @@ impl Render for GridView {
                         div()
                             .mt(px(if h == TDYN_H { 4.0 } else { 2.0 }))
                             .h(px(h))
-                            .pl(px(rail_w))
+                            .pl(px(STRIPE_W + rail_w))
                             .flex()
                             .items_center()
                             .text_size(px(10.0))
@@ -765,6 +843,9 @@ impl Render for GridView {
                     edit: SharedString::from(self.edit.clone()),
                     rows: rows.clone(),
                     move_drag: self.move_drag,
+                    range,
+                    looping,
+                    loop_preview: self.loop_drag.filter(|d| d.moved).map(|d| d.region()),
                     shaped: self.shaped.clone(),
                 };
                 let cells = div()

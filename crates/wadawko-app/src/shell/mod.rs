@@ -260,13 +260,17 @@ impl Shell {
         let current = st.store.current_id().to_string();
         let export = st.export_label();
         let keys = [
+            // barra de cima: inclui a posição do display (muda de célula em célula tocando)
             chrome::key(|k| {
                 h(k, &(dark, playing, rev, &current, st.playback_bpm.to_bits(), st.sounding_bpm.to_bits()));
                 h(k, &format!("{:?}", st.tp));
+                h(k, &self.transport_pos(cx));
             }),
             chrome::key(|k| h(k, &(dark, format!("{:?}", self.page)))),
+            // painel: músicas + tudo que o INSPECTOR mostra (cursor, seleção, região, caneta)
             chrome::key(|k| {
-                h(k, &(dark, rev, &current, &export));
+                h(k, &(dark, rev, &current, &export, self.status.pos_text()));
+                h(k, &(&st.tp.selected, format!("{:?}", st.tp.range), &st.pen, self.inspector_key(cx)));
                 for p in st.store.projects() {
                     h(k, &(&p.id, &p.title, p.updated_at));
                 }
@@ -275,7 +279,7 @@ impl Shell {
             chrome::key(|k| {
                 let g = self.grid.read(cx);
                 let beats = g.cursor.and_then(|c| st.song().measures.get(c.m)).map(|m| m.beats);
-                h(k, &(dark, rev, &st.pen, &st.tp.selected, self.vim_on, &self.add_instrument));
+                h(k, &(dark, rev, &st.pen, &st.tp.selected, self.vim_on, &self.add_instrument, format!("{:?}", st.tp.range)));
                 h(k, &(g.mode, g.zoom_pct(), g.anchor.is_some(), beats, viewport_w.round() as i32));
             }),
             chrome::key(|k| h(k, &(dark, &self.status))),
@@ -594,6 +598,37 @@ impl Shell {
         (out, label)
     }
 
+    /// Mini-medidores das linhas (F3): um retângulo de 3 px sob o nome de cada
+    /// linha, por seção visível, com o nível/pico já com balística. Desenhados no
+    /// overlay (sem cache), nunca dentro da grade.
+    fn row_meters(&self, cx: &App) -> Vec<(Bounds<Pixels>, f32, f32)> {
+        let st = self.state.read(cx);
+        if !st.levels.active() {
+            return Vec::new();
+        }
+        let song = st.song();
+        let levels: Vec<crate::state::Level> = (0..song.tracks.len()).map(|t| st.track_level(t)).collect();
+        if levels.iter().all(|l| l.level <= 0.0 && l.peak <= 0.0) {
+            return Vec::new();
+        }
+        let grid = self.grid.read(cx);
+        let g = grid.geom.borrow();
+        let w = (grid::LABEL_W - g.label_pad - 150.0).max(24.0);
+        let mut out = Vec::new();
+        for b in g.sections.iter().filter(|b| f32::from(b.size.width) > 0.0) {
+            let x = f32::from(b.origin.x) - grid::LABEL_W + g.label_pad;
+            let top = f32::from(b.origin.y) + grid::SEC_DYN_H + grid::TIMELINE_H;
+            for (t, l) in levels.iter().enumerate() {
+                if (l.level <= 0.0 && l.peak <= 0.0) || t >= g.rows.y.len() {
+                    continue;
+                }
+                let y = top + g.rows.y[t] + grid::CELL_H - 4.0;
+                out.push((Bounds::new(point(px(x), px(y)), size(px(w), px(3.0))), l.level, l.peak));
+            }
+        }
+        out
+    }
+
     fn follow(&mut self, cx: &mut Context<Self>) {
         if !self.playing(cx) || !self.on_grid() {
             return;
@@ -706,7 +741,8 @@ impl Shell {
         }
         self.follow(cx);
         self.drive_bench(cx);
-        if self.bench.is_some() || playing {
+        // frames enquanto toca e enquanto os medidores ainda caem depois de parar
+        if self.bench.is_some() || playing || self.state.read(cx).levels.active() {
             window.request_animation_frame();
         }
         if self.last_hud.elapsed() > Duration::from_millis(500) {
@@ -721,18 +757,20 @@ impl Shell {
         // playhead + notas soando agora (overlay sem cache, irmão da grade)
         let ph = if self.on_grid() { self.playhead(cx) } else { None };
         let (flashes, play_pos) = if self.on_grid() { self.playing_cells(cx) } else { (Vec::new(), None) };
+        let row_meters = if self.on_grid() { self.row_meters(cx) } else { Vec::new() };
         self.status = self.status_model(playing, play_pos, cx);
         // moldura em cache: só re-renderiza quando a chave dela muda
         self.refresh_chrome(playing, f32::from(window.viewport_size().width), cx);
-        let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(200.0)).h_full().flex_none());
-        let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(57.0)).flex_none());
+        let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(64.0)).h_full().flex_none());
+        let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(44.0)).flex_none());
 
         // ── página ──
         // No editor, abas + barra de contexto ficam FIXAS no topo (fora da rolagem):
         // dá para usá-las com a grade rolada em qualquer seção.
         let (header, content) = match self.page {
             Page::Editor => {
-                let mut head = div().flex().flex_col().gap(px(12.0)).child(div().flex().child(self.view_tabs(&th)));
+                // faixa de abas (28 px) + barra de contexto, planas sobre `chrome`
+                let mut head = div().flex().flex_col().child(div().h(px(28.0)).flex_none().px(px(10.0)).flex().items_end().bg(th.chrome).border_b_1().border_color(th.line).child(self.view_tabs(&th)));
                 let body = match self.views.tab(self.tab) {
                     None => {
                         // em cache com a altura medida; sem medida (chave nova), desenha
@@ -759,6 +797,14 @@ impl Shell {
         let overlay = canvas(
             |_, _, _| {},
             move |vb, _, window, _| {
+                // mini-medidores das linhas (3 px sob o nome)
+                for (b, level, peak) in &row_meters {
+                    let clip = vb.intersect(b);
+                    if f32::from(clip.size.width) <= 0.0 || f32::from(clip.size.height) <= 0.0 {
+                        continue;
+                    }
+                    window.with_content_mask(Some(gpui_kit::ContentMask { bounds: vb }), |window| crate::ui::paint_meter(window, *b, *level, *peak, false, &th));
+                }
                 for f in &flashes {
                     let clip = vb.intersect(&f.bounds);
                     if f32::from(clip.size.width) <= 0.0 || f32::from(clip.size.height) <= 0.0 {
@@ -766,9 +812,14 @@ impl Shell {
                     }
                     let col = if f.rim { th.accent2 } else { th.accent };
                     window.with_content_mask(Some(gpui_kit::ContentMask { bounds: vb }), |window| {
-                        let halo = f.bounds.dilate(px(5.0 * f.strength));
-                        window.paint_quad(quad(halo, px(7.0), Theme::alpha(col, 0.28 * f.strength), px(0.0), gpui_kit::transparent_black(), gpui_kit::BorderStyle::Solid));
-                        window.paint_quad(quad(f.bounds, px(3.0), Theme::alpha(col, 0.6 * f.strength), px(3.0), Theme::alpha(col, f.strength.max(0.35)), gpui_kit::BorderStyle::Solid));
+                        window.paint_quad(quad(
+                            f.bounds,
+                            px(crate::ui::R0),
+                            Theme::alpha(col, 0.35 * f.strength),
+                            px(1.0),
+                            Theme::alpha(th.playhead, f.strength.max(0.35)),
+                            gpui_kit::BorderStyle::Solid,
+                        ));
                     });
                 }
                 let Some((x, b)) = ph else { return };
@@ -800,18 +851,10 @@ impl Shell {
             .relative()
             .child(div().id("editor-scroll").size_full().overflow_y_scroll().track_scroll(&self.scroll).p(px(20.0)).when(header.is_some(), |d| d.pt(px(12.0))).child(content))
             .child(overlay);
-        let editor = div()
-            .flex_1()
-            .min_w_0()
-            .h_full()
-            .flex()
-            .flex_col()
-            .bg(th.bg)
-            .when_some(header, |d, h| d.child(div().flex_none().px(px(20.0)).pt(px(16.0)).pb(px(8.0)).border_b_1().border_color(th.line).child(h)))
-            .child(scroll_area);
+        let editor = div().flex_1().min_w_0().h_full().flex().flex_col().bg(th.bg).when_some(header, |d, h| d.child(div().flex_none().child(h))).child(scroll_area);
 
-        let panel = self.chrome[2].clone().cached(gpui_kit::StyleRefinement::default().w(px(260.0)).h_full().flex_none());
-        let status = self.chrome[chrome::Part::Status as usize].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(26.0)).flex_none());
+        let panel = self.chrome[2].clone().cached(gpui_kit::StyleRefinement::default().w(px(280.0)).h_full().flex_none());
+        let status = self.chrome[chrome::Part::Status as usize].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(22.0)).flex_none());
 
         // ── workspace (contexto de teclas da grade) ──
         let vmode = self.grid.read(cx).vmode;
@@ -901,6 +944,32 @@ impl Shell {
                 );
             }
             None => self.swing.borrow_mut().reset(),
+        }
+
+        // ── arrasto na faixa de loop da régua: mover/soltar valem em toda a janela ──
+        if self.grid.read(cx).loop_drag.is_some() {
+            let grid = self.grid.clone();
+            root = root.child(
+                canvas(
+                    |_, _, _| {},
+                    move |_, _, window, _| {
+                        let g = grid.clone();
+                        window.on_mouse_event(move |ev: &gpui_kit::MouseMoveEvent, phase, _, cx| {
+                            if phase == gpui_kit::DispatchPhase::Bubble {
+                                g.update(cx, |g, cx| g.loop_drag_move(ev.position, cx));
+                            }
+                        });
+                        let g = grid.clone();
+                        window.on_mouse_event(move |ev: &gpui_kit::MouseUpEvent, phase, _, cx| {
+                            if phase == gpui_kit::DispatchPhase::Capture && ev.button == gpui_kit::MouseButton::Left {
+                                g.update(cx, |g, cx| g.finish_loop_drag(cx));
+                            }
+                        });
+                    },
+                )
+                .absolute()
+                .inset_0(),
+            );
         }
         root
     }

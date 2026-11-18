@@ -27,14 +27,19 @@ use crate::stats::Stats;
 // ───────────────────────────── layout (px, como no CSS) ─────────────────────────────
 
 pub const LABEL_W: f32 = 216.0;
-pub const SEC_HEAD_H: f32 = 40.0;
-pub const SEC_DYN_H: f32 = 26.0;
-pub const TIMELINE_H: f32 = 30.0;
-pub const CELL_H: f32 = 42.0;
-pub const TDYN_H: f32 = 22.0;
-pub const KYAI_H: f32 = 24.0;
-pub const ROW_PAD: f32 = 12.0;
-pub const SEC_GAP: f32 = 34.0;
+pub const SEC_HEAD_H: f32 = 28.0;
+pub const SEC_DYN_H: f32 = 22.0;
+/// régua: os `LOOP_LANE_H` px de cima são a faixa de loop (F2)
+pub const TIMELINE_H: f32 = 22.0;
+/// faixa de loop no topo da régua: alvo de clique/arrasto (a banda pintada tem 6 px)
+pub const LOOP_LANE_H: f32 = 8.0;
+/// a alça do trecho de loop pega até esta distância (px) da ponta
+pub const LOOP_HANDLE_PX: f32 = 6.0;
+pub const CELL_H: f32 = 36.0;
+pub const TDYN_H: f32 = 20.0;
+pub const KYAI_H: f32 = 22.0;
+pub const ROW_PAD: f32 = 6.0;
+pub const SEC_GAP: f32 = 20.0;
 pub const CELL_X0: f32 = 16.0;
 pub const MEASURE_GAP: f32 = 16.0;
 pub const BASE_CW: f32 = 54.0;
@@ -207,6 +212,9 @@ pub struct Geom {
     pub offset: f32,
     pub cw: f32,
     pub rows: Rows,
+    /// recuo do texto dos rótulos de linha (listra + trilhos de pessoa), para o
+    /// mini-medidor do overlay
+    pub label_pad: f32,
 }
 
 /// O que a grade pede ao Shell para perguntar ao usuário (prompt de texto).
@@ -259,6 +267,47 @@ pub struct MoveDrag {
 /// Movimento mínimo (px) para um aperto sobre nota virar arrasto.
 pub const DRAG_START_PX: f32 = 4.0;
 
+/// Arrasto na faixa de loop da régua (F2): define o trecho `[min, max]` entre
+/// `anchor` e `cur` (compassos-fonte). Pegando uma alça, `anchor` é a ponta
+/// oposta; clique sem arrasto dentro do trecho alterna o loop, com Alt limpa.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LoopDrag {
+    /// seção onde o ponteiro está (muda ao arrastar para outra seção)
+    pub sec: usize,
+    pub anchor: usize,
+    pub cur: usize,
+    pub grab: (f32, f32),
+    pub moved: bool,
+    pub alt: bool,
+    /// o aperto caiu dentro de um trecho já existente
+    pub inside: bool,
+}
+
+impl LoopDrag {
+    /// trecho que o arrasto define agora
+    pub fn region(&self) -> wadawko_core::timeline::Region {
+        range_from_drag(self.anchor, self.cur)
+    }
+}
+
+/// Trecho `[min, max + 1)` entre dois compassos (em qualquer ordem).
+pub fn range_from_drag(a: usize, b: usize) -> wadawko_core::timeline::Region {
+    wadawko_core::timeline::Region { start_bar: a.min(b), end_bar: a.max(b) + 1 }
+}
+
+/// Ponta do trecho que um aperto em `x` pega (`x0`/`x1` = abscissas das pontas):
+/// `Some(false)` = início, `Some(true)` = fim, `None` = nenhuma.
+pub fn grab_handle(x: f32, x0: f32, x1: f32) -> Option<bool> {
+    let (d0, d1) = ((x - x0).abs(), (x - x1).abs());
+    if d0 <= LOOP_HANDLE_PX && d0 <= d1 {
+        Some(false)
+    } else if d1 <= LOOP_HANDLE_PX {
+        Some(true)
+    } else {
+        None
+    }
+}
+
 /// Uma célula do bloco levantado: retângulo (janela) no instante em que levantou + texto.
 #[derive(Clone, Debug)]
 pub struct GhostCell {
@@ -301,11 +350,15 @@ pub struct GridView {
     pub insert_log: Vec<String>,
     pub menu: Option<Menu>,
     pub move_drag: Option<MoveDrag>,
+    /// arrasto na faixa de loop da régua (o Shell repassa mover/soltar de toda a janela)
+    pub loop_drag: Option<LoopDrag>,
     /// células do bloco que está flutuando (desenhadas pelo Shell, ver `views::drag_ghost`)
     pub ghost: Rc<Vec<GhostCell>>,
     /// seção sendo arrastada (reordenar) e seção sob o ponteiro
     pub drag_sec: Option<usize>,
     pub drag_over: Option<usize>,
+    /// seção cujo cabeçalho está sob o mouse (os botões dele só aparecem em hover)
+    pub hover_sec: Option<usize>,
     dragging: bool,
     pan: Option<(f32, f32)>,
     shaped: TextCache,
@@ -314,8 +367,10 @@ pub struct GridView {
 
 impl EventEmitter<GridEvent> for GridView {}
 
-pub(crate) enum Hit {
+pub enum Hit {
     SecDyn(usize, DynPart, Point<Pixels>),
+    /// faixa de loop no topo da régua (F2)
+    LoopLane,
     Timeline(Option<(usize, usize)>),
     Cell(Cur),
     TrackDyn(usize, usize, DynPart, Point<Pixels>),
@@ -377,8 +432,10 @@ impl GridView {
             insert_log: Vec::new(),
             menu: None,
             move_drag: None,
+            loop_drag: None,
             ghost: Rc::new(Vec::new()),
             drag_sec: None,
+            hover_sec: None,
             drag_over: None,
             dragging: false,
             pan: None,
@@ -444,6 +501,7 @@ impl GridView {
         self.lane = Lane::Cells;
         self.menu = None;
         self.move_drag = None;
+        self.loop_drag = None;
         self.edit.clear();
         self.offset = 0.0;
         self.offset_target = 0.0;
@@ -540,7 +598,7 @@ impl GridView {
         }
     }
 
-    pub(crate) fn hit(&self, s: usize, pos: Point<Pixels>) -> Option<Hit> {
+    pub fn hit(&self, s: usize, pos: Point<Pixels>) -> Option<Hit> {
         let g = self.geom.borrow();
         let b = *g.sections.get(s)?;
         let x = f32::from(pos.x) - f32::from(b.origin.x) + self.offset;
@@ -563,6 +621,9 @@ impl GridView {
                 Hit::SecDyn(m, part, pos)
             });
         }
+        if y < SEC_DYN_H + LOOP_LANE_H {
+            return Some(Hit::LoopLane);
+        }
         if y < SEC_DYN_H + TIMELINE_H {
             return Some(Hit::Timeline(cell.map(|(m, k, _, _)| (m, k))));
         }
@@ -581,6 +642,103 @@ impl GridView {
             return Some(Hit::Kyai(Cur { m, t, k }));
         }
         None
+    }
+
+    /// Compasso da seção `s` sob a abscissa `x` (janela), preso às pontas da
+    /// seção (antes do 1º compasso = o 1º; depois do último = o último).
+    pub fn measure_at_x(&self, s: usize, x: f32) -> Option<usize> {
+        let g = self.geom.borrow();
+        let b = *g.sections.get(s)?;
+        if f32::from(b.size.width) <= 0.0 {
+            return None;
+        }
+        let lx = x - f32::from(b.origin.x) + self.offset;
+        let song = &self.song;
+        let (a, end) = song.section_range(s);
+        if end <= a {
+            return None;
+        }
+        let xs = measure_xs(song, s, self.cw);
+        let i = xs.iter().rposition(|&mx| lx >= mx).unwrap_or(0);
+        Some(a + i)
+    }
+
+    /// Seção cujo canvas contém a ordenada `y` (janela).
+    pub fn section_at_y(&self, y: f32) -> Option<usize> {
+        let g = self.geom.borrow();
+        g.sections.iter().position(|b| f32::from(b.size.width) > 0.0 && y >= f32::from(b.origin.y) && y < f32::from(b.origin.y) + f32::from(b.size.height))
+    }
+
+    /// Abscissa (janela) do início do compasso `bar` na seção `s`; `bar` igual
+    /// ao fim da seção dá o fim do último compasso. `None` fora da seção.
+    pub fn bar_x(&self, s: usize, bar: usize) -> Option<f32> {
+        let g = self.geom.borrow();
+        let b = *g.sections.get(s)?;
+        let song = &self.song;
+        let (a, end) = song.section_range(s);
+        if bar < a || bar > end || end <= a {
+            return None;
+        }
+        let xs = measure_xs(song, s, self.cw);
+        let lx = if bar == end { xs.last()? + song.mlen(end - 1) as f32 * self.cw } else { *xs.get(bar - a)? };
+        Some(f32::from(b.origin.x) + lx - self.offset)
+    }
+
+    /// Aperto na faixa de loop da régua da seção `s` (F2).
+    fn loop_lane_down(&mut self, s: usize, ev: &MouseDownEvent, cx: &mut Context<Self>) {
+        let x = f32::from(ev.position.x);
+        let Some(m) = self.measure_at_x(s, x) else { return };
+        let range = self.state.read(cx).tp.range;
+        let handle = range.and_then(|r| {
+            let (x0, x1) = (self.bar_x(s, r.start_bar)?, self.bar_x(s, r.end_bar)?);
+            grab_handle(x, x0, x1).map(|end| (r, end))
+        });
+        let grab = (x, f32::from(ev.position.y));
+        self.loop_drag = Some(match handle {
+            Some((r, false)) => LoopDrag { sec: s, anchor: r.end_bar - 1, cur: r.start_bar, grab, moved: false, alt: ev.modifiers.alt, inside: true },
+            Some((r, true)) => LoopDrag { sec: s, anchor: r.start_bar, cur: r.end_bar - 1, grab, moved: false, alt: ev.modifiers.alt, inside: true },
+            None => LoopDrag { sec: s, anchor: m, cur: m, grab, moved: false, alt: ev.modifiers.alt, inside: range.is_some_and(|r| m >= r.start_bar && m < r.end_bar) },
+        });
+        cx.notify();
+    }
+
+    /// Ponteiro moveu durante o arrasto na faixa de loop (de qualquer lugar da janela).
+    pub fn loop_drag_move(&mut self, pos: Point<Pixels>, cx: &mut Context<Self>) {
+        let Some(mut d) = self.loop_drag else { return };
+        let (x, y) = (f32::from(pos.x), f32::from(pos.y));
+        if !d.moved && (x - d.grab.0).abs() < DRAG_START_PX && (y - d.grab.1).abs() < DRAG_START_PX {
+            return;
+        }
+        d.moved = true;
+        let sec = self.section_at_y(y).unwrap_or(d.sec);
+        let cur = self.measure_at_x(sec, x).or_else(|| self.measure_at_x(d.sec, x));
+        if let Some(cur) = cur {
+            d.cur = cur;
+            d.sec = if self.measure_at_x(sec, x).is_some() { sec } else { d.sec };
+        }
+        if Some(d) != self.loop_drag {
+            self.loop_drag = Some(d);
+            cx.notify();
+        }
+    }
+
+    /// Soltou o botão durante o arrasto na faixa de loop: grava o trecho
+    /// (ou, sem arrasto: alterna o loop dentro do trecho / limpa com Alt / marca o compasso).
+    pub fn finish_loop_drag(&mut self, cx: &mut Context<Self>) {
+        let Some(d) = self.loop_drag.take() else { return };
+        self.state.update(cx, |st, cx| {
+            if d.moved {
+                st.set_range(Some(d.region()), cx);
+            } else if d.alt {
+                st.set_range(None, cx);
+            } else if d.inside {
+                let on = !st.tp.looping;
+                st.set_loop(on, cx);
+            } else {
+                st.set_range(Some(d.region()), cx);
+            }
+        });
+        cx.notify();
     }
 
     // ───────── seleção ─────────
@@ -1323,6 +1481,7 @@ impl GridView {
                 self.cursor = Some(c);
                 self.dragging = true;
             }
+            Some(Hit::LoopLane) if ev.button == MouseButton::Left => self.loop_lane_down(s, ev, cx),
             Some(Hit::Timeline(cell)) if ev.button == MouseButton::Left => {
                 self.pan = Some((f32::from(ev.position.x), self.offset_target));
                 if let Some((m, k)) = cell {
@@ -1360,6 +1519,10 @@ impl GridView {
 
     fn mouse_move(&mut self, s: usize, ev: &MouseMoveEvent, cx: &mut Context<Self>) {
         if ev.pressed_button != Some(MouseButton::Left) {
+            return;
+        }
+        if self.loop_drag.is_some() {
+            // o Shell acompanha este arrasto em toda a janela
             return;
         }
         if let Some((x0, off0)) = self.pan {
@@ -1419,6 +1582,10 @@ impl GridView {
     pub fn mouse_up(&mut self, cx: &mut Context<Self>) {
         self.dragging = false;
         self.pan = None;
+        if self.loop_drag.is_some() {
+            self.finish_loop_drag(cx);
+            return;
+        }
         if let Some(md) = self.move_drag.take() {
             self.ghost = Rc::new(Vec::new());
             if md.started {
@@ -1432,9 +1599,10 @@ impl GridView {
         cx.notify();
     }
 
-    /// Esc durante o arrasto: solta o bloco sem mover.
+    /// Esc durante o arrasto: solta o bloco sem mover (e abandona o arrasto de loop).
     pub fn cancel_drag(&mut self) -> bool {
         self.ghost = Rc::new(Vec::new());
+        self.loop_drag = None;
         self.move_drag.take().is_some()
     }
 
@@ -1572,6 +1740,25 @@ mod tests {
         assert_eq!(with.track_at(with.kyai_y(0) + 1.0), Some(0));
         assert_eq!(plain.track_at(plain.h + 1.0), None);
         assert_eq!(with.kyai_y(0), with.dyn_y(0) + TDYN_H + 2.0);
+    }
+
+    #[test]
+    fn loop_drag_region_and_handles() {
+        use wadawko_core::timeline::Region;
+        assert_eq!(range_from_drag(1, 2), Region { start_bar: 1, end_bar: 3 });
+        assert_eq!(range_from_drag(2, 1), Region { start_bar: 1, end_bar: 3 });
+        assert_eq!(range_from_drag(4, 4), Region { start_bar: 4, end_bar: 5 });
+        // alças: até LOOP_HANDLE_PX de uma ponta; a mais perto ganha
+        assert_eq!(grab_handle(100.0, 100.0, 300.0), Some(false));
+        assert_eq!(grab_handle(105.0, 100.0, 300.0), Some(false));
+        assert_eq!(grab_handle(296.0, 100.0, 300.0), Some(true));
+        assert_eq!(grab_handle(200.0, 100.0, 300.0), None);
+        assert_eq!(grab_handle(93.0, 100.0, 300.0), None);
+        // trecho de um compasso estreito: a ponta mais próxima
+        assert_eq!(grab_handle(104.0, 100.0, 110.0), Some(false));
+        assert_eq!(grab_handle(107.0, 100.0, 110.0), Some(true));
+        let d = LoopDrag { sec: 0, anchor: 3, cur: 1, grab: (0.0, 0.0), moved: true, alt: false, inside: false };
+        assert_eq!(d.region(), Region { start_bar: 1, end_bar: 4 });
     }
 
     #[test]

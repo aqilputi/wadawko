@@ -22,8 +22,8 @@ src/
   main.rs            args (--db, --read-only, --samples-dir, --song, --dark, --mute, --bench, --demo, --selftest), init, janela
   state.rs           AppState: ESTADO COMPARTILHADO (store + history + áudio + transporte + tema)
   song_ext.rs        SongExt: índices da grade (s, m, t, k, coluna global) ↔ ids do core
-  theme.rs           tokens de cor (app.css) + parse_color("#rrggbb")
-  ui.rs              btn / abtn / atoggle / segmented / kbd / small_btn / card
+  theme.rs           tokens de cor "estilo DAW" (chrome/header/display/bg/paper…, accent/accent2, warn/danger, meter_*) + parse_color + track_color
+  ui.rs              R0/R1 (raios), btn / abtn / atoggle / segmented / tab / icon_btn / kbd / small_btn_on / panel_header / titled_card / meter + paint_meter
   stats.rs           histograma de frames/paint (--bench, HUD)
   shell/
     mod.rs           Shell (view raiz): foco, página/aba, overlays, playhead/flash/follow, on_key
@@ -42,7 +42,7 @@ src/
   views/
     mod.rs           Page, Tab, Views, bind_actions  ← PONTO DE EXTENSÃO
     grid/{mod,render,paint}.rs   a grade (GridView)
-    topbar.rs nav_rail.rs right_panel.rs status_bar.rs context_toolbar.rs settings.rs   (impl Shell)
+    topbar.rs nav_rail.rs right_panel.rs inspector.rs status_bar.rs context_toolbar.rs settings.rs   (impl Shell)
     mixer.rs people.rs kit.rs lane.rs score.rs    páginas/abas — um arquivo por view
 assets/keymap-default.json
 ```
@@ -58,10 +58,12 @@ Há **uma** entidade GPUI com tudo que não é de uma view só:
 | `audio: Option<Audio>` | engine; `None` enquanto os samples carregam (thread de fundo) ou sem dispositivo |
 | `bank: Option<SampleBank>` | para previews e export |
 | `schedule: Arc<Schedule>` | último compilado (`schedule.time` = `TimeMap`) |
-| `tp: Transport` | loop, metrônomo, count-in, treino (% e passo), seções selecionadas (região) |
+| `tp: Transport` | loop, metrônomo, count-in, treino (% e passo), seções selecionadas e o **trecho de loop** (`range: Option<Region>`, com precedência — `AppState::set_range`, `region()`) |
 | `pen: Option<String>` | "caneta": pessoa que assina as notas em linha compartilhada |
 | `theme: Theme` | cores (claro/escuro), persistido no banco |
 | `hits: Vec<HitFlash>` | golpes que acabaram de soar (de `EngineEvent::HitFired`) |
+| `levels: Levels` | medidores de nível (por canal/barramento/master) com balística, lidos dos `Meters` do engine em `poll()`; `track_level(t)`, `person_level(id)` |
+| `master_db: f64` | volume de saída do strip master (`set_master_db`; não é edição da música) |
 | `revision: u64` | muda a cada edição/troca de música (chave de cache) |
 
 Toda view recebe um clone do `Entity<AppState>` no `new` e faz
@@ -165,14 +167,28 @@ próprio `FocusHandle` com `key_context` próprio.
 Views pesadas seguem a grade: um `canvas` com culling, textos modelados em cache
 (`shape_line`), geometria do último frame guardada num `Rc<RefCell<…>>` para
 overlays sem re-render. A grade fica em `Entity::cached(...)` e o
-playhead/flash é um `canvas` irmão sem cache, no Shell.
+playhead/flash é um `canvas` irmão sem cache, no Shell — os **mini-medidores**
+das linhas (3 px sob o nome) são pintados nesse mesmo overlay com
+`ui::paint_meter`, a partir de `geom.sections` + `rows.y` + `label_pad`; nunca
+dentro da grade. O arrasto na faixa de loop da régua também é acompanhado por
+um overlay do Shell (`on_mouse_event` de mover/soltar em toda a janela).
+
+Tokens e formas: `theme.rs` tem os cinzas neutros em níveis (`chrome` < `bg` <
+`paper`), uma cor de "ligado" (`accent`) e uma de seleção (`accent2`), `warn`
+(mudo), `danger` (clip) e `meter_lo/mid/hi`; `ui::R0` (0 px: superfícies) e
+`ui::R1` (2 px: controles). Cor de linha: `theme::track_color(track)` (campo →
+padrão do instrumento) e `Theme::on_track_color()` para texto sobre ela.
 
 ## Moldura em cache e animação (desempenho)
 
-- Barra de cima, barra lateral e painel de músicas são views `cached` (`shell/chrome.rs`).
-  O Shell calcula uma **chave por peça** a cada frame (`Shell::refresh_chrome`) e só
-  notifica a peça quando a chave muda. **Mostrou algo novo numa dessas peças? Inclua
-  na chave**, senão ela fica velha até outra coisa mudar.
+- Barra de cima, barra lateral e painel direito (inspector + músicas) são views `cached`
+  (`shell/chrome.rs`). O Shell calcula uma **chave por peça** a cada frame
+  (`Shell::refresh_chrome`) e só notifica a peça quando a chave muda. **Mostrou algo novo
+  numa dessas peças? Inclua na chave**, senão ela fica velha até outra coisa mudar (o
+  inspector tem `Shell::inspector_key`: cursor, faixa, âncora, sub-linhas da linha do cursor).
+- Medidores: o engine só faz `fetch_max` em atômicos (`wadawko_audio::Meters`); a UI lê com
+  `Meters::take` uma vez por frame em `AppState::poll` e o Shell pede frames enquanto
+  `levels.active()` (os medidores caem depois de parar). Nada disso notifica a grade.
 - Nunca use `window.refresh()` para pedir redesenho durante animação/arrasto: ele
   invalida TODOS os caches (a grade inteira é reconstruída). Notifique a entidade
   que mudou (`cx.notify()` / `entity.update(cx, |_, cx| cx.notify())`).

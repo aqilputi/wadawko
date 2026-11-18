@@ -15,6 +15,7 @@ pub mod transport {
             TogglePlay,
             PlayHere,
             PlayFromStart,
+            GoToStart,
             Stop,
             ToggleLoop,
             ToggleMetronome,
@@ -29,6 +30,9 @@ pub mod transport {
             TrainerPct,
             TrainerStep,
             ClearRegion,
+            LoopSelection,
+            LoopStartHere,
+            LoopEndHere,
             PlayFue
         ]
     );
@@ -59,7 +63,7 @@ pub mod section {
 }
 pub mod track {
     use gpui_kit::actions;
-    actions!(track, [Add, Remove, ToggleMute, ToggleSolo, CycleInstrument, Rename, MoveUp, MoveDown, ToggleMain, ToggleDynRow, ToggleKyaiRow, Settings]);
+    actions!(track, [Add, Remove, ToggleMute, ToggleSolo, CycleInstrument, Rename, MoveUp, MoveDown, ToggleMain, ToggleDynRow, ToggleKyaiRow, Settings, CycleColor]);
 }
 pub mod score {
     use gpui_kit::actions;

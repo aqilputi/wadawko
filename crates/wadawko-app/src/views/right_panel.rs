@@ -1,5 +1,7 @@
-//! Painel direito: lista de músicas (trocar/nova/duplicar/renomear/excluir),
-//! exportar/importar JSON, exportar MP3/WAV com progresso (porte de `RightPanel.svelte`).
+//! Painel direito (280 px, `chrome`): bloco INSPECTOR (contextual, F4 — ver
+//! `views/inspector.rs`; altura máxima de 45 %, rola) e bloco MÚSICAS
+//! (trocar/nova/duplicar/renomear/excluir) com exportar/importar JSON e
+//! MP3/WAV no rodapé.
 
 use std::rc::Rc;
 
@@ -8,7 +10,7 @@ use gpui_kit::{App, ClickEvent, Context, FontWeight, SharedString, div, prelude:
 use crate::keys;
 use crate::shell::Shell;
 use crate::theme::Theme;
-use crate::ui::{abtn, btn};
+use crate::ui::{self, abtn, btn, panel_header};
 
 /// "10 de nov." a partir de epoch ms (UTC).
 pub fn short_date(ms: i64) -> String {
@@ -34,13 +36,16 @@ impl Shell {
         let export = st.export_label();
         let many = projects.len() > 1;
         let weak = cx.entity().downgrade();
+        // contexto do cursor (seção · compasso · tempo.sub · linha) — já calculado para a status bar
+        let context: SharedString = self.status.pos_text().map(str::to_string).unwrap_or_else(|| "sem cursor na grade".into()).into();
+        let inspector = self.inspector(th, cx);
         let mini = |id: &'static str, label: &'static str, a: Box<dyn gpui_kit::Action>| {
-            btn(id, th).h(px(24.0)).w(px(24.0)).px(px(0.0)).text_size(px(11.0)).child(label).on_click(move |_: &ClickEvent, w, cx| {
+            btn(id, th).h(px(18.0)).w(px(20.0)).px(px(0.0)).text_size(px(10.0)).child(label).on_click(move |_: &ClickEvent, w, cx| {
                 cx.stop_propagation();
                 w.dispatch_action(a.boxed_clone(), cx)
             })
         };
-        let mut list = div().flex().flex_col().gap(px(8.0));
+        let mut list = div().flex().flex_col().gap(px(4.0)).p(px(8.0));
         for (i, (id, title, updated)) in projects.into_iter().enumerate() {
             let on = id == current;
             let date: SharedString = if updated > 0 { short_date(updated) } else { "agora".into() }.into();
@@ -48,29 +53,32 @@ impl Shell {
             let card = div()
                 .id(("song", i))
                 .relative()
-                .px(px(10.0))
-                .py(px(9.0))
-                .rounded(px(8.0))
+                .pl(px(10.0))
+                .pr(px(6.0))
+                .py(px(6.0))
+                .rounded(px(ui::R0))
                 .border_1()
+                .border_color(th.line)
                 .flex()
                 .items_start()
-                .when(on, |d| d.bg(th.accent_wash).border_color(th.accent))
-                .when(!on, |d| d.bg(th.paper_raise).border_color(th.line).cursor_pointer().hover(|s| s.bg(th.paper_hover)))
+                .gap(px(4.0))
+                .when(on, |d| d.bg(th.accent2_wash).child(div().absolute().left_0().top_0().bottom_0().w(px(2.0)).bg(th.accent2)))
+                .when(!on, |d| d.bg(th.paper).cursor_pointer().hover(|s| s.bg(th.paper_hover)))
                 .child(
                     div()
                         .flex_1()
                         .min_w_0()
                         .flex()
                         .flex_col()
-                        .gap(px(4.0))
-                        .child(div().text_size(px(14.0)).font_weight(FontWeight::BOLD).truncate().child(SharedString::from(title)))
-                        .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(date)),
+                        .gap(px(2.0))
+                        .child(div().text_size(px(12.0)).font_weight(FontWeight::BOLD).text_color(if on { th.ink } else { th.ink_soft }).truncate().child(SharedString::from(title)))
+                        .child(div().text_size(px(10.0)).text_color(th.ink_faint).child(date)),
                 )
                 .when(on, |d| {
                     d.child(
                         div()
                             .flex()
-                            .gap(px(4.0))
+                            .gap(px(2.0))
                             .child(mini("ren", "✎", Box::new(keys::project::Rename)))
                             .child(mini("dup", "⧉", Box::new(keys::project::Duplicate)))
                             .when(many, |d| d.child(mini("del", "✕", Box::new(keys::project::Delete)))),
@@ -85,26 +93,29 @@ impl Shell {
                 }),
             ));
         }
+        let foot_btn = |b: gpui_kit::Stateful<gpui_kit::Div>| b.flex_1().h(px(24.0)).px(px(4.0)).text_size(px(11.0));
         div()
-            .w(px(260.0))
+            .w(px(280.0))
             .flex_none()
             .h_full()
-            .bg(th.paper)
+            .bg(th.chrome)
             .border_l_1()
             .border_color(th.line)
-            .p(px(12.0))
             .flex()
             .flex_col()
-            .gap(px(12.0))
+            // ── inspector (F4): segue o cursor da grade; no máximo 45 % do painel, rola ──
+            .child(panel_header("Inspector", th).child(div().text_size(px(10.0)).font_weight(FontWeight::MEDIUM).text_color(th.ink_faint).truncate().child(context)))
+            .child(div().id("inspector").flex_none().max_h(gpui_kit::relative(0.45)).overflow_y_scroll().child(inspector))
+            // ── músicas ──
             .child(
-                div().flex().items_center().child(div().flex_1().text_size(px(13.0)).font_weight(FontWeight::BOLD).text_color(th.ink_soft).child("MÚSICAS")).child(
+                panel_header("Músicas", th).child(
                     abtn("nova", th, keys::project::New)
-                        .h(px(28.0))
-                        .rounded(px(999.0))
+                        .h(px(18.0))
+                        .px(px(6.0))
                         .bg(th.accent)
                         .border_color(th.accent)
                         .text_color(th.on_accent)
-                        .text_size(px(12.0))
+                        .text_size(px(10.0))
                         .font_weight(FontWeight::BOLD)
                         .child("+ nova"),
                 ),
@@ -113,34 +124,40 @@ impl Shell {
             .when_some(export.clone(), |d, label| {
                 d.child(
                     div()
-                        .p(px(8.0))
-                        .rounded(px(8.0))
+                        .mx(px(8.0))
+                        .px(px(6.0))
+                        .h(px(22.0))
+                        .rounded(px(ui::R1))
                         .bg(th.accent_wash)
                         .flex()
                         .items_center()
                         .gap(px(6.0))
-                        .child(div().flex_1().min_w_0().truncate().text_size(px(11.5)).text_color(th.accent).child(SharedString::from(format!("⏳ {label}"))))
-                        .child(abtn("exp-cancel", th, keys::project::CancelExport).h(px(24.0)).px(px(8.0)).text_size(px(11.0)).child("cancelar")),
+                        .child(div().flex_1().min_w_0().truncate().text_size(px(11.0)).text_color(th.accent).child(SharedString::from(format!("⏳ {label}"))))
+                        .child(abtn("exp-cancel", th, keys::project::CancelExport).h(px(18.0)).px(px(6.0)).text_size(px(10.0)).child("cancelar")),
                 )
             })
             .child(
                 div()
+                    .flex_none()
+                    .p(px(8.0))
+                    .border_t_1()
+                    .border_color(th.line)
                     .flex()
                     .flex_col()
-                    .gap(px(8.0))
+                    .gap(px(6.0))
                     .child(
                         div()
                             .flex()
-                            .gap(px(8.0))
-                            .child(abtn("exp", th, keys::project::ExportJson).flex_1().child("exportar"))
-                            .child(abtn("imp", th, keys::project::ImportJson).flex_1().child("importar")),
+                            .gap(px(6.0))
+                            .child(foot_btn(abtn("exp", th, keys::project::ExportJson)).child("exportar"))
+                            .child(foot_btn(abtn("imp", th, keys::project::ImportJson)).child("importar")),
                     )
                     .child(
                         div()
                             .flex()
-                            .gap(px(8.0))
-                            .child(abtn("mp3", th, keys::project::ExportMp3).flex_1().child(if export.is_some() { "exportando…" } else { "exportar mp3" }))
-                            .child(abtn("wav", th, keys::project::ExportWav).w(px(64.0)).child("wav")),
+                            .gap(px(6.0))
+                            .child(foot_btn(abtn("mp3", th, keys::project::ExportMp3)).child(if export.is_some() { "exportando…" } else { "exportar mp3" }))
+                            .child(foot_btn(abtn("wav", th, keys::project::ExportWav)).flex_none().w(px(56.0)).child("wav")),
                     ),
             )
     }

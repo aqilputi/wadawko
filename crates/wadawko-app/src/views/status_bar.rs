@@ -8,6 +8,7 @@ use crate::keys;
 use crate::shell::Shell;
 use crate::song_ext::SongExt;
 use crate::theme::Theme;
+use crate::ui;
 
 /// Tudo o que a status bar mostra, já como texto: o Shell calcula a cada frame e
 /// só redesenha a barra (view em cache) quando o hash muda.
@@ -18,11 +19,20 @@ pub struct StatusModel {
     pos_text: Option<String>,
     bpm: String,
     tocando: String,
+    /// trecho de loop (`↺ c3–c6`)
+    loop_text: Option<String>,
     audio: Option<String>,
     export: Option<String>,
     toast: Option<String>,
     hud: String,
     src: String,
+}
+
+impl StatusModel {
+    /// "Seção 1 · c3 · 2.1 · Shime" do cursor da grade (o painel direito reaproveita).
+    pub fn pos_text(&self) -> Option<&str> {
+        self.pos_text.as_deref()
+    }
 }
 
 impl Shell {
@@ -84,6 +94,7 @@ impl Shell {
             pos_text,
             bpm: format!("{:.0} BPM", song.tempo),
             tocando,
+            loop_text: st.tp.range.map(|r| format!("↺ {}", crate::state::range_label(r))),
             audio,
             export: st.export_label(),
             toast: st.toast.as_ref().map(|t| t.0.clone()),
@@ -92,59 +103,49 @@ impl Shell {
         }
     }
 
+    /// Status bar (h 22, `chrome`): segmentos separados por divisores de 1 px.
     pub(crate) fn status_bar(&self, th: &Theme, m: &StatusModel) -> gpui_kit::Div {
-        let StatusModel { vmode, showcmd, pos_text, bpm, tocando, audio, export, toast, hud, src } = m.clone();
+        let StatusModel { vmode, showcmd, pos_text, bpm, tocando, loop_text, audio, export, toast, hud, src } = m.clone();
         let vmode = vmode.unwrap_or(VMode::Simple);
         let (chip_bg, chip_fg) = match vmode {
-            VMode::Normal => (th.ink, th.paper),
+            VMode::Normal => (th.ink, th.chrome),
             VMode::Insert => (th.accent, th.on_accent),
             VMode::Visual | VMode::VLine => (th.accent2, th.on_accent),
             VMode::Simple => (th.paper_raise, th.ink_soft),
         };
+        let sep = || div().w(px(1.0)).h(px(12.0)).flex_none().bg(th.line);
+        let chip = |bg, fg| div().px(px(6.0)).h(px(16.0)).flex().items_center().rounded(px(ui::R1)).bg(bg).text_color(fg).text_size(px(10.0)).font_weight(FontWeight::BOLD);
         div()
-            .h(px(26.0))
+            .h(px(22.0))
             .flex_none()
             .w_full()
-            .px(px(10.0))
+            .px(px(8.0))
             .flex()
             .items_center()
-            .gap(px(10.0))
-            .bg(th.paper)
+            .gap(px(8.0))
+            .bg(th.chrome)
             .border_t_1()
             .border_color(th.line)
-            .text_size(px(11.5))
+            .text_size(px(11.0))
             .text_color(th.ink_soft)
             .child(keys::hintable(
-                div()
-                    .id("modechip")
-                    .relative()
-                    .px(px(8.0))
-                    .h(px(18.0))
-                    .flex()
-                    .items_center()
-                    .rounded(px(4.0))
-                    .bg(chip_bg)
-                    .text_color(chip_fg)
-                    .text_size(px(10.5))
-                    .font_weight(FontWeight::BOLD)
-                    .cursor_pointer()
-                    .child(vmode.label())
-                    .on_click(|_, w, cx| w.dispatch_action(Box::new(keys::keys::ToggleVim), cx)),
+                chip(chip_bg, chip_fg).id("modechip").relative().cursor_pointer().child(vmode.label()).on_click(|_, w, cx| w.dispatch_action(Box::new(keys::keys::ToggleVim), cx)),
                 "modechip",
                 keys::dispatch(keys::keys::ToggleVim),
             ))
             .when(!showcmd.is_empty(), |d| d.child(div().text_color(th.accent).font_weight(FontWeight::BOLD).child(SharedString::from(showcmd.clone()))))
-            .when_some(pos_text, |d, p| d.child(div().text_color(th.ink_faint).child(SharedString::from(p))))
-            .child(div().text_color(th.ink_faint).child("·"))
+            .when_some(pos_text, |d, p| d.child(sep()).child(div().text_color(th.ink_faint).child(SharedString::from(p))))
+            .child(sep())
             .child(SharedString::from(bpm))
-            .child(div().text_color(th.ink_faint).child("·"))
+            .child(sep())
             .child(SharedString::from(tocando))
-            .when_some(audio, |d, t| d.child(div().text_color(th.ink_faint).child(SharedString::from(t))))
-            .when_some(export, |d, t| d.child(div().px(px(8.0)).rounded(px(4.0)).bg(th.accent_wash).text_color(th.accent).child(SharedString::from(format!("⏳ {t}")))))
-            .when_some(toast, |d, t| d.child(div().px(px(8.0)).rounded(px(4.0)).bg(th.accent2_wash).text_color(th.accent2).truncate().child(SharedString::from(t))))
+            .when_some(loop_text, |d, t| d.child(sep()).child(div().text_color(th.accent2).font_weight(FontWeight::BOLD).child(SharedString::from(t))))
+            .when_some(audio, |d, t| d.child(sep()).child(div().text_color(th.ink_faint).child(SharedString::from(t))))
+            .when_some(export, |d, t| d.child(chip(th.accent_wash, th.accent).child(SharedString::from(format!("⏳ {t}")))))
+            .when_some(toast, |d, t| d.child(chip(th.accent2_wash, th.accent2).font_weight(FontWeight::MEDIUM).truncate().child(SharedString::from(t))))
             .child(div().flex_1())
             .child(div().text_color(th.ink_faint).child(SharedString::from(hud)))
-            .child(div().text_color(th.ink_faint).child("·"))
-            .child(div().text_color(th.ink_faint).child(SharedString::from(src)))
+            .child(sep())
+            .child(div().text_color(if src.starts_with("ERRO") { th.danger } else { th.ink_faint }).child(SharedString::from(src)))
     }
 }

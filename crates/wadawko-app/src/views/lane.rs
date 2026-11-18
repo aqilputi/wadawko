@@ -31,7 +31,7 @@ use wadawko_core::{Song, Zone};
 use crate::shell::Shell;
 use crate::song_ext::SongExt;
 use crate::state::AppState;
-use crate::theme::{Theme, parse_color};
+use crate::theme::{Theme, parse_color, track_color};
 
 /// velocidade constante da esteira (px/s). BPM alto = notas mais juntas.
 pub const PX_PER_SEC: f32 = 380.0;
@@ -537,7 +537,7 @@ fn paint_lane(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: &mut Ap
     let w = f32::from(b.size.width);
     let now = Instant::now();
     let white: Hsla = rgb(0xffffff).into();
-    let fuchi: Hsla = rgb(0x2f6fb0).into();
+    let fuchi: Hsla = th.accent2;
 
     let mut cache = a.shaped.borrow_mut();
     // texto modelado em cache; `center_w` centraliza numa largura
@@ -609,7 +609,7 @@ fn paint_lane(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: &mut Ap
 
         // ── campo: fundo listrado, borda, linha de julgamento ──
         let field = rect(field_x, y, field_w, LANE_H);
-        window.paint_quad(quad(field, gpui_kit::Corners { top_left: px(0.0), bottom_left: px(0.0), top_right: px(6.0), bottom_right: px(6.0) }, th.paper, px(1.0), th.line, BorderStyle::Solid));
+        window.paint_quad(quad(field, px(crate::ui::R0), th.paper, px(1.0), th.line, BorderStyle::Solid));
         window.with_content_mask(Some(gpui_kit::ContentMask { bounds: rect(field_x, y + 1.0, (field_w - 1.0).max(0.0), LANE_H - 2.0) }), |window| {
             let mut sx = field_x;
             while sx < field_x + field_w {
@@ -686,6 +686,8 @@ fn paint_lane(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: &mut Ap
         if amount > 0.0 {
             ring(window, dcx, mid, fd + 6.0, 3.0, mul_alpha(th.accent, amount));
         }
+        // anel externo na cor da linha (F1), por fora do aro `ink` do tambor
+        ring(window, dcx, mid, fd + 3.0, 2.0, mul_alpha(track_color(track), if song.audible(t) { 1.0 } else { 0.35 }));
         disc(window, dcx, mid, fd, th.paper_raise, 3.0, th.ink);
         ring(window, dcx, mid, fd - 6.0, 4.0, th.paper);
         disc(window, dcx, mid, fd - 14.0, th.paper_hover, 0.0, gpui_kit::transparent_black());

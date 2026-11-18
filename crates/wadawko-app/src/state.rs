@@ -13,10 +13,12 @@ use gpui_kit::{Context, EventEmitter};
 use wadawko_audio::{Audio, AudioConfig, CompileOptions, EngineEvent, PPQ, PlayOptions, Schedule, TrainerOptions};
 use wadawko_core::Song;
 use wadawko_core::ops::sections::selected_region;
+use wadawko_core::timeline::Region;
 use wadawko_export::{ExportJob, ExportOptions, ExportStage};
 use wadawko_samples::SampleBank;
 use wadawko_store::{ProjectStore, SongHistory};
 
+use crate::song_ext::SongExt;
 use crate::theme::Theme;
 
 /// O que mudou (para quem assina com `cx.subscribe(&state, …)`).
@@ -41,12 +43,32 @@ pub struct Transport {
     pub trainer_step: f64,
     /// ids das seções selecionadas para tocar (vazio = música inteira)
     pub selected: Vec<String>,
+    /// trecho de loop em compassos `[start_bar, end_bar)` (F2): arraste na
+    /// régua, `Loop: seleção`, `[`/`]`. Tem precedência sobre `selected`.
+    pub range: Option<Region>,
 }
 
 impl Default for Transport {
     fn default() -> Self {
-        Transport { looping: true, metronome: false, count_in: false, trainer: false, trainer_pct: 0.7, trainer_step: 0.05, selected: Vec::new() }
+        Transport { looping: true, metronome: false, count_in: false, trainer: false, trainer_pct: 0.7, trainer_step: 0.05, selected: Vec::new(), range: None }
     }
+}
+
+/// Região que o engine toca: o trecho de loop (`range`), senão as seções
+/// selecionadas, senão a música inteira (`None`).
+pub fn effective_region(range: Option<Region>, selected: Option<Region>) -> Option<Region> {
+    range.or(selected)
+}
+
+/// Prende um trecho ao número de compassos da música; vazio = `None`.
+pub fn clamp_region(r: Region, measures: usize) -> Option<Region> {
+    let end = r.end_bar.min(measures);
+    (r.start_bar < end).then_some(Region { start_bar: r.start_bar, end_bar: end })
+}
+
+/// Rótulo do trecho: `c3–c6` (1-based, fim inclusivo) ou `c3` para um compasso.
+pub fn range_label(r: Region) -> String {
+    if r.end_bar <= r.start_bar + 1 { format!("c{}", r.start_bar + 1) } else { format!("c{}–c{}", r.start_bar + 1, r.end_bar) }
 }
 
 /// Golpe disparado pelo engine (`EngineEvent::HitFired`), com o instante em que
@@ -79,6 +101,93 @@ pub struct ExportRun {
     pub started: Instant,
 }
 
+/// Um medidor na UI (F3): nível com queda de 36 dB/s e pico retido por 1,5 s
+/// que depois cai a 12 dB/s (docs/planejamento/daw.md §2.5).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Level {
+    pub level: f32,
+    pub peak: f32,
+    /// quando o pico foi marcado (segundos desde um instante de referência)
+    pub peak_at: f32,
+}
+
+impl Level {
+    /// Aplica um novo pico lido do engine (`raw`, linear) `dt` segundos depois
+    /// da última leitura, em `now` segundos.
+    pub fn feed(&mut self, raw: f32, dt: f32, now: f32) {
+        let fall = 10f32.powf(-36.0 * dt / 20.0);
+        self.level = (self.level * fall).max(raw);
+        if raw >= self.peak {
+            self.peak = raw;
+            self.peak_at = now;
+        } else if now - self.peak_at > 1.5 {
+            self.peak *= 10f32.powf(-12.0 * dt / 20.0);
+        }
+        if self.level < 1e-3 {
+            self.level = 0.0;
+        }
+        if self.peak < 1e-3 {
+            self.peak = 0.0;
+        }
+    }
+
+    pub fn is_silent(&self) -> bool {
+        self.level <= 0.0 && self.peak <= 0.0
+    }
+}
+
+/// Medidores da UI por canal (slot do schedule), barramento (slot) e master L/R.
+#[derive(Clone, Debug)]
+pub struct Levels {
+    pub chan: Vec<Level>,
+    pub bus: Vec<Level>,
+    pub master: [Level; 2],
+    /// quando o LED de clip acendeu
+    pub clip_at: Option<Instant>,
+    epoch: Instant,
+    last: f32,
+}
+
+impl Default for Levels {
+    fn default() -> Self {
+        let now = Instant::now();
+        Levels { chan: vec![Level::default(); wadawko_audio::MAX_CHANNELS], bus: vec![Level::default(); wadawko_audio::MAX_BUSES], master: [Level::default(); 2], clip_at: None, epoch: now, last: 0.0 }
+    }
+}
+
+impl Levels {
+    /// Lê os picos publicados pelo engine e aplica a balística.
+    pub fn poll(&mut self, meters: &wadawko_audio::Meters) {
+        let now = self.epoch.elapsed().as_secs_f32();
+        let dt = (now - self.last).clamp(0.0, 0.5);
+        self.last = now;
+        for (i, l) in self.chan.iter_mut().enumerate() {
+            l.feed(wadawko_audio::Meters::take(&meters.chan[i]), dt, now);
+        }
+        for (i, l) in self.bus.iter_mut().enumerate() {
+            l.feed(wadawko_audio::Meters::take(&meters.bus[i]), dt, now);
+        }
+        for (i, l) in self.master.iter_mut().enumerate() {
+            l.feed(wadawko_audio::Meters::take(&meters.master[i]), dt, now);
+        }
+        if meters.take_clip() {
+            self.clip_at = Some(Instant::now());
+        }
+        if self.clip_at.is_some_and(|t| t.elapsed() > Duration::from_secs(1)) {
+            self.clip_at = None;
+        }
+    }
+
+    /// Algum medidor ainda mostra nível (precisa de frames para cair)?
+    pub fn active(&self) -> bool {
+        self.clip_at.is_some() || self.master.iter().any(|l| !l.is_silent()) || self.chan.iter().any(|l| !l.is_silent()) || self.bus.iter().any(|l| !l.is_silent())
+    }
+
+    pub fn clip(&self) -> bool {
+        self.clip_at.is_some()
+    }
+}
+
 pub struct AppState {
     pub store: ProjectStore,
     pub history: SongHistory,
@@ -103,6 +212,10 @@ pub struct AppState {
     /// (rall./accel.). É o que a barra de cima mostra.
     pub sounding_bpm: f32,
     pub hits: Vec<HitFlash>,
+    /// medidores de nível (F3), com balística aplicada em `poll`
+    pub levels: Levels,
+    /// volume de saída (dB) do strip master do mixer — não faz parte da música
+    pub master_db: f64,
     pub toast: Option<(String, Instant)>,
     pub export: Option<ExportRun>,
     pub db_label: String,
@@ -153,6 +266,8 @@ impl AppState {
             playback_bpm: bpm,
             sounding_bpm: bpm,
             hits: Vec::new(),
+            levels: Levels::default(),
+            master_db: 0.0,
             toast: None,
             export: None,
             db_label,
@@ -205,9 +320,10 @@ impl AppState {
     }
 
     fn commit(&mut self, song: Arc<Song>, cx: &mut Context<Self>) {
-        // seções apagadas saem da seleção de região
+        // seções apagadas saem da seleção de região; o trecho encolhe com a música
         let ids: Vec<&str> = song.sections().iter().map(|s| s.id.as_str()).collect();
         self.tp.selected.retain(|id| ids.contains(&id.as_str()));
+        self.tp.range = self.tp.range.and_then(|r| clamp_region(r, song.measures.len()));
         if self.pen.as_deref().is_some_and(|p| song.person(p).is_none()) {
             self.pen = song.people().first().map(|p| p.id.clone());
         }
@@ -285,12 +401,17 @@ impl AppState {
         .detach();
     }
 
-    /// Recompila a música para o engine agora (região = seções selecionadas).
+    /// Região efetiva do playback: trecho de loop, senão seções selecionadas.
+    pub fn region(&self) -> Option<Region> {
+        effective_region(self.tp.range, selected_region(self.store.song(), &self.tp.selected))
+    }
+
+    /// Recompila a música para o engine agora (região = trecho ou seções selecionadas).
     pub fn sync_audio(&mut self) {
         self.audio_stale = false;
         let song = self.store.song().clone();
+        let region = self.region();
         let Some(audio) = self.audio.as_mut() else { return };
-        let region = selected_region(&song, &self.tp.selected);
         self.schedule = audio.set_song(&song, &CompileOptions { region, ..CompileOptions::default() });
         audio.apply_mix(&song);
         audio.set_metronome(self.tp.metronome);
@@ -367,6 +488,40 @@ impl AppState {
         cx.notify();
     }
 
+    /// Define (ou limpa) o trecho de loop (F2). Com trecho, o loop liga; se
+    /// estiver tocando, o playhead continua onde está quando ainda cai dentro
+    /// do trecho novo, senão volta ao início dele.
+    pub fn set_range(&mut self, range: Option<Region>, cx: &mut Context<Self>) {
+        let song = self.song().clone();
+        let range = range.and_then(|r| clamp_region(r, song.measures.len()));
+        let was_playing = self.playing();
+        let before = if was_playing { self.playhead().and_then(|p| p.cell) } else { None };
+        let changed = range != self.tp.range;
+        self.tp.range = range;
+        if changed {
+            self.sync_audio();
+        }
+        if range.is_some() && !self.tp.looping {
+            self.tp.looping = true;
+            if let Some(a) = self.audio.as_mut() {
+                a.set_loop(true);
+            }
+        }
+        if changed && was_playing {
+            let region = self.region();
+            let inside = |cell: usize| {
+                let (m, _) = song.unflat(cell);
+                region.is_none_or(|r| m >= r.start_bar && m < r.end_bar)
+            };
+            let target = match before {
+                Some(cell) if inside(cell) => cell,
+                _ => region.map_or(0, |r| song.flat(r.start_bar.min(song.measures.len().saturating_sub(1)), 0)),
+            };
+            self.seek_cell(target);
+        }
+        cx.notify();
+    }
+
     pub fn set_metronome(&mut self, on: bool, cx: &mut Context<Self>) {
         self.tp.metronome = on;
         if let Some(a) = self.audio.as_mut() {
@@ -439,9 +594,43 @@ impl AppState {
         }
         let snap = clock.snapshot();
         self.sounding_bpm = if snap.playing { snap.bpm.round() } else { self.playback_bpm };
+        self.levels.poll(audio.meters());
         audio.collect_garbage();
         let keep = Duration::from_millis(self.flash_ms() as u64 + 20);
         self.hits.retain(|h| now < h.at + keep);
+    }
+
+    // ───────────── medidores (F3) ─────────────
+
+    /// Nível da linha `t`: máximo entre os canais dela no schedule (linha
+    /// compartilhada = um canal por dono; o kiai entra junto).
+    pub fn track_level(&self, t: usize) -> Level {
+        let Some(track) = self.song().tracks.get(t) else { return Level::default() };
+        let mut best = Level::default();
+        for (i, ch) in self.schedule.channels.iter().enumerate() {
+            if ch.is_used()
+                && ch.track_id == track.id
+                && let Some(l) = self.levels.chan.get(i)
+                && l.level >= best.level
+            {
+                best = Level { level: l.level, peak: l.peak.max(best.peak), peak_at: l.peak_at };
+            }
+        }
+        best
+    }
+
+    /// Nível do barramento da pessoa `pid`.
+    pub fn person_level(&self, pid: &str) -> Level {
+        self.schedule.buses.iter().position(|b| b.person_id == pid).and_then(|i| self.levels.bus.get(i).copied()).unwrap_or_default()
+    }
+
+    /// Volume de saída (strip master): −40..+6 dB; com `--mute` o som continua calado.
+    pub fn set_master_db(&mut self, db: f64, cx: &mut Context<Self>) {
+        self.master_db = db.clamp(-40.0, 6.0);
+        if let Some(a) = self.audio.as_mut() {
+            a.set_master_gain(if self.mute { 0.0 } else { 10f32.powf(self.master_db as f32 / 20.0) });
+        }
+        cx.notify();
     }
 
     // ───────────── projetos ─────────────
@@ -455,6 +644,7 @@ impl AppState {
         self.play_cmd_at = Instant::now();
         self.hits.clear();
         self.tp.selected.clear();
+        self.tp.range = None;
         self.pen = None;
         self.start_cell = 0;
         self.revision += 1;
@@ -707,6 +897,73 @@ pub fn next_selection(cur: &[String], id: &str, additive: bool) -> Vec<String> {
         Vec::new()
     } else {
         vec![id.to_string()]
+    }
+}
+
+#[cfg(test)]
+mod level_tests {
+    use super::Level;
+
+    #[test]
+    fn level_rises_instantly_and_falls_36_db_per_second() {
+        let mut l = Level::default();
+        l.feed(1.0, 0.016, 0.0);
+        assert_eq!(l.level, 1.0);
+        assert_eq!(l.peak, 1.0);
+        // 1 s de silêncio em passos de 16 ms: −36 dB ≈ ×0,0158
+        let mut t = 0.0;
+        for _ in 0..62 {
+            t += 1.0 / 62.0;
+            l.feed(0.0, 1.0 / 62.0, t);
+        }
+        assert!((l.level - 0.0158).abs() < 0.002, "{}", l.level);
+        // pico retido por 1,5 s, depois cai a 12 dB/s
+        assert_eq!(l.peak, 1.0);
+        for _ in 0..62 {
+            t += 1.0 / 62.0;
+            l.feed(0.0, 1.0 / 62.0, t);
+        }
+        assert!(l.peak < 1.0 && l.peak > 0.3, "{}", l.peak);
+        // um pico novo maior substitui na hora
+        l.feed(0.8, 0.016, t);
+        assert_eq!(l.peak, 0.8);
+        assert!(!l.is_silent());
+        for _ in 0..600 {
+            t += 0.016;
+            l.feed(0.0, 0.016, t);
+        }
+        assert!(l.is_silent());
+    }
+}
+
+#[cfg(test)]
+mod region_tests {
+    use super::*;
+
+    fn r(a: usize, b: usize) -> Region {
+        Region { start_bar: a, end_bar: b }
+    }
+
+    #[test]
+    fn range_wins_over_selected_sections() {
+        assert_eq!(effective_region(None, None), None);
+        assert_eq!(effective_region(None, Some(r(2, 4))), Some(r(2, 4)));
+        assert_eq!(effective_region(Some(r(0, 1)), Some(r(2, 4))), Some(r(0, 1)));
+        assert_eq!(effective_region(Some(r(0, 1)), None), Some(r(0, 1)));
+    }
+
+    #[test]
+    fn clamp_shrinks_with_the_song_and_drops_empty() {
+        assert_eq!(clamp_region(r(1, 3), 8), Some(r(1, 3)));
+        assert_eq!(clamp_region(r(1, 9), 4), Some(r(1, 4)));
+        assert_eq!(clamp_region(r(4, 9), 4), None);
+        assert_eq!(clamp_region(r(2, 2), 8), None);
+    }
+
+    #[test]
+    fn labels_are_one_based_and_inclusive() {
+        assert_eq!(range_label(r(2, 3)), "c3");
+        assert_eq!(range_label(r(2, 6)), "c3–c6");
     }
 }
 

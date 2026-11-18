@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-16T13:04:55Z
+  at: 2026-11-17T12:44:03Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -77,6 +77,7 @@ Valem na área do editor (grade, partitura, esteira), com ou sem vim.
 | `Ctrl+S` | `project::Save` | Gravar agora |
 | `Tab` | `grid::NextCell` | grava e vai para a próxima célula |
 | `Shift+Tab` | `grid::PrevCell` | grava e volta uma célula |
+| `Ctrl+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
 
 ## Editor — modo simples (vim desligado)
 
@@ -149,6 +150,9 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `t` `p` | `transport::TogglePlay` | Tocar / parar |
 | `Space` `t` `s` | `transport::Stop` | Parar |
 | `Space` `t` `l` | `transport::ToggleLoop` | Loop: ligar/desligar |
+| `Space` `t` `Shift+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
+| `[` | `transport::LoopStartHere` | Loop: começa no compasso do cursor |
+| `]` | `transport::LoopEndHere` | Loop: termina no compasso do cursor |
 | `Space` `t` `m` | `transport::ToggleMetronome` | Metrônomo: ligar/desligar |
 | `Space` `t` `c` | `transport::ToggleCountIn` | Count-in: ligar/desligar |
 | `Space` `t` `t` | `transport::ToggleTrainer` | Treino (rampa de tempo): ligar/desligar |
@@ -166,7 +170,7 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `s` `j` | `section::MoveDown` | Mover seção para baixo |
 | `Space` `s` `r` | `section::Rename` | Renomear seção… |
 | `Space` `s` `p` | `section::ToggleSelect` | Tocar só esta seção (selecionar/desselecionar) |
-| `Space` `s` `a` | `transport::ClearRegion` | Tocar a música inteira (limpar seções selecionadas) |
+| `Space` `s` `a` | `transport::ClearRegion` | Tocar a música inteira (limpar trecho de loop e seções selecionadas) |
 | `Space` `i` `n` | `track::Add` | + Linha (instrumento escolhido) |
 | `Space` `i` `d` | `track::Remove` | Remover linha do cursor |
 | `Space` `i` `m` | `track::ToggleMute` | Mute da linha do cursor |

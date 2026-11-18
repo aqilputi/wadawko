@@ -130,7 +130,7 @@ impl KitView {
         widgets::hbtn_bare(id, th, act)
             .h(px(24.0))
             .px(px(9.0))
-            .rounded(px(6.0))
+            .rounded(px(ui::R1))
             .text_size(px(11.5))
             .font_weight(FontWeight::BOLD)
             .bg(wash)
@@ -224,7 +224,7 @@ impl KitView {
             .flex_col()
             .gap(px(7.0))
             .p(px(9.0))
-            .rounded(px(8.0))
+            .rounded(px(ui::R0))
             .bg(th.paper_raise)
             .border_1()
             .border_color(th.line)
@@ -321,7 +321,7 @@ impl KitView {
                 .flex_1()
                 .min_w_0()
                 .px(px(4.0))
-                .rounded(px(5.0))
+                .rounded(px(ui::R1))
                 .text_size(px(14.5))
                 .font_weight(FontWeight::BOLD)
                 .text_color(th.ink)
@@ -357,13 +357,12 @@ impl KitView {
             .items_center()
             .gap(px(8.0))
             .child(name)
-            .child(div().flex_none().text_size(px(11.0)).text_color(th.ink_soft).child(SharedString::from(format!("base: {}", def.base.label()))))
             .when(n > 0, |d| {
                 d.child(
                     div()
                         .flex_none()
                         .px(px(6.0))
-                        .rounded(px(8.0))
+                        .rounded(px(ui::R1))
                         .border_1()
                         .border_color(th.accent2)
                         .text_size(px(10.0))
@@ -375,7 +374,15 @@ impl KitView {
             .child(widgets::sbtn(format!("kit-dup-{}", def.id), th, on_dup).child("⧉"))
             .child(widgets::sbtn(format!("kit-del-{}", def.id), th, on_del).child("×"));
 
-        ui::card(th).flex_1().min_w(px(340.0)).max_w(px(560.0)).child(head).child(div().flex().gap(px(10.0)).child(self.zone_editor(def, Zone::Head, th)).child(self.zone_editor(def, Zone::Rim, th)))
+        // cabeçalho de painel com a base do som; o nome (editável) fica no corpo
+        ui::titled_card(
+            &format!("instrumento · base: {}", def.base.label()),
+            th,
+            div().child(head).child(div().flex().gap(px(10.0)).child(self.zone_editor(def, Zone::Head, th)).child(self.zone_editor(def, Zone::Rim, th))),
+        )
+        .flex_1()
+        .min_w(px(340.0))
+        .max_w(px(560.0))
     }
 
     fn builtin_row(&self, def: &InstrumentDef, th: &Theme) -> gpui_kit::Div {
@@ -399,7 +406,7 @@ impl KitView {
             .gap(px(10.0))
             .px(px(10.0))
             .py(px(6.0))
-            .rounded(px(8.0))
+            .rounded(px(ui::R0))
             .bg(th.paper)
             .border_1()
             .border_color(th.line)
@@ -449,7 +456,7 @@ impl Render for KitView {
                     .flex_wrap()
                     .items_center()
                     .gap(px(10.0))
-                    .child(ui::abtn_bare("kit-new", &th, New).bg(th.accent).border_color(th.accent).text_color(th.on_accent).font_weight(FontWeight::BOLD).rounded(px(16.0)).hover(|s| s.bg(th.accent)).child("+ novo"))
+                    .child(ui::abtn_bare("kit-new", &th, New).bg(th.accent).border_color(th.accent).text_color(th.on_accent).font_weight(FontWeight::BOLD).rounded(px(ui::R1)).hover(|s| s.bg(th.accent)).child("+ novo"))
                     .child(bases),
             );
 

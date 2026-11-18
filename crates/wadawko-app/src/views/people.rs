@@ -83,7 +83,7 @@ impl PeopleView {
                 .flex_1()
                 .min_w_0()
                 .px(px(4.0))
-                .rounded(px(5.0))
+                .rounded(px(ui::R1))
                 .text_size(px(14.5))
                 .font_weight(FontWeight::BOLD)
                 .text_color(th.ink)
@@ -116,7 +116,7 @@ impl PeopleView {
             .flex()
             .items_center()
             .gap(px(6.0))
-            .child(div().flex_none().w(px(20.0)).h(px(20.0)).rounded(px(5.0)).bg(color).border_1().border_color(th.line_strong))
+            .child(div().flex_none().w(px(20.0)).h(px(20.0)).rounded(px(ui::R1)).bg(color).border_1().border_color(th.line_strong))
             .child(name)
             .child(widgets::chip(format!("pp-pen-{}", p.id), if pen { "✎ caneta" } else { "caneta" }, th, pen, on_pen))
             .child(widgets::sbtn(format!("pp-del-{}", p.id), th, on_del).child("×"));
@@ -136,7 +136,7 @@ impl PeopleView {
                     .flex_none()
                     .w(px(20.0))
                     .h(px(20.0))
-                    .rounded(px(10.0))
+                    .rounded(px(ui::R1))
                     .bg(c)
                     .border_2()
                     .border_color(if on { th.ink } else { th.paper })
@@ -163,7 +163,7 @@ impl PeopleView {
                 .flex_none()
                 .w(px(15.0))
                 .h(px(15.0))
-                .rounded(px(3.0))
+                .rounded(px(ui::R1))
                 .border_1()
                 .flex()
                 .items_center()
@@ -182,7 +182,7 @@ impl PeopleView {
                     .gap(px(7.0))
                     .px(px(6.0))
                     .py(px(5.0))
-                    .rounded(px(6.0))
+                    .rounded(px(ui::R1))
                     .cursor_pointer()
                     .when(on, |d| d.bg(Theme::alpha(color, 0.12)))
                     .when(!on, |d| d.hover(|s| s.bg(th.paper_raise)))
@@ -190,7 +190,7 @@ impl PeopleView {
                     .child(div().text_size(px(13.0)).font_weight(FontWeight::BOLD).text_color(th.ink).child(SharedString::from(t.name.clone())))
                     .child(div().flex_1().min_w_0().text_size(px(11.0)).text_color(th.ink_soft).child(SharedString::from(ops::kit::instrument_label(song, t).to_string())))
                     .when(shared, |d| {
-                        d.child(div().flex_none().px(px(6.0)).rounded(px(8.0)).border_1().border_color(color).text_size(px(9.5)).font_weight(FontWeight::BOLD).text_color(color).child("COMPART."))
+                        d.child(div().flex_none().px(px(6.0)).rounded(px(ui::R1)).border_1().border_color(color).text_size(px(9.5)).font_weight(FontWeight::BOLD).text_color(color).child("COMPART."))
                     })
                     .on_click({
                         let a = act.clone();
@@ -201,7 +201,7 @@ impl PeopleView {
             ));
         }
 
-        mixer::group_card(th, color, div().child(head).child(swatches).child(mixer::bus_controls("pp-", state, p, th, 150.0)).child(list)).w(px(330.0))
+        mixer::group_card(th, color, "Pessoa", div().child(head).child(swatches).child(mixer::bus_controls("pp-", state, p, th, 150.0)).child(list)).w(px(330.0))
     }
 }
 
@@ -229,7 +229,7 @@ impl Render for PeopleView {
                     .border_color(th.accent)
                     .text_color(th.on_accent)
                     .font_weight(FontWeight::BOLD)
-                    .rounded(px(16.0))
+                    .rounded(px(ui::R1))
                     .hover(|s| s.bg(th.accent))
                     .child("+ pessoa"),
             );

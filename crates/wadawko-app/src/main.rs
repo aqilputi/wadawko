@@ -43,7 +43,7 @@ WaDAWko — editor/DAW de taiko
   --dark | --light     força o tema (padrão: o salvo no banco)
   --mute               volume de saída 0 (o engine roda normalmente)
   --bench N            toca com follow e zoom oscilando por N s e imprime o relatório
-  --demo MODO          palette | hints | whichkey | roothints | cmdline | config | visual | play | enter |
+  --demo MODO          palette | hints | whichkey | roothints | cmdline | config | visual | play | loop | enter |
                        kiai | menu | dyn | simple | mixer | pessoas | kit | kit-new | esteira | lane | partitura |
                        probe (simula mouse e teclado e imprime o efeito; use com cópia do banco) |
                        drag (anima o arrasto com o bloco balançando e sai; use com cópia do banco) |
@@ -161,7 +161,8 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let dark = args.dark.unwrap_or_else(|| matches!(store.theme(), Ok(Some(wadawko_store::Theme::Dark))));
+    // tema escuro é o padrão: só abre claro se o banco guardou "claro" (ou com --light)
+    let dark = args.dark.unwrap_or_else(|| !matches!(store.theme(), Ok(Some(wadawko_store::Theme::Light))));
     let theme = if dark { Theme::dark() } else { Theme::light() };
 
     gpui_kit::application().run(move |cx: &mut App| {
@@ -627,6 +628,50 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             println!("PROBE ctrl-z no andamento: {t2:?} · {s2:.2} s (igual ao início: {})", (s2 - s0).abs() < 1e-6);
             check("rallentando alonga a música e Ctrl+Z volta", t1.is_some() && s1 > s0 && t2 == t0 && (s2 - s0).abs() < 1e-6);
         }
+        // cor da linha (F1): ⚙ da linha do cursor abre o popover; clicar num swatch
+        // grava `track.color`; Ctrl+Z volta ao que era
+        {
+            use wadawko_core::model::TRACK_COLORS;
+            let t = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map_or(0, |c| c.t));
+            let color = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().tracks.get(t).and_then(|x| x.color.clone()));
+            let c0 = color(cx);
+            let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::track::Settings), cx));
+            wait(cx, 200).await;
+            let cur = cx.update(|cx| state.read(cx).song().tracks.get(t).map(|x| x.color_or_default().to_string()).unwrap_or_default());
+            let i = TRACK_COLORS.iter().position(|c| !c.eq_ignore_ascii_case(&cur)).unwrap_or(0);
+            let sw = hint(&format!("col-{t}-{i}"));
+            if let Some(b) = sw {
+                click(b.center(), none, cx).await;
+            }
+            let c1 = color(cx);
+            key("ctrl-z", cx);
+            wait(cx, 100).await;
+            let c2 = color(cx);
+            println!("PROBE cor da linha {t}: {c0:?} → {c1:?} → ctrl-z {c2:?} · swatch {i} achado: {}", sw.is_some());
+            check("⚙ → swatch muda a cor da linha e Ctrl+Z volta", sw.is_some() && c1.as_deref() == Some(TRACK_COLORS[i]) && c2 == c0);
+            key("escape", cx);
+            wait(cx, 100).await;
+        }
+        // inspector (F4): o chip "f" da dinâmica do compasso grava a dinâmica; Ctrl+Z volta
+        if let Some(p) = hint("ins-dyn-f").map(|b| b.center()) {
+            let dyn_of = |cx: &mut AsyncApp| {
+                cx.update(|cx| {
+                    let m = shell.read(cx).grid.read(cx).cursor.map_or(0, |c| c.m);
+                    state.read(cx).song().measures.get(m).and_then(|x| x.dynamic)
+                })
+            };
+            let d0 = dyn_of(cx);
+            click(p, none, cx).await;
+            let d1 = dyn_of(cx);
+            key("ctrl-z", cx);
+            wait(cx, 150).await;
+            let d2 = dyn_of(cx);
+            println!("PROBE inspector: dinâmica {d0:?} → clique em f → {d1:?} → ctrl-z {d2:?}");
+            check("inspector: chip de dinâmica edita o compasso e Ctrl+Z volta", d1 == Some(wadawko_core::Dynamic::F) && d1 != d0 && d2 == d0);
+        } else {
+            println!("PROBE inspector: chip ins-dyn-f não encontrado");
+            check("inspector: chip de dinâmica edita o compasso e Ctrl+Z volta", false);
+        }
         // calibração: botão do cabeçalho fixo (+ seção) com clique sintético
         if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("addsec").map(|t| t.bounds.center())) {
             let n0 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));
@@ -659,6 +704,111 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         let (bar1, grid1) = (hint_y("addsec"), cell(0, 2, 0, cx).map(|p| f32::from(p.y)));
         println!("PROBE rolagem: barra y {bar0:?} → {bar1:?} · grade y {grid0:?} → {grid1:?}");
         check("rolar o editor move a grade e a barra de contexto fica no lugar", bar0.is_some() && bar0 == bar1 && grid0 != grid1);
+        // trecho de loop (F2): arrastar na faixa de loop da régua do compasso 2 ao 3 cria
+        // Region{1,3} e liga o loop; Alt+clique na faixa limpa
+        {
+            use wadawko_core::timeline::Region;
+            let lane = |m: usize, cx: &mut AsyncApp| {
+                cx.update(|cx| {
+                    shell
+                        .read(cx)
+                        .grid
+                        .read(cx)
+                        .cell_bounds(Cur { m, t: 0, k: 0 })
+                        .map(|b| gpui_kit::point(b.origin.x + b.size.width / 2.0, b.origin.y - gpui_kit::px(views::grid::TIMELINE_H) + gpui_kit::px(3.0)))
+                })
+            };
+            let range = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).tp.range);
+            let looping = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).tp.looping);
+            // a janela do probe é estreita: volta o editor ao topo, aproxima o zoom e rola até
+            // o compasso 2 para os dois compassos caberem na vista (fora da vista não há mouse)
+            let zoom_to = |cw: f32, m: usize, cx: &mut AsyncApp| {
+                cx.update(|cx| {
+                    shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0)));
+                    shell.read(cx).grid.clone().update(cx, |g, cx| {
+                        g.cw = cw;
+                        g.cw_target = cw;
+                        let song = g.song.clone();
+                        let s = song.section_of(m);
+                        let (a, _) = song.section_range(s);
+                        let x = views::grid::measure_xs(&song, s, cw).get(m - a).copied().unwrap_or(0.0) - views::grid::CELL_X0;
+                        g.offset = x.max(0.0);
+                        g.offset_target = g.offset;
+                        cx.notify();
+                    })
+                })
+            };
+            zoom_to(16.0, 1, cx);
+            wait(cx, 200).await;
+            match (lane(1, cx), lane(2, cx)) {
+                (Some(p1), Some(p2)) => {
+                    cx.update(|cx| state.update(cx, |s, cx| s.set_loop(false, cx)));
+                    mouse(down(p1, none), cx);
+                    wait(cx, 80).await;
+                    sweep(p1, p2, none, cx);
+                    wait(cx, 120).await;
+                    mouse(up(p2, none), cx);
+                    wait(cx, 150).await;
+                    let (r1, l1) = (range(cx), looping(cx));
+                    click(p1, alt, cx).await;
+                    let r2 = range(cx);
+                    println!("PROBE faixa de loop: arrasto c2→c3 = {r1:?} (loop ligado: {l1}) · Alt+clique = {r2:?}");
+                    check("arrastar na faixa de loop cria o trecho c2–c3 e liga o loop; Alt+clique limpa", r1 == Some(Region { start_bar: 1, end_bar: 3 }) && l1 && r2.is_none());
+                }
+                _ => println!("PROBE sem compassos 2–3 para testar a faixa de loop"),
+            }
+            zoom_to(views::grid::BASE_CW, 0, cx);
+            wait(cx, 200).await;
+            // Loop: seleção — arrasto numa célula vazia seleciona no compasso 0; a ação faz
+            // o trecho c1; limpar (ação da barra) volta a tocar a música inteira
+            if let (Some(e2), Some(e3)) = (cell(0, 2, 2, cx), cell(0, 2, 3, cx)) {
+                mouse(down(e2, none), cx);
+                mouse(mv(e3, none), cx);
+                mouse(up(e3, none), cx);
+                wait(cx, 100).await;
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::transport::LoopSelection), cx));
+                wait(cx, 150).await;
+                let r1 = range(cx);
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::transport::ClearRegion), cx));
+                wait(cx, 150).await;
+                let r2 = range(cx);
+                println!("PROBE loop da seleção: {r1:?} · limpar: {r2:?}");
+                check("Loop: seleção faz o trecho do compasso selecionado e limpar volta", r1 == Some(Region { start_bar: 0, end_bar: 1 }) && r2.is_none());
+                key("escape", cx);
+                wait(cx, 100).await;
+            }
+            // tocando com o trecho c2–c3: o playhead fica dentro dele (volta no lugar certo)
+            let n = cx.update(|cx| state.read(cx).song().measures.len());
+            let has_audio = cx.update(|cx| state.read(cx).audio.is_some());
+            if n >= 3 && has_audio {
+                cx.update(|cx| state.update(cx, |s, cx| s.set_range(Some(Region { start_bar: 1, end_bar: 3 }), cx)));
+                cx.update(|cx| state.update(cx, |s, cx| s.play(0, cx)));
+                wait(cx, 900).await;
+                let mut seen = Vec::new();
+                let (mut master, mut track) = (0.0f32, 0.0f32);
+                for _ in 0..6 {
+                    if let Some(mi) = cx.update(|cx| state.read(cx).playhead().map(|p| p.mi)) {
+                        seen.push(mi);
+                    }
+                    // medidores (F3): o master e alguma linha mostram nível enquanto toca
+                    let (m, t) = cx.update(|cx| {
+                        let st = state.read(cx);
+                        (st.levels.master[0].level.max(st.levels.master[1].level), (0..st.song().tracks.len()).map(|t| st.track_level(t).level).fold(0.0, f32::max))
+                    });
+                    master = master.max(m);
+                    track = track.max(t);
+                    wait(cx, 200).await;
+                }
+                cx.update(|cx| state.update(cx, |s, cx| s.stop(cx)));
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::transport::ClearRegion), cx));
+                wait(cx, 150).await;
+                println!("PROBE tocando no trecho c2–c3: compassos vistos = {seen:?} · medidores: master {master:.3} · linha {track:.3}");
+                check("tocando com trecho de loop o playhead fica dentro dele", !seen.is_empty() && seen.iter().all(|&m| (1..3).contains(&m)));
+                check("medidores: master e linha mostram nível tocando", master > 0.0 && track > 0.0);
+            } else {
+                println!("PROBE (sem áudio ou música curta: pulo o teste do playhead no trecho)");
+            }
+        }
         // (no fim: o Tab move o cursor e a grade rola para o lado, o que mudaria as
         // posições usadas pelos passos acima)
         // Tab: digitar "do" + Tab grava e vai para a próxima célula; Tab sozinho avança
@@ -833,6 +983,11 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 }
                 "hints" => s.start_hints(HintScope::All, window, cx),
                 "play" => s.toggle_play(false, cx),
+                // trecho de loop c2–c3 (F2) tocando: banda na régua, chip na barra, ↺ na status bar
+                "loop" => {
+                    s.state.update(cx, |st, cx| st.set_range(Some(wadawko_core::timeline::Region { start_bar: 1, end_bar: 3 }), cx));
+                    s.toggle_play(false, cx);
+                }
                 "roothints" => {
                     s.root_hints = true;
                     cx.notify();
@@ -889,6 +1044,11 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                     cx.notify();
                 }),
                 "mixer" => window.dispatch_action(Box::new(keys::nav::Mixer), cx),
+                // mixer tocando (medidores, master com nível)
+                "mixer-play" => {
+                    window.dispatch_action(Box::new(keys::nav::Mixer), cx);
+                    s.toggle_play(false, cx);
+                }
                 "pessoas" | "people" => window.dispatch_action(Box::new(keys::nav::Pessoas), cx),
                 "kit" => window.dispatch_action(Box::new(keys::nav::Kit), cx),
                 "probe" => {}

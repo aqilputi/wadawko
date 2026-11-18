@@ -471,7 +471,7 @@ impl Render for ScoreView {
                 .relative()
                 .w_full()
                 .h(px(h + 2.0 * PAD_Y))
-                .rounded(px(10.0))
+                .rounded(px(ui::R0))
                 .border_1()
                 .border_color(th.line)
                 .bg(th.paper)
@@ -517,12 +517,12 @@ mod tests {
     #[test]
     fn theme_comes_from_app_tokens() {
         let (l, d) = (score_theme(&Theme::light()), score_theme(&Theme::dark()));
-        assert_eq!(l.ink.hex_rgb(), "#232733");
-        assert_eq!(l.accent.hex_rgb(), "#e26374");
-        assert_eq!(l.paper.unwrap().hex_rgb(), "#f9fafc");
+        assert_eq!(l.ink.hex_rgb(), "#1f1f1f");
+        assert_eq!(l.accent.hex_rgb(), "#c94531");
+        assert_eq!(l.paper.unwrap().hex_rgb(), "#ffffff");
         assert_eq!(l.kyai.hex_rgb(), "#d6452b");
-        assert_eq!(d.ink.hex_rgb(), "#e8ebf2");
-        assert_eq!(d.paper.unwrap().hex_rgb(), "#1d212c");
+        assert_eq!(d.ink.hex_rgb(), "#e6e6e6");
+        assert_eq!(d.paper.unwrap().hex_rgb(), "#303030");
         assert_ne!(d.kyai, l.kyai);
     }
 

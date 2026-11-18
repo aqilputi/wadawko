@@ -329,13 +329,54 @@ pub struct Track {
     /// voz dos kiai desta linha (soma à voz própria de cada pessoa)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kyai: Option<KyaiVoice>,
+    /// cor da linha (hex `#rrggbb`); ausente = cor padrão do instrumento base
+    /// ([`default_track_color`]). Campo opcional: músicas antigas abrem igual.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
     #[serde(flatten)]
     pub extra: Extra,
+}
+
+/// Paleta de cores das linhas (12), escolhidas para contrastar entre si sobre
+/// o cinza escuro e o claro do app. Uma linha sem `color` usa a cor do seu
+/// instrumento base ([`default_track_color`]).
+pub const TRACK_COLORS: [&str; 12] = [
+    "#e8603f", // coral
+    "#f08a2e", // laranja
+    "#e6c33f", // amarelo
+    "#8dc152", // lima
+    "#2fae6b", // verde
+    "#2cb7a4", // teal
+    "#3d9be9", // azul
+    "#6f7ce8", // índigo
+    "#ab63d9", // roxo (o #a35ad6 do plano dava 4,38 de contraste com o texto escuro)
+    "#e0569b", // magenta
+    "#b08968", // castanho
+    "#8d99a6", // ardósia
+];
+
+/// Cor padrão (determinística) de uma linha pelo instrumento base.
+pub fn default_track_color(base: InstrumentId) -> &'static str {
+    match base {
+        InstrumentId::Shime => TRACK_COLORS[2],    // amarelo
+        InstrumentId::Chu => TRACK_COLORS[0],      // coral
+        InstrumentId::Nagado => TRACK_COLORS[1],   // laranja
+        InstrumentId::Onagado => TRACK_COLORS[10], // castanho
+        InstrumentId::Okedo => TRACK_COLORS[5],    // teal
+        InstrumentId::Odaiko => TRACK_COLORS[8],   // roxo
+        InstrumentId::Hira => TRACK_COLORS[4],     // verde
+        InstrumentId::Kane => TRACK_COLORS[6],     // azul
+    }
 }
 
 impl Track {
     /// volume do canal quando `volume` está ausente (dB)
     pub const DEFAULT_VOLUME_DB: f64 = -6.0;
+
+    /// Cor efetiva da linha: a própria, ou a padrão do instrumento base.
+    pub fn color_or_default(&self) -> &str {
+        self.color.as_deref().unwrap_or_else(|| default_track_color(self.instrument))
+    }
 
     pub fn new(id: impl Into<String>, name: impl Into<String>, instrument: InstrumentId) -> Self {
         Track { id: id.into(), name: name.into(), instrument, ..Default::default() }

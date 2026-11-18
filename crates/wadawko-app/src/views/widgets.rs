@@ -96,7 +96,7 @@ thread_local! {
     static DRAG: RefCell<Option<SharedString>> = const { RefCell::new(None) };
 }
 
-const THUMB: f32 = 7.0; // raio do botão
+const THUMB: f32 = 7.0; // meia-largura da folga do trilho nas pontas (onde o thumb para)
 const THICK: f32 = 18.0; // espessura do elemento
 
 fn is_focused(id: &SharedString) -> bool {
@@ -186,15 +186,15 @@ pub fn slider(s: Slider, th: &Theme) -> gpui_kit::Div {
                 let y = y0 + h / 2.0 - 2.0;
                 (Bounds::new(point(px(x0 + THUMB), px(y)), size(px(len), px(4.0))), Bounds::new(point(px(x0 + THUMB), px(y)), size(px(cx - x0 - THUMB), px(4.0))), cx, y0 + h / 2.0)
             };
-            window.paint_quad(quad(track, px(2.0), th.line_strong, px(0.0), transparent_black(), BorderStyle::Solid));
-            window.paint_quad(quad(filled, px(2.0), s.color, px(0.0), transparent_black(), BorderStyle::Solid));
-            let r = if active { THUMB + 1.0 } else { THUMB };
+            window.paint_quad(quad(track, px(ui::R1), th.line_strong, px(0.0), transparent_black(), BorderStyle::Solid));
+            window.paint_quad(quad(filled, px(ui::R1), s.color, px(0.0), transparent_black(), BorderStyle::Solid));
+            // thumb retangular (cap de fader): 6×14 no horizontal, 12×22 no vertical
+            let (tw, th_) = if s.vertical { (12.0, 22.0) } else { (6.0, 14.0) };
+            let thumb = Bounds::new(point(px(cx_ - tw / 2.0), px(cy_ - th_ / 2.0)), size(px(tw), px(th_)));
+            window.paint_quad(quad(thumb, px(ui::R1), if active { th.paper_hover } else { s.color }, px(1.0), if active { s.color } else { th.paper }, BorderStyle::Solid));
             if focused {
-                let ring = Bounds::new(point(px(cx_ - r - 3.0), px(cy_ - r - 3.0)), size(px(2.0 * r + 6.0), px(2.0 * r + 6.0)));
-                window.paint_quad(quad(ring, px(r + 3.0), Theme::alpha(th.accent2, 0.25), px(1.5), th.accent2, BorderStyle::Solid));
+                window.paint_quad(quad(thumb.dilate(px(2.0)), px(ui::R1), transparent_black(), px(1.0), th.accent2, BorderStyle::Solid));
             }
-            let thumb = Bounds::new(point(px(cx_ - r), px(cy_ - r)), size(px(2.0 * r), px(2.0 * r)));
-            window.paint_quad(quad(thumb, px(r), s.color, px(2.0), th.paper, BorderStyle::Solid));
             window.set_cursor_style(CursorStyle::PointingHand, &hitbox);
 
             // ── mouse: clique posiciona, arrasto segue (mesmo fora do elemento) ──
@@ -279,19 +279,19 @@ pub fn hbtn_bare(id: impl Into<SharedString>, th: &Theme, act: Act) -> gpui_kit:
 
 /// Botão compacto (26 px de altura) para cabeçalhos de cartão.
 pub fn sbtn(id: impl Into<SharedString>, th: &Theme, act: Act) -> gpui_kit::Stateful<gpui_kit::Div> {
-    hbtn(id, th, act).h(px(26.0)).px(px(8.0)).text_size(px(12.0)).rounded(px(6.0)).bg(th.paper_raise).text_color(th.ink_soft)
+    hbtn(id, th, act).h(px(26.0)).px(px(8.0)).text_size(px(12.0)).rounded(px(ui::R1)).bg(th.paper_raise).text_color(th.ink_soft)
 }
 
-/// Botão quadrado M/S (mudo/solo): aceso com `color` quando `on`.
+/// Botão M/S (mudo/solo) 22×18: aceso com `color` quando `on`.
 pub fn mini(id: impl Into<SharedString>, label: &'static str, th: &Theme, on: bool, color: Hsla, act: Act) -> gpui_kit::Stateful<gpui_kit::Div> {
-    let b = hbtn_bare(id, th, act).w(px(27.0)).h(px(27.0)).px(px(0.0)).rounded(px(5.0)).text_size(px(11.0)).font_weight(FontWeight::BOLD).child(label);
+    let b = hbtn_bare(id, th, act).w(px(22.0)).h(px(18.0)).px(px(0.0)).rounded(px(ui::R1)).text_size(px(10.0)).font_weight(FontWeight::BOLD).child(label);
     let hover = th.paper_hover;
     if on { b.bg(color).border_color(color).text_color(th.on_accent).hover(move |s| s.bg(color)) } else { b.bg(th.paper_raise).text_color(th.ink_soft).hover(move |s| s.bg(hover)) }
 }
 
 /// Chip de escolha (grupo "um de N"): aceso quando `on`.
 pub fn chip(id: impl Into<SharedString>, label: impl Into<SharedString>, th: &Theme, on: bool, act: Act) -> gpui_kit::Stateful<gpui_kit::Div> {
-    let b = hbtn_bare(id, th, act).h(px(24.0)).px(px(8.0)).rounded(px(12.0)).text_size(px(11.5)).child(label.into());
+    let b = hbtn_bare(id, th, act).h(px(24.0)).px(px(8.0)).rounded(px(ui::R1)).text_size(px(11.5)).child(label.into());
     let (acc, wash) = (th.accent2, th.accent2_wash);
     let hover = th.paper_hover;
     if on { b.bg(wash).border_color(acc).text_color(acc).font_weight(FontWeight::BOLD).hover(move |s| s.bg(wash)) } else { b.bg(th.paper_raise).text_color(th.ink_soft).hover(move |s| s.bg(hover)) }

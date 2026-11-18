@@ -44,6 +44,10 @@ fazem round-trip** (preservados intactos), então arquivos de versões futuras n
 | `volume`, `pan` | número? | dB; −1…1 |
 | `personIds` | texto[]? | 2+ pessoas = linha compartilhada |
 | `kyai` | objeto? | voz do kiai da linha |
+| `color` | texto? | cor da linha (`#rrggbb`); ausente = cor padrão do instrumento base (shime amarelo, chū coral, nagadō laranja, ō-nagadō castanho, okedō teal, ōdaiko roxo, hira verde, kane azul) |
+
+O trecho de loop da régua, as seções selecionadas e o volume de saída do mixer são estado do
+transporte — não ficam no arquivo.
 
 ## Compasso (`Measure`)
 

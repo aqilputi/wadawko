@@ -14,8 +14,8 @@ impl Shell {
         let exists = user.exists();
         let raw = keys::all_raw_bindings();
         let conflicts = keys::conflicts(&raw);
-        let card = || ui::card(th);
-        let h = |t: &'static str| div().text_size(px(15.0)).font_weight(FontWeight::BOLD).child(t);
+        // cada cartão = cabeçalho de painel (de borda a borda) + corpo com padding
+        let body = || div();
         let probe = match &self.last_key {
             Some((k, a, at)) => format!("{k}  →  {}   (há {:.0} s)", a.clone().unwrap_or_else(|| "nenhuma ação (texto/sem atalho)".into()), at.elapsed().as_secs_f32()),
             None => "aperte qualquer tecla…".into(),
@@ -50,8 +50,10 @@ impl Shell {
             .gap(px(14.0))
             .child(div().text_size(px(22.0)).font_family("Shippori Mincho").font_weight(FontWeight::BOLD).child("Configurações"))
             .child(
-                card()
-                    .child(h("Teclado"))
+                ui::titled_card(
+                    "Teclado",
+                    th,
+                    body()
                     .child(
                         div()
                             .flex()
@@ -78,6 +80,7 @@ impl Shell {
                             .text_color(th.ink_soft)
                             .child("Ctrl+/ mostra o que dá para apertar aqui · Ctrl+K paleta · Ctrl+Space ou Alt+F saltar · : comandos · / busca"),
                     ),
+                ),
             )
             .child({
                 let st = self.state.read(cx);
@@ -101,8 +104,10 @@ impl Shell {
                         this.set_offset(v, cx);
                     }))
                 };
-                card()
-                    .child(h("Sincronia som × imagem"))
+                ui::titled_card(
+                    "Sincronia som × imagem",
+                    th,
+                    body()
                     .child(div().text_size(px(12.0)).text_color(th.ink_soft).child(SharedString::from(info)))
                     .child(div().text_size(px(12.0)).text_color(th.ink_soft).child(
                         "As células piscam quando a nota soa. Ligue o metrônomo, toque e ajuste até o destaque bater com o som: se a luz vem antes do som, aumente; se vem depois, diminua. (:offset 40 também funciona.)",
@@ -118,12 +123,15 @@ impl Shell {
                             .child(step("off+1", "+1", 1.0, cx))
                             .child(step("off+10", "+10 ms", 10.0, cx))
                             .child(step("off0", "zerar", 0.0, cx)),
-                    )
+                    ),
+                )
             })
             .child({
                 let st = self.state.read(cx);
-                card()
-                    .child(h("Banco e créditos"))
+                ui::titled_card(
+                    "Banco e créditos",
+                    th,
+                    body()
                     .child(div().text_size(px(12.0)).text_color(th.ink_soft).child(SharedString::from(format!(
                         "banco: {}{} · {} músicas · tema e música atual ficam no banco; vim e sincronia em {}",
                         st.db_label,
@@ -139,17 +147,23 @@ impl Shell {
                             .child(ui::abtn("implib", th, keys::project::ImportLibrary).child("importar músicas de outro banco ou backup…"))
                             .child(div().text_size(px(11.0)).text_color(th.ink_faint).child("um wadawko.db (app web ou outra instalação) ou um backup .json; nada é sobrescrito")),
                     )
-                    .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(SharedString::from(wadawko_samples::CREDITS.lines().filter(|l| !l.trim().is_empty()).take(6).collect::<Vec<_>>().join(" · "))))
+                    .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(SharedString::from(wadawko_samples::CREDITS.lines().filter(|l| !l.trim().is_empty()).take(6).collect::<Vec<_>>().join(" · ")))),
+                )
             })
             .child(
-                card()
-                    .child(h("Testar tecla"))
+                ui::titled_card(
+                    "Testar tecla",
+                    th,
+                    body()
                     .child(div().text_size(px(12.0)).text_color(th.ink_soft).child("Se Ctrl+Space não aparecer aqui, o fcitx5/ibus está capturando a tecla — use Alt+F (ou mude o atalho do IME)."))
-                    .child(div().px(px(10.0)).py(px(6.0)).rounded(px(6.0)).bg(th.paper_raise).text_size(px(14.0)).font_weight(FontWeight::MEDIUM).child(SharedString::from(probe))),
+                    .child(div().px(px(10.0)).py(px(6.0)).rounded(px(ui::R1)).bg(th.paper_raise).text_size(px(14.0)).font_weight(FontWeight::MEDIUM).child(SharedString::from(probe))),
+                ),
             )
             .child(
-                card()
-                    .child(h("Conflitos"))
+                ui::titled_card(
+                    "Conflitos",
+                    th,
+                    body()
                     .child(if conflicts.is_empty() {
                         div().text_size(px(12.0)).text_color(th.ink_soft).child("Nenhum conflito no keymap atual.")
                     } else {
@@ -159,7 +173,8 @@ impl Shell {
                         }
                         d
                     }),
+                ),
             )
-            .child(card().child(h("Mapa de atalhos")).child(table))
+            .child(ui::titled_card("Mapa de atalhos", th, body().child(table)))
     }
 }

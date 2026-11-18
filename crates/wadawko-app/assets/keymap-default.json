@@ -50,7 +50,8 @@
       "alt-shift-down": "grid::CloneSelDown",
       "ctrl-s": "project::Save",
       "tab": "grid::NextCell",
-      "shift-tab": "grid::PrevCell"
+      "shift-tab": "grid::PrevCell",
+      "ctrl-l": "transport::LoopSelection"
     }
   },
   {
@@ -120,6 +121,9 @@
       "space t p": "transport::TogglePlay",
       "space t s": "transport::Stop",
       "space t l": "transport::ToggleLoop",
+      "space t shift-l": "transport::LoopSelection",
+      "[": "transport::LoopStartHere",
+      "]": "transport::LoopEndHere",
       "space t m": "transport::ToggleMetronome",
       "space t c": "transport::ToggleCountIn",
       "space t t": "transport::ToggleTrainer",
