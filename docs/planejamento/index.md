@@ -8,3 +8,4 @@
 * [Criador de instrumentos (Kit)](instrumentos.md) - Instrumentos custom sobre um sample base, com ajustes separados de couro e borda (pitch, ganho, decaimento, timbre).
 * [Entidade Pessoa (agrupamento de instrumentos)](pessoas.md) - Pessoas que tocam um ou mais instrumentos: cor, caneta, barramento de mixagem e linhas compartilhadas.
 * [Redesign do app web (IA, sidebars, multi-música, tema)](redesign-web.md) - Redesign da interface do app web: navegação, painéis laterais, várias músicas, tema claro/escuro e arquitetura.
+* [Editor vertical estilo tracker (seções, efeitos por célula, cores)](tracker.md) - Pesquisa de trackers (Renoise e os modernos), modelo mental do editor vertical de taiko, painel de seções com grupos e cores, efeitos por célula legíveis, evolução do sistema de design, mapa de teclas e plano de implementação em etapas.
