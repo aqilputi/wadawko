@@ -324,6 +324,22 @@ impl Shell {
                 }
                 None => self.flash("padrão: A = forte, B = fraco, . = mudo (até 16 tempos; vazio = automático)", cx),
             },
+            InputTarget::PracticeName(None) => {
+                let range = self.state.read(cx).tp.range;
+                match range {
+                    Some(r) => {
+                        self.edit(cx, |s| {
+                            ops::practice::add_spot(s, t, r);
+                        });
+                        let name = if t.trim().is_empty() { ops::practice::default_name(r) } else { t.trim().to_string() };
+                        self.flash(format!("trecho guardado: {name}"), cx);
+                    }
+                    None => self.flash("sem trecho de loop: arraste na régua ou Ctrl+L antes", cx),
+                }
+            }
+            InputTarget::PracticeName(Some(id)) if !t.trim().is_empty() => {
+                self.edit(cx, |s| ops::practice::rename_spot(s, &id, t));
+            }
             InputTarget::MetroVolume => match num {
                 Some(v) => {
                     let m = wadawko_audio::Metronome { gain: (v / 100.0).clamp(0.0, 2.0) as f32, ..self.state.read(cx).tp.metro };
@@ -513,6 +529,8 @@ impl Shell {
             PromptKind::Input(InputTarget::TrainerPct) => ("treino, começa em %:", "20–100 · Enter confirma"),
             PromptKind::Input(InputTarget::TrainerStep) => ("treino, +% por volta:", "1–50 · Enter confirma"),
             PromptKind::Input(InputTarget::MetroPattern) => ("acentos:", "A forte · B fraco · . mudo (ex.: ABBB, A.B.) · vazio = automático"),
+            PromptKind::Input(InputTarget::PracticeName(None)) => ("nome do trecho:", "ex.: solo do Ōdaiko · vazio = c3–c6 · Enter guarda"),
+            PromptKind::Input(InputTarget::PracticeName(Some(_))) => ("trecho:", "Enter confirma · Esc cancela"),
             PromptKind::Input(InputTarget::MetroVolume) => ("metrônomo, volume %:", "0–200 · Enter confirma"),
         };
         div()

@@ -1,5 +1,6 @@
 //! Painel direito (280 px, `chrome`): bloco INSPECTOR (contextual, F4 — ver
-//! `views/inspector.rs`; altura máxima de 45 %, rola) e bloco MÚSICAS
+//! `views/inspector.rs`; altura máxima de 45 %, rola), bloco TRECHOS (trechos
+//! de ensaio com nome, F7b: clique = loop) e bloco MÚSICAS
 //! (trocar/nova/duplicar/renomear/excluir) com exportar/importar JSON e
 //! MP3/WAV no rodapé.
 
@@ -93,6 +94,7 @@ impl Shell {
                 }),
             ));
         }
+        let practice = self.practice_list(th, cx);
         let foot_btn = |b: gpui_kit::Stateful<gpui_kit::Div>| b.flex_1().h(px(24.0)).px(px(4.0)).text_size(px(11.0));
         div()
             .w(px(280.0))
@@ -106,6 +108,9 @@ impl Shell {
             // ── inspector (F4): segue o cursor da grade; no máximo 45 % do painel, rola ──
             .child(panel_header("Inspector", th).child(div().text_size(px(10.0)).font_weight(FontWeight::MEDIUM).text_color(th.ink_faint).truncate().child(context)))
             .child(div().id("inspector").flex_none().max_h(gpui_kit::relative(0.45)).overflow_y_scroll().child(inspector))
+            // ── trechos de ensaio (F7b) ──
+            .child(panel_header("Trechos", th).child(abtn("tr-save", th, keys::practice::Save).h(px(18.0)).px(px(6.0)).text_size(px(10.0)).font_weight(FontWeight::BOLD).child("+ guardar")))
+            .child(div().id("practice").flex_none().max_h(px(150.0)).overflow_y_scroll().child(practice))
             // ── músicas ──
             .child(
                 panel_header("Músicas", th).child(
@@ -160,6 +165,91 @@ impl Shell {
                             .child(foot_btn(abtn("wav", th, keys::project::ExportWav)).flex_none().w(px(56.0)).child("wav")),
                     ),
             )
+    }
+}
+
+/// Ação de um botão da linha do trecho.
+type SpotAct = Rc<dyn Fn(&mut Shell, &mut gpui_kit::Window, &mut Context<Shell>)>;
+
+impl Shell {
+    /// Lista de trechos de ensaio: nome + `c3–c6`; o que está em loop agora fica
+    /// aceso; ✎ renomeia, ✕ remove; trecho cuja seção sumiu aparece riscado.
+    fn practice_list(&self, th: &Theme, cx: &mut Context<Self>) -> gpui_kit::Div {
+        let st = self.state.read(cx);
+        let song = st.song();
+        let range = st.tp.range;
+        let spots: Vec<_> = wadawko_core::ops::practice::spots(song).iter().map(|s| (s.id.clone(), s.name.clone(), wadawko_core::ops::practice::resolve(song, s))).collect();
+        let mut list = div().flex().flex_col().gap(px(2.0)).px(px(8.0)).py(px(6.0));
+        if spots.is_empty() {
+            return list.child(div().text_size(px(10.5)).text_color(th.ink_faint).child("Marque um trecho de loop na régua (ou Ctrl+L) e guarde com + guardar — vira um atalho de ensaio."));
+        }
+        let weak = cx.entity().downgrade();
+        for (i, (id, name, region)) in spots.into_iter().enumerate() {
+            let on = region.is_some() && region == range;
+            let label: SharedString = region.map_or("seção apagada".into(), crate::state::range_label).into();
+            let small = |key: &str, glyph: &'static str, f: SpotAct| {
+                let w = weak.clone();
+                btn(SharedString::from(format!("tr-{key}-{i}")), th).h(px(18.0)).w(px(20.0)).px(px(0.0)).text_size(px(10.0)).child(glyph).on_click(move |_: &ClickEvent, win, cx| {
+                    cx.stop_propagation();
+                    let f = f.clone();
+                    let _ = w.update(cx, |this, cx| f(this, win, cx));
+                })
+            };
+            let (id_ren, id_del, id_go, id_hint) = (id.clone(), id.clone(), id.clone(), id.clone());
+            let w = weak.clone();
+            let row = div()
+                .id(("spot", i))
+                .relative()
+                .h(px(24.0))
+                .pl(px(8.0))
+                .pr(px(2.0))
+                .flex()
+                .items_center()
+                .gap(px(6.0))
+                .rounded(px(ui::R1))
+                .cursor_pointer()
+                .when(on, |d| d.bg(th.accent2_wash).child(div().absolute().left_0().top_0().bottom_0().w(px(2.0)).bg(th.accent2)))
+                .when(!on, |d| d.hover(|s| s.bg(th.paper_hover)))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .truncate()
+                        .text_size(px(12.0))
+                        .font_weight(if on { FontWeight::BOLD } else { FontWeight::MEDIUM })
+                        .text_color(if region.is_some() { th.ink } else { th.ink_faint })
+                        .when(region.is_none(), |d| d.line_through())
+                        .child(SharedString::from(name)),
+                )
+                .child(div().flex_none().text_size(px(10.0)).text_color(if on { th.accent2 } else { th.ink_faint }).child(label))
+                .child(small(
+                    "ren",
+                    "✎",
+                    Rc::new(move |this: &mut Shell, w, cx| {
+                        let cur = wadawko_core::ops::practice::spots(this.state.read(cx).song()).iter().find(|s| s.id == id_ren).map(|s| s.name.clone()).unwrap_or_default();
+                        this.ask(crate::views::grid::InputTarget::PracticeName(Some(id_ren.clone())), cur, w, cx);
+                    }),
+                ))
+                .child(small(
+                    "del",
+                    "✕",
+                    Rc::new(move |this: &mut Shell, _, cx| {
+                        this.state.update(cx, |s, cx| {
+                            s.edit(cx, |song| wadawko_core::ops::practice::remove_spot(song, &id_del));
+                        });
+                        this.flash("trecho removido (Ctrl+Z volta)", cx);
+                    }),
+                ))
+                .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| this.loop_spot(&id_go, cx)));
+            list = list.child(keys::hintable(
+                row,
+                format!("spot-{i}"),
+                Rc::new(move |_, cx: &mut App| {
+                    let _ = w.update(cx, |this, cx| this.loop_spot(&id_hint, cx));
+                }),
+            ));
+        }
+        list
     }
 }
 

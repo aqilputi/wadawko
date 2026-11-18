@@ -32,6 +32,7 @@ pub mod transport {
             MetroPattern,
             MetroSubdiv,
             MetroVolume,
+            MetroSound,
             ToggleCountInLoop,
             TapTempo,
             ClearRegion,
@@ -44,7 +45,7 @@ pub mod transport {
 }
 pub mod view {
     use gpui_kit::actions;
-    actions!(view, [Grade, Partitura, Esteira, ToggleTheme, ZoomIn, ZoomOut, ZoomReset, ToggleNav]);
+    actions!(view, [Grade, Partitura, Esteira, ToggleTheme, ZoomIn, ZoomOut, ZoomReset, RowTaller, RowShorter, RowReset, Director, ToggleNav]);
 }
 pub mod nav {
     use gpui_kit::actions;
@@ -60,7 +61,11 @@ pub mod hints {
 }
 pub mod project {
     use gpui_kit::actions;
-    actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ImportLibrary, ExportMp3, ExportWav, CancelExport]);
+    actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ImportLibrary, ExportMp3, ExportWav, ExportMidi, CancelExport]);
+}
+pub mod practice {
+    use gpui_kit::actions;
+    actions!(practice, [Save]);
 }
 pub mod section {
     use gpui_kit::actions;

@@ -39,7 +39,9 @@ fontes: [crates/wadawko-store/src/db.rs, crates/wadawko-app/src/keys/settings.rs
   "metro_pattern": "auto",
   "metro_subdiv": 1,
   "metro_gain": 1.0,
-  "count_in_loop": false
+  "metro_sound": "bipe",
+  "count_in_loop": false,
+  "row_h": 36
 }
 ```
 
@@ -50,7 +52,9 @@ fontes: [crates/wadawko-store/src/db.rs, crates/wadawko-app/src/keys/settings.rs
   mudo (até 16; repete ciclicamente). `auto` = forte no tempo 1 e fraco nos demais.
 - `metro_subdiv` — cliques por tempo: 1, 2 (colcheias), 3 (tercinas) ou 4 (semicolcheias).
 - `metro_gain` — volume do metrônomo (0 a 2; 1 = padrão).
+- `metro_sound` — timbre do clique: `bipe`, `shime` (madeira) ou `kane` (metal).
 - `count_in_loop` — um compasso de contagem antes de cada volta do loop.
+- `row_h` — altura das linhas da grade em px (24 a 60; padrão 36).
 - Campos ausentes ficam no padrão; o app reescreve o arquivo inteiro ao mudar qualquer um.
 
 # keymap.json

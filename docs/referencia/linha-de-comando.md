@@ -53,6 +53,7 @@ wadawko-cli [--db CAMINHO] <comando> [argumentos]
 |---|---|
 | `list` | lista as músicas do banco (id, título, data, BPM, linhas, compassos) |
 | `export <título\|id> [saída]` | grava uma música num arquivo `.wadawko.json` |
+| `midi <título\|id> [saída] [--samples-dir <pasta>]` | exporta uma música para MIDI (`.mid`): faixa por linha, canal 10 (bateria GM), andamento, fórmulas e seções |
 | `render <título\|id\|arquivo> <saída.wav\|mp3> [opções]` | renderiza em WAV ou MP3 (mesmo motor do playback) |
 | `import <arquivo> [--open]` | importa um arquivo de música como música nova |
 | `import-backup <arquivo> [--overwrite]` | importa um backup do `localStorage` do app web |

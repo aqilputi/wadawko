@@ -52,7 +52,11 @@
       "tab": "grid::NextCell",
       "shift-tab": "grid::PrevCell",
       "ctrl-l": "transport::LoopSelection",
-      "alt-t": "transport::TapTempo"
+      "alt-t": "transport::TapTempo",
+      "ctrl-alt-up": "view::RowTaller",
+      "f10": "view::Director",
+      "ctrl-alt-down": "view::RowShorter",
+      "ctrl-shift-l": "practice::Save"
     }
   },
   {
@@ -107,6 +111,9 @@
       "z i": "view::ZoomIn",
       "z o": "view::ZoomOut",
       "z 0": "view::ZoomReset",
+      "z k": "view::RowTaller",
+      "z j": "view::RowShorter",
+      "z =": "view::RowReset",
       "z a": "section::ToggleCollapse",
       "z shift-r": "section::ExpandAll",
       "z shift-m": "section::CollapseAll",
@@ -128,9 +135,11 @@
       "space t m": "transport::ToggleMetronome",
       "space t c": "transport::ToggleCountIn",
       "space t r": "transport::ToggleCountInLoop",
+      "space t g": "practice::Save",
       "space t a": "transport::MetroPattern",
       "space t d": "transport::MetroSubdiv",
       "space t v": "transport::MetroVolume",
+      "space t k": "transport::MetroSound",
       "space t .": "transport::TapTempo",
       "space t t": "transport::ToggleTrainer",
       "space t w": "transport::ToggleSwing",

@@ -7,6 +7,7 @@
 //! `Entity<AppState>` (`state.rs`).
 
 mod actions;
+pub(crate) use actions::tap_bpm;
 pub mod chrome;
 pub mod io;
 
@@ -40,6 +41,11 @@ pub static DBG_FOLLOW_V: AtomicU64 = AtomicU64::new(0);
 pub static DBG_GRID_RENDERS: AtomicU64 = AtomicU64::new(0);
 /// soma (µs) do tempo gasto no render da raiz e o máximo
 pub static RENDER_US: AtomicU64 = AtomicU64::new(0);
+/// tempo total (µs) gasto em `GridView::render` (diagnóstico do `--demo hoverstat`)
+pub static GRID_RENDER_US: AtomicU64 = AtomicU64::new(0);
+/// renders de seções da grade (`SectionView`) e tempo total em µs
+pub static SEC_RENDERS: AtomicU64 = AtomicU64::new(0);
+pub static SEC_RENDER_US: AtomicU64 = AtomicU64::new(0);
 pub static RENDER_MAX_US: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Clone, Copy, PartialEq)]
@@ -121,6 +127,12 @@ pub struct Shell {
     pub pending_since: Instant,
     /// instantes das últimas batidas do tap tempo (F8)
     pub taps: Vec<Instant>,
+    /// modo projeção aberto (F7d); `true` no 2º campo = fomos nós que pusemos em tela cheia
+    pub director: Option<bool>,
+    /// pedido de sair do modo projeção (o Esc não tem a janela; o render fecha)
+    pub director_close: bool,
+    /// janela estreita: a barra de cima compacta (ver `views::topbar`)
+    pub top_narrow: bool,
     pub prompt: Option<keys::modal::Prompt>,
     pub last_change: Option<keys::modal::Change>,
     pub recording: bool,
@@ -152,7 +164,11 @@ impl Shell {
         });
 
         let stats = Rc::new(RefCell::new(Stats::default()));
-        let grid = cx.new(|cx| GridView::new(state.clone(), stats.clone(), vim_on, cx));
+        let grid = cx.new(|cx| {
+            let mut g = GridView::new(state.clone(), stats.clone(), vim_on, cx);
+            g.cell_h = settings.row_h;
+            g
+        });
         cx.subscribe_in(&grid, window, |this: &mut Self, _g, ev: &GridEvent, window, cx| match ev {
             GridEvent::Ask(target, initial) => this.ask(target.clone(), initial.clone(), window, cx),
         })
@@ -240,6 +256,9 @@ impl Shell {
             pending: Vec::new(),
             pending_since: Instant::now(),
             taps: Vec::new(),
+            director: None,
+            director_close: false,
+            top_narrow: false,
             prompt: None,
             last_change: None,
             recording: false,
@@ -269,7 +288,7 @@ impl Shell {
         let keys = [
             // barra de cima: inclui a posição do display (muda de célula em célula tocando)
             chrome::key(|k| {
-                h(k, &(dark, playing, rev, &current, st.playback_bpm.to_bits(), st.sounding_bpm.to_bits()));
+                h(k, &(dark, playing, rev, &current, st.playback_bpm.to_bits(), st.sounding_bpm.to_bits(), self.top_narrow));
                 h(k, &format!("{:?}", st.tp));
                 h(k, &self.transport_pos(cx));
             }),
@@ -347,7 +366,8 @@ impl Shell {
 
     pub fn save_settings(&self, cx: &App) {
         let st = self.state.read(cx);
-        let _ = keys::save_settings(keys::Settings { vim: self.vim_on, av_offset_ms: st.av_offset_ms, metro: st.tp.metro, count_in_loop: st.tp.count_in_loop });
+        let row_h = self.grid.read(cx).cell_h;
+        let _ = keys::save_settings(keys::Settings { vim: self.vim_on, av_offset_ms: st.av_offset_ms, metro: st.tp.metro, count_in_loop: st.tp.count_in_loop, row_h });
     }
 
     // ───────── transporte / projeto ─────────
@@ -519,6 +539,9 @@ impl Shell {
     }
 
     pub fn cancel(&mut self, cx: &mut Context<Self>) {
+        if self.director.is_some() {
+            self.director_close = true;
+        }
         self.count = None;
         self.root_hints = false;
         self.grid.update(cx, |g, cx| {
@@ -630,7 +653,7 @@ impl Shell {
                 if (l.level <= 0.0 && l.peak <= 0.0) || t >= g.rows.y.len() {
                     continue;
                 }
-                let y = top + g.rows.y[t] + grid::CELL_H - 4.0;
+                let y = top + g.rows.y[t] + g.rows.cell_h - 4.0;
                 out.push((Bounds::new(point(px(x), px(y)), size(px(w), px(3.0))), l.level, l.peak));
             }
         }
@@ -676,10 +699,11 @@ impl Shell {
         let y = f32::from(b.origin.y);
         let vb = self.scroll.bounds();
         let (vt, vbm) = (f32::from(vb.origin.y), f32::from(vb.origin.y) + f32::from(vb.size.height));
-        if f32::from(vb.size.height) > 0.0 && (y < vt + 10.0 || y + grid::CELL_H > vbm - 10.0) {
+        let ch = f32::from(b.size.height);
+        if f32::from(vb.size.height) > 0.0 && (y < vt + 10.0 || y + ch > vbm - 10.0) {
             let cur = self.scroll.offset();
             let max = self.scroll.max_offset();
-            let target = if y < vt { y - vt - 80.0 } else { y + grid::CELL_H - vbm + 80.0 };
+            let target = if y < vt { y - vt - 80.0 } else { y + ch - vbm + 80.0 };
             let ny = (f32::from(cur.y) - target).clamp(-f32::from(max.y), 0.0);
             self.scroll.set_offset(point(cur.x, px(ny)));
         }
@@ -768,6 +792,7 @@ impl Shell {
         let row_meters = if self.on_grid() { self.row_meters(cx) } else { Vec::new() };
         self.status = self.status_model(playing, play_pos, cx);
         // moldura em cache: só re-renderiza quando a chave dela muda
+        self.top_narrow = f32::from(window.viewport_size().width) < crate::views::topbar::NARROW_W;
         self.refresh_chrome(playing, f32::from(window.viewport_size().width), cx);
         let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(64.0)).h_full().flex_none());
         let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(44.0)).flex_none());
@@ -792,7 +817,11 @@ impl Shell {
                             head.child(div().w_full().on_children_prepainted(move |b, _, _| cell.set(b.first().map_or(0.0, |b| f32::from(b.size.height)))).child(bar.clone()))
                         };
                         let grid_h = self.grid.read(cx).grid_height();
-                        self.grid.clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(grid_h))).into_any_element()
+                        // a grade NÃO fica em cache aqui: no gpui, uma view em cache que
+                        // re-renderiza redesenha todo o seu subárvore (`refreshing`), o que
+                        // anularia o cache por seção (`grid::render::SectionView`). O render
+                        // da grade em si é barato; o caro (as seções) fica em cache.
+                        div().w_full().h(px(grid_h)).child(self.grid.clone()).into_any_element()
                     }
                     Some(view) => view,
                 };
@@ -898,6 +927,20 @@ impl Shell {
         // ── linha de prompt (: / ? " m ' e renomear) ──
         if let Some(p) = &self.prompt {
             root = root.child(div().id("prompt").absolute().inset_0().key_context("Prompt").track_focus(&self.prompt_focus).on_key_down(cx.listener(Self::prompt_key)).child(self.prompt_bar(p, &th)));
+        }
+
+        // ── modo projeção (F7d): por cima de tudo ──
+        if self.director_close {
+            self.director_close = false;
+            if let Some(ours) = self.director.take()
+                && ours
+                && window.is_fullscreen()
+            {
+                window.toggle_fullscreen();
+            }
+        }
+        if self.director.is_some() {
+            root = root.child(self.director(cx));
         }
 
         // ── paleta (Ctrl+K) ──

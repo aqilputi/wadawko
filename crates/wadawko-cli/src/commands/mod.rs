@@ -7,6 +7,7 @@ mod export;
 mod import;
 mod import_backup;
 mod list;
+mod midi;
 mod render;
 
 /// Um subcomando do `wadawko-cli`.
@@ -24,4 +25,4 @@ pub struct Command {
 }
 
 /// Todos os subcomandos, na ordem em que aparecem na ajuda.
-pub const COMMANDS: &[Command] = &[list::COMMAND, export::COMMAND, render::COMMAND, import::COMMAND, import_backup::COMMAND];
+pub const COMMANDS: &[Command] = &[list::COMMAND, export::COMMAND, midi::COMMAND, render::COMMAND, import::COMMAND, import_backup::COMMAND];

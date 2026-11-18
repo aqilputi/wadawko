@@ -166,8 +166,11 @@ próprio `FocusHandle` com `key_context` próprio.
 
 Views pesadas seguem a grade: um `canvas` com culling, textos modelados em cache
 (`shape_line`), geometria do último frame guardada num `Rc<RefCell<…>>` para
-overlays sem re-render. A grade fica em `Entity::cached(...)` e o
-playhead/flash é um `canvas` irmão sem cache, no Shell — os **mini-medidores**
+overlays sem re-render. Cada **seção** da grade é uma view própria em cache
+(`grid::render::SectionView`, que chama `GridView::render_section`); a `GridView`
+calcula uma chave por seção (`sections_key` + "mouse sobre esta seção") e só
+notifica as seções cuja chave mudou — um hover num botão re-renderiza só a seção
+dele. O playhead/flash é um `canvas` irmão sem cache, no Shell — os **mini-medidores**
 das linhas (3 px sob o nome) são pintados nesse mesmo overlay com
 `ui::paint_meter`, a partir de `geom.sections` + `rows.y` + `label_pad`; nunca
 dentro da grade. O arrasto na faixa de loop da régua também é acompanhado por
@@ -189,11 +192,19 @@ padrão do instrumento) e `Theme::on_track_color()` para texto sobre ela.
 - Medidores: o engine só faz `fetch_max` em atômicos (`wadawko_audio::Meters`); a UI lê com
   `Meters::take` uma vez por frame em `AppState::poll` e o Shell pede frames enquanto
   `levels.active()` (os medidores caem depois de parar). Nada disso notifica a grade.
+- **Cache aninhado não funciona no gpui**: quando uma view em cache re-renderiza,
+  todo o subárvore dela é desenhado com `window.refreshing = true` (`view.rs` do
+  gpui), então views em cache DENTRO dela nunca são reaproveitadas. Por isso a
+  `GridView` não fica em `cached(...)` no Shell (o render dela é barato; o caro são
+  as seções, essas sim em cache). Mostrou algo novo numa seção? Inclua em
+  `GridView::sections_key`.
 - Nunca use `window.refresh()` para pedir redesenho durante animação/arrasto: ele
   invalida TODOS os caches (a grade inteira é reconstruída). Notifique a entidade
   que mudou (`cx.notify()` / `entity.update(cx, |_, cx| cx.notify())`).
 - Só peça `request_animation_frame` enquanto algo realmente anima (ex.: o bloco
   arrastado para de pedir frames quando assenta — `drag_ghost::Swing::settled`).
 - Medir: `--demo playstat-grade|playstat-esteira` (frames e render em 6 s tocando),
+  `--demo hoverstat` (200 hovers alternando entre dois botões ★: renders da grade e
+  das seções; medido em 2026-11-18: 2,67 ms → 0,04 ms + 0,20 ms de uma seção),
   `--demo drag`, `--demo probe`. Compare **ms de CPU por frame**, não CPU% — janela
   escondida recebe menos frames do compositor e distorce o CPU%.

@@ -22,7 +22,8 @@ comando também roda pela **paleta** (`Ctrl+K`): digite parte do nome e Enter.
   tempo.subdivisão do cursor; tocando, do playhead) e o BPM (roda do mouse ±1, clique para
   digitar) com o **TAP** (bata no ritmo para marcar o BPM), reto/swing; à direita metrônomo
   (ligado, mostra o padrão de acentos e a subdivisão), count-in, count-in a cada volta (com
-  loop), treino e o tema. Parar o mouse sobre um botão mostra o nome do comando e o atalho.
+  loop), treino e o tema (em janela estreita, abaixo de 1200 px, a barra fica compacta: reto/swing
+  vira um botão, o metrônomo mostra só o padrão e o tema vai para a paleta). Parar o mouse sobre um botão mostra o nome do comando e o atalho.
 - **Painel da direita**: o **inspector** (propriedades da seção, do compasso, da linha e da
   célula do cursor — edite ali mesmo: ritornello, compassos, fórmula, dinâmica, andamento,
   M/S/★, volume, pan, pessoas, sfz/acento) e as músicas do banco (`+ nova`, trocar, renomear,
@@ -114,6 +115,14 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   couro e borda ajustados separadamente (pitch, ganho, decaimento, overtones, filtro) e ▶ para
   ouvir. Os prontos podem ser duplicados para editar.
 
+# Modelos e export MIDI
+
+- **Modelos de música**: `Ctrl+K` → "Nova música: …" — Em branco, Jiuchi + 3 linhas, Ensemble 5
+  (com seções e repetição), Matsuri (swing) e o exemplo Renshū.
+- **MIDI** (`Ctrl+K` → "Exportar MIDI"; CLI: `wadawko-cli midi <música>`): uma faixa por linha no
+  canal 10 (bateria GM), com andamento, fórmulas de compasso e marcadores de seção. Notas: ōdaiko
+  35, ō-nagadō 41, nagadō 43, chū 45, okedō 47, hira 50, shime 38, borda 37, kane 56/80.
+
 # Tocar e ensaiar
 
 - `Space` toca/para (no modo simples, quando não está digitando). A grade acompanha o
@@ -124,10 +133,20 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   `ABBB`…) abre um campo: `A` = forte, `B` = fraco, `.` = mudo, um caractere por tempo (até 16,
   repete se o compasso for maior; vazio = automático, forte no 1). Ex.: `A.B.` para marcar só
   o 1 e o 3; `.B.B` para ouvir só o 2 e o 4. O chip **÷** troca a subdivisão: só os tempos →
-  colcheias → tercinas → semicolcheias. Volume pela paleta ("Metrônomo: volume…"). Tudo vale
+  colcheias → tercinas → semicolcheias; o terceiro chip troca o **som** (bipe → shime, de
+  madeira → kane, de metal). Volume pela paleta ("Metrônomo: volume…"). Tudo vale
   na hora, tocando, e fica salvo nas configurações.
+- **Trechos de ensaio** (painel TRECHOS, à direita): com um trecho de loop marcado, `+ guardar`
+  (ou `Ctrl+Shift+L`; vim: `Space t g`) pede um nome — "solo do Ōdaiko", "entrada do B". Um clique
+  na lista põe aquele trecho em loop; também aparecem na paleta (`Ctrl+K` → "Trecho: …"). ✎
+  renomeia, ✕ remove (Ctrl+Z volta). Ficam salvos na música e acompanham as seções.
 - **Count-in a cada volta** (⏱↺, aparece com o loop ligado): antes de cada repetição toca um
   compasso de contagem, para o grupo respirar entre as voltas. Combina com o treino.
+- **Altura das linhas**: `Ctrl+Alt+↑/↓` (vim: `z k`/`z j`, `z =` volta ao padrão) — linhas
+  baixas cabem mais na tela (abaixo de 32 px some o nome do instrumento). Fica salva.
+- **Modo projeção** (`F10`, ou `Ctrl+K` → "Modo projeção"): tela cheia em letras grandes para a TV
+  do ensaio — seção atual e a volta (`2/3`), compasso, os tempos acendendo, a próxima seção e o
+  BPM que está soando; a lista de linhas com as cores embaixo. `Espaço` toca/para, `Esc` sai.
 - **Tap tempo**: bata no **TAP** (ou `Alt+T`; no vim `Space t .`) no ritmo — da 2ª batida em
   diante o BPM segue a média das últimas 8; parar 2 s recomeça. Um `Ctrl+Z` desfaz o tap inteiro.
 - **Loop por trecho** ("esses dois compassos de novo"): **arraste na faixa de cima da régua**

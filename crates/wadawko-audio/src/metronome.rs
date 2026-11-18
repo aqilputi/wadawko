@@ -34,11 +34,57 @@ pub struct Metronome {
     pub subdiv: u8,
     /// volume linear (0..=2)
     pub gain: f32,
+    /// timbre do clique
+    pub sound: ClickSound,
+}
+
+/// Timbre do clique do metrônomo (sintetizado no engine, direto no master).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ClickSound {
+    /// bipe triangular (C6 / G5)
+    #[default]
+    Beep,
+    /// madeira, como a borda do shime: senoide curta com queda de afinação
+    Wood,
+    /// metal, como o kane: parciais inarmônicos com cauda longa
+    Metal,
+}
+
+impl ClickSound {
+    pub const ALL: [ClickSound; 3] = [ClickSound::Beep, ClickSound::Wood, ClickSound::Metal];
+
+    /// nome curto (UI e `settings.json`)
+    pub fn name(self) -> &'static str {
+        match self {
+            ClickSound::Beep => "bipe",
+            ClickSound::Wood => "shime",
+            ClickSound::Metal => "kane",
+        }
+    }
+
+    pub fn from_name(s: &str) -> Option<ClickSound> {
+        ClickSound::ALL.into_iter().find(|c| c.name() == s)
+    }
+
+    /// o próximo da lista (para o chip que alterna)
+    pub fn next(self) -> ClickSound {
+        let i = ClickSound::ALL.iter().position(|&c| c == self).unwrap_or(0);
+        ClickSound::ALL[(i + 1) % ClickSound::ALL.len()]
+    }
+
+    /// (frequência do acento, frequência dos demais)
+    fn freqs(self) -> (f32, f32) {
+        match self {
+            ClickSound::Beep => (1_046.502_3, 783.990_9),
+            ClickSound::Wood => (1_900.0, 1_450.0),
+            ClickSound::Metal => (1_250.0, 940.0),
+        }
+    }
 }
 
 impl Default for Metronome {
     fn default() -> Self {
-        Metronome { pattern: [ClickLevel::Normal; MAX_PATTERN], len: 0, subdiv: 1, gain: 1.0 }
+        Metronome { pattern: [ClickLevel::Normal; MAX_PATTERN], len: 0, subdiv: 1, gain: 1.0, sound: ClickSound::Beep }
     }
 }
 
@@ -47,11 +93,12 @@ impl Default for Metronome {
 pub struct ClickTone {
     pub freq: f32,
     pub gain: f32,
+    pub sound: ClickSound,
 }
 
-const ACCENT: ClickTone = ClickTone { freq: 1_046.502_3, gain: 1.0 };
-const NORMAL: ClickTone = ClickTone { freq: 783.990_9, gain: 0.6 };
-const SUB: ClickTone = ClickTone { freq: 783.990_9, gain: 0.32 };
+const ACCENT: ClickTone = ClickTone { freq: 1_046.502_3, gain: 1.0, sound: ClickSound::Beep };
+const NORMAL: ClickTone = ClickTone { freq: 783.990_9, gain: 0.6, sound: ClickSound::Beep };
+const SUB: ClickTone = ClickTone { freq: 783.990_9, gain: 0.32, sound: ClickSound::Beep };
 
 impl Metronome {
     /// Lê um padrão: `A`/`X`/`1` = forte, `B`/`x`/`2` = fraco, `.`/`-`/`C`/`0` =
@@ -122,7 +169,13 @@ impl Metronome {
             }
             SUB
         };
-        Some(ClickTone { freq: t.freq, gain: t.gain * g })
+        Some(self.voiced(t, g))
+    }
+
+    /// Aplica o timbre e o volume a um dos tons-base (acento / fraco / subdivisão).
+    fn voiced(&self, t: ClickTone, g: f32) -> ClickTone {
+        let (hi, lo) = self.sound.freqs();
+        ClickTone { freq: if t == ACCENT { hi } else { lo }, gain: t.gain * g, sound: self.sound }
     }
 
     /// Clique do count-in no tempo `beat`: segue os acentos, mas nunca é mudo
@@ -130,7 +183,7 @@ impl Metronome {
     pub fn count_in_tone(&self, beat: usize) -> ClickTone {
         let g = self.gain.clamp(0.05, 2.0);
         let t = if self.level(beat) == ClickLevel::Accent { ACCENT } else { NORMAL };
-        ClickTone { freq: t.freq, gain: t.gain * g }
+        self.voiced(t, g)
     }
 }
 

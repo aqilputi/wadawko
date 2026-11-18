@@ -5,6 +5,13 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ## [Não lançado]
 
 ### Adicionado
+- **Modo projeção** (`F10`): seção, volta, compasso, tempos, próxima seção e BPM em letras grandes.
+- **Metrônomo com som de shime ou kane** (além do bipe): chip na barra de cima.
+- **Export MIDI** (`.mid`, uma faixa por linha, bateria GM; também `wadawko-cli midi`).
+- **Modelos de música** na paleta: Em branco, Jiuchi + 3 linhas, Ensemble 5, Matsuri (swing).
+- **Altura das linhas ajustável** (`Ctrl+Alt+↑/↓`, vim `z k`/`z j`/`z =`), salva nas configurações.
+- **Trechos de ensaio com nome** (painel TRECHOS): guarde o trecho de loop com um nome e volte a
+  ele com um clique ou pela paleta. Campo opcional `practice` na música.
 - **Metrônomo com acentos**: padrão por tempo (`A` forte, `B` fraco, `.` mudo — ex.: `A.B.`),
   subdivisão (colcheias, tercinas, semicolcheias) e volume; chips na barra de cima quando o
   metrônomo está ligado, salvo nas configurações. O count-in segue os acentos e a fórmula do
@@ -43,6 +50,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 - Licença do código: **MIT OR Apache-2.0** (`LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`).
 
 ### Mudado
+- Barra de cima **compacta em janela estreita** (< 1200 px): nada mais se sobrepõe ao transporte.
+- **Desempenho**: cada seção da grade é desenhada em cache; passar o mouse num botão
+  re-renderiza só aquela seção (≈11× menos trabalho por hover).
 - **Visual "estilo DAW"**: tema escuro por padrão (bancos sem tema salvo), cinzas neutros em
   níveis, cantos retos, transporte no centro da barra de cima, barra lateral estreita (64 px),
   painel direito de 280 px com cabeçalhos de painel (INSPECTOR, MÚSICAS), grade mais densa

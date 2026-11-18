@@ -16,6 +16,7 @@ pub mod cells;
 pub mod kit;
 pub mod measures;
 pub mod people;
+pub mod practice;
 pub mod sections;
 pub mod tracks;
 

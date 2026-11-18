@@ -612,6 +612,9 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         {
             let secs = |cx: &mut AsyncApp| {
                 cx.update(|cx| {
+                    // recompila agora (a recompilação normal tem um atraso, que num
+                    // compositor lento pode passar das esperas do probe)
+                    state.update(cx, |s, _| s.sync_audio());
                     let st = state.read(cx);
                     let m = shell.read(cx).grid.read(cx).cursor.map_or(0, |c| c.m);
                     (m, st.song().measures.get(m).and_then(|x| x.tempo.clone()), st.schedule.seconds(st.song().tempo))
@@ -921,16 +924,87 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         {
             let tempo = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().tempo);
             let t0 = tempo(cx);
+            cx.update(|cx| shell.update(cx, |s, _| s.taps.clear()));
             for _ in 0..4 {
                 key("alt-t", cx);
                 wait(cx, 500).await;
             }
             let t1 = tempo(cx);
+            // o BPM esperado sai dos instantes reais das batidas (o loop de eventos pode atrasar)
+            let expect = cx.update(|cx| shell::tap_bpm(&shell.read(cx).taps)).map(|b| b.clamp(30.0, 300.0).round());
             key("ctrl-z", cx);
             wait(cx, 120).await;
             let t2 = tempo(cx);
             println!("PROBE tap tempo: {t0} → {t1} → Ctrl+Z {t2}");
-            check("tap tempo marca ~120 BPM e um Ctrl+Z volta", (110.0..=130.0).contains(&t1) && t2 == t0);
+            println!("PROBE tap tempo: esperado pelas batidas {expect:?}");
+            check("tap tempo marca o BPM das batidas (~120) e um Ctrl+Z volta", expect.is_some_and(|e| (e - t1).abs() <= 1.0) && (90.0..=150.0).contains(&t1) && t2 == t0);
+        }
+        // altura das linhas (F16): Ctrl+Alt+↓ duas vezes = 28 px; o clique ainda acerta a célula; padrão volta a 36
+        {
+            let h = |cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m: 0, t: 2, k: 1 }).map(|b| f32::from(b.size.height)));
+            cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            key("ctrl-alt-down", cx);
+            key("ctrl-alt-down", cx);
+            wait(cx, 250).await;
+            let h1 = h(cx);
+            let mut hit = None;
+            if let Some(c) = cell(0, 2, 1, cx) {
+                mouse(PlatformInput::MouseMove(MouseMoveEvent { position: c, pressed_button: None, modifiers: none }), cx);
+                wait(cx, 60).await;
+                mouse(down(c, none), cx);
+                wait(cx, 60).await;
+                mouse(up(c, none), cx);
+                wait(cx, 120).await;
+                hit = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| (c.m, c.t, c.k)));
+            }
+            let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::view::RowReset), cx));
+            wait(cx, 250).await;
+            let h2 = h(cx);
+            println!("PROBE altura das linhas: {h1:?} · clique em (0,2,1) → {hit:?} · padrão {h2:?}");
+            check("altura das linhas: Ctrl+Alt+↓ encolhe, clique acerta, padrão volta", h1 == Some(28.0) && hit == Some((0, 2, 1)) && h2 == Some(views::grid::CELL_H));
+        }
+        // modo projeção (F7d): F10 abre por cima de tudo; Esc fecha
+        {
+            key("f10", cx);
+            wait(cx, 200).await;
+            let open = cx.update(|cx| shell.read(cx).director.is_some());
+            key("escape", cx);
+            wait(cx, 200).await;
+            let closed = cx.update(|cx| shell.read(cx).director.is_none());
+            println!("PROBE modo projeção: abriu {open} · Esc fechou {closed}");
+            check("modo projeção: F10 abre e Esc fecha", open && closed);
+        }
+        // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
+        {
+            let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());
+            let r0 = wadawko_core::timeline::Region { start_bar: 0, end_bar: 2 };
+            cx.update(|cx| state.update(cx, |s, cx| s.set_range(Some(r0), cx)));
+            wait(cx, 100).await;
+            let before = n_spots(cx).len();
+            key("ctrl-shift-l", cx);
+            wait(cx, 120).await;
+            for k in ["e", "n", "t", "r", "a", "d", "a", "enter"] {
+                key(k, cx);
+            }
+            wait(cx, 200).await;
+            let after = n_spots(cx);
+            let saved = after.last().map(|s| s.name.clone());
+            cx.update(|cx| state.update(cx, |s, cx| s.set_range(None, cx)));
+            wait(cx, 200).await;
+            let target = format!("spot-{}", after.len().saturating_sub(1));
+            if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get(target.as_str()).map(|t| t.bounds.center())) {
+                mouse(down(p, none), cx);
+                wait(cx, 60).await;
+                mouse(up(p, none), cx);
+                wait(cx, 150).await;
+            }
+            let r1 = cx.update(|cx| state.read(cx).tp.range);
+            key("ctrl-z", cx);
+            wait(cx, 120).await;
+            let undone = n_spots(cx).len();
+            cx.update(|cx| state.update(cx, |s, cx| s.set_range(None, cx)));
+            println!("PROBE trechos: {before} → {} ({saved:?}) · clique na lista → {r1:?} · Ctrl+Z → {undone}", after.len());
+            check("trechos: guardar com nome, clicar põe em loop, Ctrl+Z desfaz", after.len() == before + 1 && saved.as_deref() == Some("entrada") && r1 == Some(r0) && undone == before);
         }
         key("ctrl-k", cx);
         wait(cx, 100).await;
@@ -1045,6 +1119,54 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
             cx.update(|cx| cx.quit());
             return;
         }
+        // `hoverstat`: parado, passa o mouse 200× alternando entre botões da grade (★ das
+        // linhas) e mede quantas vezes a grade re-renderiza e quanto custa
+        if demo == "hoverstat" {
+            use gpui_kit::{Modifiers, MouseMoveEvent, PlatformInput};
+            cx.background_executor().timer(Duration::from_millis(1500)).await;
+            // controle: notificar só a grade, sem mudar nada
+            let sn2 = shell::SEC_RENDERS.load(Ordering::Relaxed);
+            let g2 = shell::DBG_GRID_RENDERS.load(Ordering::Relaxed);
+            for _ in 0..20 {
+                cx.update(|cx| shell.read(cx).grid.clone().update(cx, |_, cx| cx.notify()));
+                cx.background_executor().timer(Duration::from_millis(60)).await;
+            }
+            println!("STAT controle: 20 notify da grade → {} renders da grade, {} de seção", shell::DBG_GRID_RENDERS.load(Ordering::Relaxed) - g2, shell::SEC_RENDERS.load(Ordering::Relaxed) - sn2);
+            let mut found: Vec<(String, gpui_kit::Point<gpui_kit::Pixels>)> =
+                keys::HINTS.with(|h| h.borrow().targets.iter().filter(|(k, _)| k.ends_with("star") && !k.starts_with("ins")).map(|(k, t)| (k.to_string(), t.bounds.center())).collect());
+            found.sort_by(|a, b| a.0.cmp(&b.0));
+            println!("STAT alvos: {:?}", found.iter().take(2).collect::<Vec<_>>());
+            let mut pts: Vec<_> = found.into_iter().map(|(_, p)| p).collect();
+            pts.truncate(2);
+            if pts.len() < 2 {
+                println!("STAT hover: menos de 2 botões ★ na vista");
+                cx.update(|cx| cx.quit());
+                return;
+            }
+            // ponto neutro entre os dois (célula/rótulo sem hover próprio)
+            let (g0, u0, r0) = (shell::DBG_GRID_RENDERS.load(Ordering::Relaxed), shell::GRID_RENDER_US.load(Ordering::Relaxed), RENDERS.load(Ordering::Relaxed));
+            let (sn0, su0) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
+            for i in 0..200 {
+                let p = pts[i % 2];
+                let _ = w.update(cx, |_, window, cx| {
+                    window.dispatch_event(PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: None, modifiers: Modifiers::default() }), cx);
+                });
+                cx.background_executor().timer(Duration::from_millis(20)).await;
+            }
+            let (g1, u1, r1) = (shell::DBG_GRID_RENDERS.load(Ordering::Relaxed), shell::GRID_RENDER_US.load(Ordering::Relaxed), RENDERS.load(Ordering::Relaxed));
+            let n = (g1 - g0).max(1);
+            let (sn1, su1) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
+            println!("STAT hover: {} renders de seção (média {:.2} ms)", sn1 - sn0, (su1 - su0) as f64 / (sn1 - sn0).max(1) as f64 / 1000.0);
+            println!(
+                "STAT hover: 200 movimentos · {} renders da grade (média {:.2} ms, total {:.1} ms) · {} renders da raiz",
+                g1 - g0,
+                (u1 - u0) as f64 / n as f64 / 1000.0,
+                (u1 - u0) as f64 / 1000.0,
+                r1 - r0
+            );
+            cx.update(|cx| cx.quit());
+            return;
+        }
         // `playstat-grade` / `playstat-esteira`: toca, mede 6 s (frames + render) e sai
         if let Some(tab) = demo.strip_prefix("playstat-") {
             wait_audio(&state, cx, 20.0).await;
@@ -1064,7 +1186,7 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
             return;
         }
         cx.background_executor().timer(Duration::from_millis(1500)).await;
-        if demo == "play" || demo == "lane" {
+        if demo == "play" || demo == "lane" || demo == "director" {
             wait_audio(&state, cx, 20.0).await;
         }
         let _ = w.update(cx, |_, window, cx| {
@@ -1077,6 +1199,20 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 }
                 "hints" => s.start_hints(HintScope::All, window, cx),
                 "play" => s.toggle_play(false, cx),
+                // modo projeção tocando (F7d)
+                "director" => {
+                    s.director = Some(false);
+                    s.toggle_play(false, cx);
+                }
+                // metrônomo ligado: chips de acento, subdivisão e som na barra de cima
+                "metro" => {
+                    s.state.update(cx, |st, cx| {
+                        st.set_metronome(true, cx);
+                        st.tp.looping = true;
+                    });
+                    // tocando: o compositor sem tela só entrega frames com animação
+                    s.toggle_play(false, cx);
+                }
                 // trecho de loop c2–c3 (F2) tocando: banda na régua, chip na barra, ↺ na status bar
                 "loop" => {
                     s.state.update(cx, |st, cx| st.set_range(Some(wadawko_core::timeline::Region { start_bar: 1, end_bar: 3 }), cx));

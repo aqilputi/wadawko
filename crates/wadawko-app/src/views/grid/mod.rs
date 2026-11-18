@@ -35,7 +35,12 @@ pub const TIMELINE_H: f32 = 22.0;
 pub const LOOP_LANE_H: f32 = 8.0;
 /// a alça do trecho de loop pega até esta distância (px) da ponta
 pub const LOOP_HANDLE_PX: f32 = 6.0;
+/// altura padrão da célula (linha principal); ajustável com "Linhas: mais altas/baixas" (F16)
 pub const CELL_H: f32 = 36.0;
+/// faixa da altura ajustável e o passo
+pub const CELL_H_MIN: f32 = 24.0;
+pub const CELL_H_MAX: f32 = 60.0;
+pub const CELL_H_STEP: f32 = 4.0;
 pub const TDYN_H: f32 = 20.0;
 pub const KYAI_H: f32 = 22.0;
 pub const ROW_PAD: f32 = 6.0;
@@ -64,23 +69,25 @@ pub struct Rows {
     pub dynr: Vec<bool>,
     pub kyai: Vec<bool>,
     pub h: f32,
+    /// altura da célula (linha principal) — `CELL_H` por padrão
+    pub cell_h: f32,
 }
 
 impl Rows {
-    pub fn new(song: &Song, show_dyn: &HashSet<String>, show_kyai: &HashSet<String>) -> Rows {
-        let mut r = Rows::default();
+    pub fn new(song: &Song, show_dyn: &HashSet<String>, show_kyai: &HashSet<String>, cell_h: f32) -> Rows {
+        let mut r = Rows { cell_h, ..Rows::default() };
         for tr in &song.tracks {
             let d = show_dyn.contains(&tr.id) || ops::measures::track_has_dynamics(song, &tr.id);
             let k = show_kyai.contains(&tr.id) || ops::cells::track_has_kyai(song, &tr.id);
             r.y.push(r.h);
             r.dynr.push(d);
             r.kyai.push(k);
-            r.h += CELL_H + 4.0 + if d { TDYN_H + 2.0 } else { 0.0 } + if k { KYAI_H + 2.0 } else { 0.0 } + ROW_PAD;
+            r.h += cell_h + 4.0 + if d { TDYN_H + 2.0 } else { 0.0 } + if k { KYAI_H + 2.0 } else { 0.0 } + ROW_PAD;
         }
         r
     }
     pub fn dyn_y(&self, t: usize) -> f32 {
-        self.y[t] + CELL_H + 4.0
+        self.y[t] + self.cell_h + 4.0
     }
     pub fn kyai_y(&self, t: usize) -> f32 {
         self.dyn_y(t) + if self.dynr[t] { TDYN_H + 2.0 } else { 0.0 }
@@ -234,6 +241,8 @@ pub enum InputTarget {
     MetroPattern,
     /// volume do metrônomo, em %
     MetroVolume,
+    /// nome do trecho de ensaio: `None` = guardar o trecho de loop atual; `Some(id)` = renomear
+    PracticeName(Option<String>),
 }
 
 pub enum GridEvent {
@@ -363,6 +372,12 @@ pub struct GridView {
     pub drag_over: Option<usize>,
     /// seção cujo cabeçalho está sob o mouse (os botões dele só aparecem em hover)
     pub hover_sec: Option<usize>,
+    /// altura da célula das linhas (F16), em px
+    pub cell_h: f32,
+    /// uma view em cache por seção (`render::SectionView`)
+    pub(crate) sec_views: Vec<Entity<render::SectionView>>,
+    /// chave do último desenho de cada seção
+    sec_keys: Vec<u64>,
     dragging: bool,
     pan: Option<(f32, f32)>,
     shaped: TextCache,
@@ -440,6 +455,9 @@ impl GridView {
             ghost: Rc::new(Vec::new()),
             drag_sec: None,
             hover_sec: None,
+            sec_views: Vec::new(),
+            cell_h: CELL_H,
+            sec_keys: Vec::new(),
             drag_over: None,
             dragging: false,
             pan: None,
@@ -475,7 +493,7 @@ impl GridView {
     }
 
     pub fn rows(&self) -> Rows {
-        Rows::new(&self.song, &self.show_dyn, &self.show_kyai)
+        Rows::new(&self.song, &self.show_dyn, &self.show_kyai, self.cell_h)
     }
 
     pub fn is_collapsed(&self, sec: &Sec) -> bool {
@@ -636,7 +654,7 @@ impl GridView {
         let t = rows.track_at(ty)?;
         let (m, k, dx, w) = cell?;
         let dy = ty - rows.y[t];
-        if dy <= CELL_H {
+        if dy <= rows.cell_h {
             return Some(Hit::Cell(Cur { m, t, k }));
         }
         if rows.dynr[t] && ty >= rows.dyn_y(t) && ty < rows.dyn_y(t) + TDYN_H {
@@ -1690,7 +1708,7 @@ impl GridView {
                             continue;
                         }
                         let y = oy + g.rows.y[t];
-                        out.push((Cur { m, t, k }, Bounds::new(point(px(x), px(y)), size(px(g.cw), px(CELL_H)))));
+                        out.push((Cur { m, t, k }, Bounds::new(point(px(x), px(y)), size(px(g.cw), px(g.rows.cell_h)))));
                     }
                 }
             }
@@ -1708,7 +1726,7 @@ impl GridView {
         let xs = measure_xs(song, s, g.cw);
         let x = f32::from(b.origin.x) + xs.get(c.m.checked_sub(a)?)? + c.k as f32 * g.cw - g.offset;
         let y = f32::from(b.origin.y) + SEC_DYN_H + TIMELINE_H + g.rows.y.get(c.t)?;
-        Some(Bounds::new(point(px(x), px(y)), size(px(g.cw), px(CELL_H))))
+        Some(Bounds::new(point(px(x), px(y)), size(px(g.cw), px(g.rows.cell_h))))
     }
 }
 
@@ -1735,9 +1753,9 @@ mod tests {
     #[test]
     fn rows_grow_with_dynamics_and_kyai() {
         let song = wadawko_core::demo::demo_song();
-        let plain = Rows::new(&song, &HashSet::new(), &HashSet::new());
+        let plain = Rows::new(&song, &HashSet::new(), &HashSet::new(), CELL_H);
         let id = song.tracks[0].id.clone();
-        let with = Rows::new(&song, &HashSet::from([id.clone()]), &HashSet::from([id]));
+        let with = Rows::new(&song, &HashSet::from([id.clone()]), &HashSet::from([id]), CELL_H);
         assert_eq!(plain.y.len(), song.tracks.len());
         assert!(with.h >= plain.h + TDYN_H + KYAI_H);
         assert!(with.dynr[0] && with.kyai[0]);

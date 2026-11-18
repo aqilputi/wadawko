@@ -38,6 +38,20 @@ generated:
    (com e sem Alt, Esc, soltar fora), seleção de seções (clique e Ctrl+clique), barra da seção
    apertada, barra de cima em cache, Ctrl+Space, rolagem com cabeçalho fixo e a paleta.
    Ao mudar interação, **acrescente um passo no `run_probe` de `crates/wadawko-app/src/main.rs`**.
+5. **Sem tela** (não abre janela na sua tela; útil em reunião ou na CI): `tools/headless.sh`
+   sobe um weston headless com Xwayland e roda o app nele, com o `settings.json` numa pasta
+   temporária:
+   ```sh
+   tools/headless.sh --db /tmp/teste.db --mute --demo probe | grep PROBE
+   tools/headless.sh --db /tmp/teste.db --mute --demo hoverstat
+   ```
+   Renderiza em software (~10 fps): bom para comportamento e para comparar versões.
+   O probe depende da música aberta (linha 2 com notas no compasso 1 etc.). Para um resultado
+   que não muda com o uso, monte um banco só com as fixtures:
+   ```sh
+   wadawko-cli --db /tmp/fix.db import-backup crates/wadawko-core/tests/fixtures/backup-localstorage-2026-10-02.json
+   tools/headless.sh --db /tmp/fix.db --mute --demo probe | grep PROBE
+   ```
 5. **Página de atalhos** — depois de mudar teclas ou títulos de comandos:
    ```sh
    python3 tools/gen-atalhos.py          # regenera docs/referencia/atalhos.md

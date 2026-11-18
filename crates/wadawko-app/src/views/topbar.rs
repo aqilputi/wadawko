@@ -14,6 +14,11 @@ use crate::song_ext::SongExt;
 use crate::theme::Theme;
 use crate::ui::{self, abtn, abtn_bare, atoggle, icon_btn, segmented};
 
+/// Abaixo desta largura de janela a barra de cima fica compacta: "reto/swing"
+/// vira um toggle só, o metrônomo mostra só o chip do padrão e o botão de tema
+/// some (÷, som e tema seguem na paleta). Medido: com tudo aberto a barra precisa de ~1150 px.
+pub const NARROW_W: f32 = 1200.0;
+
 impl Shell {
     /// Posição mostrada no display: `c12 · 3.2` do playhead AUDÍVEL enquanto
     /// toca; parado, a célula do cursor da grade (ou de onde o play vai
@@ -38,6 +43,7 @@ impl Shell {
         let st = self.state.read(cx);
         let song = st.song().clone();
         let tp = st.tp.clone();
+        let narrow = self.top_narrow;
         let bpm = song.tempo;
         let sounding = st.sounding_bpm;
         let title: SharedString = wadawko_store::display_title(&song).into();
@@ -159,12 +165,14 @@ impl Shell {
             .child(play)
             .child(atoggle("loop", th, tp.looping, keys::transport::ToggleLoop).w(px(30.0)).px(px(0.0)).child("↺"))
             .child(display)
-            .child(segmented("swing", th, vec![("reto", Box::new(keys::transport::Straight)), ("swing", Box::new(keys::transport::SwingOn))], (song.swing() > 0.0) as usize, true));
+            .when(!narrow, |d| d.child(segmented("swing", th, vec![("reto", Box::new(keys::transport::Straight)), ("swing", Box::new(keys::transport::SwingOn))], (song.swing() > 0.0) as usize, true)))
+            .when(narrow, |d| d.child(atoggle("swing1", th, song.swing() > 0.0, keys::transport::ToggleSwing).px(px(8.0)).child("swing")));
 
         // ── direita: metrônomo, count-in, treino (+ chips), tema ──
         let right = div()
             .flex_1()
             .min_w_0()
+            .overflow_hidden()
             .flex()
             .items_center()
             .justify_end()
@@ -172,11 +180,9 @@ impl Shell {
             .child(atoggle("metro", th, tp.metronome, keys::transport::ToggleMetronome).w(px(30.0)).px(px(0.0)).child("🎵"))
             .when(tp.metronome, |d| {
                 // padrão de acentos (clique = editar) e subdivisão (clique = 1 → 2 → 3 → 4)
-                d.child(chip("m-pat", tp.metro.pattern_text(), Box::new(keys::transport::MetroPattern))).child(chip(
-                    "m-sub",
-                    format!("÷{}", tp.metro.subdiv.clamp(1, 4)),
-                    Box::new(keys::transport::MetroSubdiv),
-                ))
+                d.child(chip("m-pat", tp.metro.pattern_text(), Box::new(keys::transport::MetroPattern)))
+                    .when(!narrow, |d| d.child(chip("m-sub", format!("÷{}", tp.metro.subdiv.clamp(1, 4)), Box::new(keys::transport::MetroSubdiv))))
+                    .when(!narrow, |d| d.child(chip("m-snd", tp.metro.sound.name().to_string(), Box::new(keys::transport::MetroSound))))
             })
             .child(atoggle("countin", th, tp.count_in, keys::transport::ToggleCountIn).w(px(30.0)).px(px(0.0)).child("⏱"))
             // count-in a cada volta: só faz sentido com loop (economiza espaço em janela estreita)
@@ -189,8 +195,8 @@ impl Shell {
                     Box::new(keys::transport::TrainerStep),
                 ))
             })
-            .child(div().w(px(1.0)).h(px(16.0)).flex_none().bg(th.line))
-            .child(icon_btn("theme", if th.dark { "☀" } else { "☾" }, th, keys::view::ToggleTheme));
+            // estreita: o tema fica só na paleta (Ctrl+K)
+            .when(!narrow, |d| d.child(div().w(px(1.0)).h(px(16.0)).flex_none().bg(th.line)).child(icon_btn("theme", if th.dark { "☀" } else { "☾" }, th, keys::view::ToggleTheme)));
 
         div().h(px(44.0)).flex_none().w_full().px(px(10.0)).flex().items_center().gap(px(10.0)).bg(th.chrome).border_b_1().border_color(th.line).child(left).child(center).child(right)
     }

@@ -20,6 +20,10 @@ pub enum PRun {
     Phrase(usize),
     /// inserir um kiai pronto na sub-linha de kiai do cursor
     Kyai(&'static str),
+    /// pôr em loop o trecho de ensaio (id)
+    Practice(String),
+    /// música nova a partir de um modelo (`wadawko_core::templates`)
+    Template(&'static str),
 }
 
 /// item da paleta: (título, grupo, atalho, o que fazer)
@@ -47,6 +51,13 @@ impl Shell {
         match run {
             PRun::Action(a) => window.dispatch_action(a, cx),
             PRun::Song(i) => self.select_project(i, cx),
+            PRun::Practice(id) => self.loop_spot(&id, cx),
+            PRun::Template(id) => {
+                if let Some(song) = wadawko_core::templates::template_song(id) {
+                    self.state.update(cx, |s, cx| s.add_project(song, cx));
+                    self.flash("música nova a partir do modelo", cx);
+                }
+            }
             PRun::Phrase(_) | PRun::Kyai(_) => {
                 if self.grid.read(cx).cursor.is_none() {
                     self.flash("ponha o cursor numa célula da grade primeiro", cx);
@@ -98,6 +109,19 @@ impl Shell {
             let t = &p.title;
             if let Some(sc) = keys::fuzzy(q, &format!("música {t}")) {
                 scored.push((sc - 5, 1000 + i, (format!("Abrir música: {t}"), "Música", None, PRun::Song(i))));
+            }
+        }
+        // modelos de música (F9)
+        for (i, t) in wadawko_core::templates::TEMPLATES.iter().enumerate() {
+            if let Some(sc) = keys::fuzzy(q, &format!("nova música modelo template {} {}", t.name, t.about)) {
+                let tsc = keys::fuzzy(q, &format!("nova {}", t.name)).unwrap_or(sc);
+                scored.push((tsc.max(sc) - 4, 1200 + i, (format!("Nova música: {} — {}", t.name, t.about), "Música", None, PRun::Template(t.id))));
+            }
+        }
+        // trechos de ensaio da música atual (F7b)
+        for (i, sp) in wadawko_core::ops::practice::spots(self.state.read(cx).song()).iter().enumerate() {
+            if let Some(sc) = keys::fuzzy(q, &format!("trecho ensaio loop {}", sp.name)) {
+                scored.push((sc - 2, 1500 + i, (format!("Trecho: {}", sp.name), "Transporte", None, PRun::Practice(sp.id.clone()))));
             }
         }
         // frases do repertório e kiai prontos (antes na paleta flutuante da grade)

@@ -2,6 +2,7 @@
 //! células), popovers (dinâmica, edição da linha) e a paleta flutuante.
 
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 use gpui_kit::{App, Bounds, ClickEvent, Context, FontWeight, Hsla, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Render, ScrollEvent, SharedString, Window, canvas, div, prelude::*, px};
@@ -9,7 +10,7 @@ use wadawko_core::ops;
 use wadawko_core::{Song, TempoMark, kyai};
 
 use super::paint::{PaintArgs, paint_section};
-use super::{CELL_H, DYNAMICS, GridEvent, GridView, InputTarget, KYAI_H, LABEL_W, Menu, SEC_DYN_H, SEC_GAP, SEC_HEAD_H, TDYN_H, TIMELINE_H, sec_key};
+use super::{DYNAMICS, GridEvent, GridView, InputTarget, KYAI_H, LABEL_W, Menu, SEC_DYN_H, SEC_GAP, SEC_HEAD_H, TDYN_H, TIMELINE_H, sec_key};
 use crate::keys::{self, HintAct};
 use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color, track_color};
@@ -349,9 +350,31 @@ impl GridView {
     }
 }
 
+/// Roda `f` ao sair do escopo.
+fn scopeguard(f: impl FnOnce()) -> impl Drop {
+    struct G<F: FnOnce()>(Option<F>);
+    impl<F: FnOnce()> Drop for G<F> {
+        fn drop(&mut self) {
+            if let Some(f) = self.0.take() {
+                f()
+            }
+        }
+    }
+    G(Some(f))
+}
+
+/// Soma o tempo do render da grade em `GRID_RENDER_US` ao sair do escopo.
+struct RenderTimer(Instant);
+impl Drop for RenderTimer {
+    fn drop(&mut self) {
+        crate::shell::GRID_RENDER_US.fetch_add(self.0.elapsed().as_micros() as u64, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
 impl Render for GridView {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         crate::shell::DBG_GRID_RENDERS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let _t_render = RenderTimer(Instant::now());
         if self.animating() {
             self.step_animation();
             window.request_animation_frame();
@@ -379,26 +402,6 @@ impl Render for GridView {
         let rails = ops::people::rails_for_tracks(&song);
         let rail_w = rails.len() as f32 * 5.0 + if rails.is_empty() { 0.0 } else { 4.0 };
         self.geom.borrow_mut().label_pad = 6.0 + rail_w;
-
-        // botão pequeno (20×16) = clique + alvo de salto com a MESMA operação; aceso na cor dada
-        let mkc = |id: String, label: &'static str, on: bool, color: Hsla, op: Op| {
-            let w1 = weak.clone();
-            let w2 = weak.clone();
-            let op2 = op.clone();
-            let act: HintAct = Rc::new(move |_w: &mut Window, cx: &mut App| {
-                let _ = w2.update(cx, |this, cx| op2(this, cx));
-            });
-            keys::hintable(
-                small_btn_on(SharedString::from(id.clone()), label, &th, on, color).on_click(move |_: &ClickEvent, _, cx: &mut App| {
-                    // não deixa o clique chegar à barra da seção (que (des)seleciona)
-                    cx.stop_propagation();
-                    let _ = w1.update(cx, |this, cx| op(this, cx));
-                }),
-                id,
-                act,
-            )
-        };
-        let mk = |id: String, label: &'static str, on: bool, op: Op| mkc(id, label, on, th.accent, op);
 
         let mut root = div()
             .id("grid-root")
@@ -448,447 +451,44 @@ impl Render for GridView {
 
         let mut y_acc = 0.0f32;
         let mut row_menu_at: Option<(usize, f32)> = None;
+        // seções em views próprias, em cache (ver `SectionView`): a chave junta tudo que o
+        // desenho de uma seção lê; só a seção sob o mouse entra a mais na dela
+        let global = self.sections_key(&selected, range, looping, bar, cx);
+        self.sec_views.truncate(secs.len());
+        self.sec_keys.truncate(secs.len());
+        while self.sec_views.len() < secs.len() {
+            let i = self.sec_views.len();
+            let grid = cx.entity().downgrade();
+            self.sec_views.push(cx.new(|_| SectionView { grid, s: i }));
+        }
         for (s, sec) in secs.iter().enumerate() {
             let collapsed = self.is_collapsed(sec);
-            let rep = sec.repeat;
-            let cur_sec = self.cursor.map(|c| song.section_of(c.m)) == Some(s);
-            let sid = sec.id.clone();
-            let is_sel = sid.as_ref().is_some_and(|id| selected.contains(id));
-            let dragging_this = self.drag_sec == Some(s);
-            let drop_here = self.drag_sec.is_some() && self.drag_over == Some(s) && !dragging_this;
-            let key = sec_key(sec);
-            let with_sec = |f: fn(&mut Song, &str)| -> Op {
-                let sid = sid.clone();
-                Rc::new(move |this: &mut GridView, cx: &mut Context<GridView>| {
-                    if let Some(id) = &sid {
-                        this.edit(cx, |song| f(song, id));
-                    }
-                })
-            };
-            let rep_op = |delta: i32| -> Op {
-                let sid = sid.clone();
-                Rc::new(move |this: &mut GridView, cx: &mut Context<GridView>| {
-                    if let Some(id) = &sid {
-                        let n = (rep as i32 + delta).clamp(1, 16) as u32;
-                        this.edit(cx, |song| ops::sections::set_section_repeat(song, id, n));
-                    }
-                })
-            };
-            let meas_op = |add: bool| -> Op {
-                let sid = sid.clone();
-                Rc::new(move |this: &mut GridView, cx: &mut Context<GridView>| {
-                    this.edit(cx, |song| if add { ops::measures::add_measure(song, sid.as_deref()) } else { ops::measures::remove_measure(song, sid.as_deref()) });
-                })
-            };
-            let sid_click = sid.clone();
-            let sid_hint = sid.clone();
-            let sid_ren = sid.clone();
-            let sec_name = sec.name.clone();
-            let key_col = key.clone();
-
-            let hov = self.hover_sec == Some(s);
-            // botão do cabeçalho (h 20): só aparece com o mouse sobre a barra (continua alvo de salto)
-            let mkh = |id: String, label: &'static str, op: Op| mk(id, label, false, op).h(px(20.0)).w(px(22.0)).when(!hov, |d| d.opacity(0.0));
-
-            let header = div()
-                .id(("sec-head", s))
-                .relative()
-                .h(px(SEC_HEAD_H))
-                .flex()
-                .items_center()
-                .overflow_hidden()
-                .rounded(px(ui::R0))
-                .bg(th.paper)
-                .border_b_1()
-                .border_color(th.line)
-                .cursor_pointer()
-                // região selecionada: wash azul + barra esquerda de 2 px
-                .when(is_sel, |d| d.bg(th.accent2_wash).child(div().absolute().left_0().top_0().bottom_0().w(px(2.0)).bg(th.accent2)))
-                .when(hov && !is_sel, |d| d.bg(th.paper_hover))
-                .on_hover(cx.listener(move |this, over: &bool, _, cx| {
-                    if *over && this.hover_sec != Some(s) {
-                        this.hover_sec = Some(s);
-                        cx.notify();
-                    } else if !*over && this.hover_sec == Some(s) {
-                        this.hover_sec = None;
-                        cx.notify();
-                    }
-                }))
-                // clique em qualquer ponto da barra (nome, vazios, 𝄆 1× 𝄇…) seleciona SÓ esta
-                // seção para tocar; com Ctrl, junta/tira das outras. Os botões param a propagação.
-                .on_click(cx.listener(move |this, ev: &ClickEvent, _, cx| {
-                    if let Some(id) = &sid_click {
-                        let additive = ev.modifiers().control || ev.modifiers().platform;
-                        this.state.update(cx, |st, cx| st.select_section(id, additive, cx));
-                    }
-                }))
-                .when(drop_here, |d| d.border_t_2().border_color(th.accent))
-                .when(dragging_this, |d| d.opacity(0.5))
-                .on_mouse_move(cx.listener(move |this, ev: &MouseMoveEvent, _, cx| {
-                    if this.drag_sec.is_some() && ev.pressed_button == Some(MouseButton::Left) && this.drag_over != Some(s) {
-                        this.drag_over = Some(s);
-                        cx.notify();
-                    }
-                }))
-                .on_mouse_up(MouseButton::Left, cx.listener(move |this, _: &MouseUpEvent, _, cx| this.drop_section(s, cx)))
-                .child(
-                    div()
-                        .w(px(LABEL_W))
-                        .flex_none()
-                        .pl(px(6.0))
-                        .flex()
-                        .items_center()
-                        .gap(px(6.0))
-                        .child(
-                            div()
-                                .id(("sec-grip", s))
-                                .w(px(20.0))
-                                .h(px(20.0))
-                                .flex_none()
-                                .rounded(px(ui::R1))
-                                .border_1()
-                                .border_color(th.line_strong)
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .text_color(th.ink_soft)
-                                .text_size(px(11.0))
-                                .cursor_grab()
-                                .child("⠿")
-                                .on_mouse_down(
-                                    MouseButton::Left,
-                                    cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                                        this.drag_sec = Some(s);
-                                        this.drag_over = Some(s);
-                                        cx.stop_propagation();
-                                        cx.notify();
-                                    }),
-                                ),
-                        )
-                        .child({
-                            let w = weak.clone();
-                            let sid2 = sid_hint.clone();
-                            keys::hintable(
-                                div()
-                                    .id(("sec-name", s))
-                                    .relative()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .truncate()
-                                    .text_size(px(12.0))
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_color(if cur_sec || is_sel { th.ink } else { th.ink_soft })
-                                    .cursor_pointer()
-                                    .child(SharedString::from(if is_sel { format!("▶ {}", sec.name) } else { sec.name.clone() })),
-                                format!("s{s}-name"),
-                                Rc::new(move |_, cx: &mut App| {
-                                    let _ = w.update(cx, |this, cx| {
-                                        if let Some(id) = &sid2 {
-                                            this.state.update(cx, |st, cx| st.select_section(id, false, cx));
-                                        }
-                                    });
-                                }),
-                            )
-                        })
-                        .child(mkh(
-                            format!("s{s}-ren"),
-                            "✎",
-                            Rc::new(move |_this, cx| {
-                                if let Some(id) = &sid_ren {
-                                    cx.emit(GridEvent::Ask(InputTarget::SectionName(id.clone()), sec_name.clone()));
-                                }
-                            }),
-                        )),
-                )
-                .child(
-                    div()
-                        .flex()
-                        .flex_1()
-                        .min_w_0()
-                        .overflow_hidden()
-                        .items_center()
-                        .gap(px(4.0))
-                        .when(bar == BarFit::Full, |d| d.child(div().text_color(th.ink_faint).text_size(px(12.0)).child("𝄆")))
-                        .child(mkh(format!("s{s}-rep-"), "−", rep_op(-1)))
-                        .child(div().text_size(px(11.0)).font_weight(FontWeight::BOLD).text_color(if rep > 1 { th.accent } else { th.ink_soft }).child(SharedString::from(format!("{rep}×"))))
-                        .child(mkh(format!("s{s}-rep+"), "+", rep_op(1)))
-                        .when(bar == BarFit::Full, |d| d.child(div().text_color(th.ink_faint).text_size(px(12.0)).child("𝄇")))
-                        .child(
-                            mk(
-                                format!("s{s}-col"),
-                                if collapsed { "▸" } else { "▾" },
-                                false,
-                                Rc::new(move |this, cx| {
-                                    if !this.collapsed.remove(&key_col) {
-                                        this.collapsed.insert(key_col.clone());
-                                    }
-                                    cx.notify();
-                                }),
-                            )
-                            .h(px(20.0))
-                            .w(px(22.0)),
-                        )
-                        // compassos: completo "− 4 compassos +", compacto "− 4c +", apertado some
-                        // (continua no Ctrl+K e nos atalhos de section::MeasureAdd/Remove)
-                        .when(bar != BarFit::Tight, |d| {
-                            let n = sec.end - sec.start;
-                            let label = if bar == BarFit::Full { format!("{n} compasso{}", if n == 1 { "" } else { "s" }) } else { format!("{n}c") };
-                            d.child(div().w(px(if bar == BarFit::Full { 8.0 } else { 2.0 })))
-                                .child(mkh(format!("s{s}-m-"), "−", meas_op(false)))
-                                .child(div().text_size(px(10.0)).text_color(th.ink_faint).child(SharedString::from(label)))
-                                .child(mkh(format!("s{s}-m+"), "+", meas_op(true)))
-                        }),
-                )
-                .child({
-                    let w1 = weak.clone();
-                    let w2 = weak.clone();
-                    let op = with_sec(|song, id| {
-                        ops::sections::clone_section(song, id);
-                    });
-                    let op2 = op.clone();
-                    keys::hintable(
-                        div()
-                            .id(("clone", s))
-                            .relative()
-                            .flex_none()
-                            .px(px(6.0))
-                            .h(px(20.0))
-                            .flex()
-                            .items_center()
-                            .rounded(px(ui::R1))
-                            .border_1()
-                            .border_color(th.line_strong)
-                            .bg(th.paper_raise)
-                            .text_size(px(10.0))
-                            .text_color(th.ink_soft)
-                            .cursor_pointer()
-                            .when(!hov, |d| d.opacity(0.0))
-                            .hover(|st| st.bg(th.paper_hover))
-                            .child(if bar == BarFit::Full { "⧉ clonar" } else { "⧉" })
-                            .on_click(move |_: &ClickEvent, _, cx: &mut App| {
-                                cx.stop_propagation();
-                                let _ = w1.update(cx, |this, cx| op(this, cx));
-                            }),
-                        format!("s{s}-clone"),
-                        Rc::new(move |_, cx: &mut App| {
-                            let _ = w2.update(cx, |this, cx| op2(this, cx));
-                        }),
-                    )
-                })
-                .child(mkh(format!("s{s}-rm"), "✕", with_sec(ops::sections::remove_section)).ml(px(8.0)).mr(px(8.0)));
-
-            let mut block = div().flex().flex_col().mb(px(SEC_GAP)).child(header);
+            let key = crate::shell::chrome::key(|k| {
+                std::hash::Hash::hash(&(global, self.hover_sec == Some(s)), k);
+            });
+            let view = self.sec_views[s].clone();
+            if self.sec_keys.get(s) != Some(&key) {
+                self.sec_keys.resize(secs.len(), 0);
+                self.sec_keys[s] = key;
+                let id = view.entity_id();
+                cx.defer(move |cx| cx.notify(id));
+            }
+            let mut h = SEC_HEAD_H;
             y_acc += SEC_HEAD_H;
-
             if !collapsed {
                 if let Some(Menu::Row { t, s: ms }) = self.menu
                     && ms == s
                     && t < rows.y.len()
                 {
-                    row_menu_at = Some((t, y_acc + SEC_DYN_H + TIMELINE_H + rows.y[t] + CELL_H + 4.0));
+                    row_menu_at = Some((t, y_acc + SEC_DYN_H + TIMELINE_H + rows.y[t] + rows.cell_h + 4.0));
                 }
-                let mut labels = div()
-                    .w(px(LABEL_W))
-                    .flex_none()
-                    .flex()
-                    .flex_col()
-                    .child(div().h(px(SEC_DYN_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).child("dinâmica · clique = pp…ff · < >"))
-                    .child(
-                        div().h(px(TIMELINE_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).truncate().child("↺ loop em cima · ↔ arraste · clique = tocar daqui"),
-                    );
-                // listra de cor da linha (4 px, como o track header de uma DAW) + 2 px de respiro;
-                // os trilhos de pessoa vêm depois dela
-                const STRIPE_W: f32 = 6.0;
-                for (t, tr) in song.tracks.iter().enumerate() {
-                    let audible = song.audible(t);
-                    let cur_row = self.cursor.map(|c| c.t) == Some(t) && cur_sec;
-                    let id = |n: &str| format!("s{s}-t{t}-{n}");
-                    let is_main = ops::tracks::is_main_track(&song, &tr.id);
-                    let tid = tr.id.clone();
-                    // trilhos de pessoa: uma barra colorida por pessoa que toca a linha
-                    let mut rail_el = div().absolute().left(px(STRIPE_W)).top_0().bottom_0().w(px(rail_w));
-                    for (ri, rail) in rails.iter().enumerate() {
-                        if rail.rows.get(t).copied().unwrap_or(false) {
-                            let col = rail.person.color.as_deref().and_then(parse_color).unwrap_or(th.ink_soft);
-                            let last = !rail.rows.get(t + 1).copied().unwrap_or(false);
-                            rail_el = rail_el.child(
-                                div()
-                                    .absolute()
-                                    .left(px(ri as f32 * 5.0))
-                                    .top(px(if t > 0 && rail.rows[t - 1] { 0.0 } else { 3.0 }))
-                                    .h(px(if last { CELL_H - 3.0 } else { rows.row_h(t) }))
-                                    .w(px(3.0))
-                                    .rounded(px(ui::R0))
-                                    .bg(if ops::people::person_audible(&song, Some(&rail.person.id)) { col } else { Theme::alpha(col, 0.3) }),
-                            );
-                        }
-                    }
-                    // listra na cor da linha (F1), esmaecida quando a linha não soa
-                    let tcol = track_color(tr);
-                    let stripe = div().absolute().left_0().top_0().h(px(CELL_H)).w(px(4.0)).bg(if audible { tcol } else { Theme::alpha(tcol, 0.4) });
-                    let mut label = div().relative().h(px(rows.row_h(t))).flex().flex_col().child(stripe).child(rail_el).child(
-                        div()
-                            .h(px(CELL_H))
-                            .pl(px(STRIPE_W + rail_w))
-                            .flex()
-                            .items_center()
-                            .gap(px(3.0))
-                            .pr(px(8.0))
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .flex()
-                                    .flex_col()
-                                    .child(
-                                        div()
-                                            .text_size(px(12.0))
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_color(if cur_row {
-                                                th.accent
-                                            } else if audible {
-                                                th.ink
-                                            } else {
-                                                th.ink_faint
-                                            })
-                                            .truncate()
-                                            .child(SharedString::from(if is_main { format!("★ {}", tr.name) } else { tr.name.clone() })),
-                                    )
-                                    .child(div().text_size(px(10.0)).text_color(th.ink_faint).truncate().child(SharedString::from(ops::kit::instrument_label(&song, tr).to_string()))),
-                            )
-                            .child(mk(
-                                id("set"),
-                                "⚙",
-                                self.menu == Some(Menu::Row { t, s }),
-                                Rc::new(move |this, cx| {
-                                    this.menu = if this.menu == Some(Menu::Row { t, s }) { None } else { Some(Menu::Row { t, s }) };
-                                    cx.notify();
-                                }),
-                            ))
-                            .child(mk(
-                                id("dyn"),
-                                "f",
-                                rows.dynr[t],
-                                Rc::new(move |this, cx| {
-                                    if !this.show_dyn.remove(&tid) {
-                                        this.show_dyn.insert(tid.clone());
-                                    }
-                                    cx.notify();
-                                }),
-                            ))
-                            // M âmbar, S azul, ★ accent (convenção de DAW)
-                            .child(mkc(
-                                id("mute"),
-                                "M",
-                                tr.muted,
-                                th.warn,
-                                Rc::new(move |this, cx| {
-                                    this.track_edit(t, cx, |s, tid| {
-                                        if let Some(tr) = s.track_mut(tid) {
-                                            tr.muted = !tr.muted;
-                                        }
-                                    })
-                                }),
-                            ))
-                            .child(mkc(
-                                id("solo"),
-                                "S",
-                                tr.solo,
-                                th.accent2,
-                                Rc::new(move |this, cx| {
-                                    this.track_edit(t, cx, |s, tid| {
-                                        if let Some(tr) = s.track_mut(tid) {
-                                            tr.solo = !tr.solo;
-                                        }
-                                    })
-                                }),
-                            ))
-                            .child(mk(id("star"), "★", is_main, Rc::new(move |this, cx| this.track_edit(t, cx, ops::tracks::toggle_main_track))))
-                            .child(mk(id("rm"), "×", false, Rc::new(move |this, cx| this.track_edit(t, cx, ops::tracks::remove_track)))),
-                    );
-                    let sub_label = |text: String, h: f32| {
-                        div()
-                            .mt(px(if h == TDYN_H { 4.0 } else { 2.0 }))
-                            .h(px(h))
-                            .pl(px(STRIPE_W + rail_w))
-                            .flex()
-                            .items_center()
-                            .text_size(px(10.0))
-                            .italic()
-                            .text_color(th.ink_faint)
-                            .truncate()
-                            .child(SharedString::from(text))
-                    };
-                    if rows.dynr[t] {
-                        label = label.child(sub_label(format!("dinâmica · {}", tr.name), TDYN_H));
-                    }
-                    if rows.kyai[t] {
-                        label = label.child(sub_label(format!("気 kiai · {}", tr.name), KYAI_H).when(!rows.dynr[t], |d| d.mt(px(4.0))));
-                    }
-                    labels = labels.child(label);
-                }
-
-                let geom2 = self.geom.clone();
-                let stats = self.stats.clone();
-                let args = PaintArgs {
-                    s,
-                    song: song.clone(),
-                    th,
-                    offset: self.offset,
-                    cw: self.cw,
-                    cursor: self.cursor,
-                    sel: self.anchor.and_then(|_| self.sel_range()),
-                    vmode: self.vmode,
-                    lane: self.lane,
-                    edit: SharedString::from(self.edit.clone()),
-                    rows: rows.clone(),
-                    move_drag: self.move_drag,
-                    range,
-                    looping,
-                    loop_preview: self.loop_drag.filter(|d| d.moved).map(|d| d.region()),
-                    shaped: self.shaped.clone(),
-                };
-                let cells = div()
-                    .id(("cells", s))
-                    .flex_1()
-                    .min_w_0()
-                    .h(px(rows.body_h()))
-                    .on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(move |this, ev: &MouseDownEvent, w, cx| {
-                            // clicar na grade solta o slider do inspector (as setas voltam a mover o cursor)
-                            if crate::views::widgets::clear_focus() {
-                                w.refresh();
-                            }
-                            this.mouse_down(s, ev, cx)
-                        }),
-                    )
-                    .on_mouse_down(MouseButton::Right, cx.listener(move |this, ev: &MouseDownEvent, _, cx| this.mouse_down(s, ev, cx)))
-                    .on_mouse_move(cx.listener(move |this, ev: &MouseMoveEvent, _, cx| this.mouse_move(s, ev, cx)))
-                    .on_mouse_up(MouseButton::Left, cx.listener(|this, _: &MouseUpEvent, _, cx| this.mouse_up(cx)))
-                    .child(
-                        canvas(
-                            move |b, _, _| {
-                                if let Some(slot) = geom2.borrow_mut().sections.get_mut(s) {
-                                    *slot = b;
-                                }
-                                b
-                            },
-                            move |b, _, window, cx| {
-                                let t0 = Instant::now();
-                                paint_section(b, &args, window, cx);
-                                stats.borrow_mut().grid_paint.record(t0.elapsed());
-                            },
-                        )
-                        .size_full(),
-                    );
-                block = block.child(div().flex().child(labels).child(cells));
                 y_acc += rows.body_h();
+                h += rows.body_h();
             } else if let Some(slot) = self.geom.borrow_mut().sections.get_mut(s) {
                 *slot = Bounds::default();
             }
             y_acc += SEC_GAP;
-            root = root.child(block);
+            root = root.child(div().w_full().flex_none().mb(px(SEC_GAP)).child(view.cached(gpui_kit::StyleRefinement::default().w_full().h(px(h)))));
         }
 
         // ── popovers ──
@@ -903,6 +503,523 @@ impl Render for GridView {
             None => {}
         }
         root
+    }
+}
+
+impl GridView {
+    /// Chave comum a todas as seções: TUDO o que `render_section` lê da grade e do
+    /// estado, menos a seção sob o mouse (essa entra só na chave dela). Ao
+    /// acrescentar algo que a seção mostre, ponha aqui — senão ela fica velha.
+    fn sections_key(&self, selected: &[String], range: Option<wadawko_core::timeline::Region>, looping: bool, bar: BarFit, cx: &App) -> u64 {
+        let st = self.state.read(cx);
+        let mut collapsed: Vec<&String> = self.collapsed.iter().collect();
+        collapsed.sort();
+        let mut dyn_rows: Vec<&String> = self.show_dyn.iter().collect();
+        dyn_rows.sort();
+        let mut kyai_rows: Vec<&String> = self.show_kyai.iter().collect();
+        kyai_rows.sort();
+        crate::shell::chrome::key(|k| {
+            use std::hash::Hash;
+            (Arc::as_ptr(&self.song) as usize, st.revision, st.theme.dark, selected, format!("{range:?}"), looping, format!("{bar:?}")).hash(k);
+            (format!("{:?}", self.cursor), format!("{:?}", self.anchor), self.vmode, format!("{:?}", self.lane), &self.edit).hash(k);
+            (format!("{:?}", self.menu), format!("{:?}", self.move_drag), format!("{:?}", self.loop_drag), self.drag_sec, self.drag_over).hash(k);
+            (self.cw.to_bits(), self.offset.to_bits(), self.cell_h.to_bits(), collapsed, dyn_rows, kyai_rows).hash(k);
+        })
+    }
+
+    /// Uma seção da grade (cabeçalho + rótulos + células). Chamada pela
+    /// [`SectionView`] da seção, que fica em cache: um hover num botão daqui
+    /// re-renderiza só esta seção, não a grade inteira.
+    pub(crate) fn render_section(&mut self, s: usize, cx: &mut Context<Self>) -> gpui_kit::AnyElement {
+        let st = self.state.read(cx);
+        let th = st.theme;
+        let selected: Vec<String> = st.tp.selected.clone();
+        let (range, looping) = (st.tp.range, st.tp.looping);
+        let song = self.song.clone();
+        let secs = song.secs();
+        let rows = self.rows();
+        let weak = cx.entity().downgrade();
+        // barra da seção se adapta à largura da grade (do último frame; 0 = ainda sem medida → completa)
+        let bar = BarFit::for_width(f32::from(self.geom.borrow().root.size.width));
+        let rails = ops::people::rails_for_tracks(&song);
+        let rail_w = rails.len() as f32 * 5.0 + if rails.is_empty() { 0.0 } else { 4.0 };
+
+        // botão pequeno (20×16) = clique + alvo de salto com a MESMA operação; aceso na cor dada
+        let mkc = |id: String, label: &'static str, on: bool, color: Hsla, op: Op| {
+            let w1 = weak.clone();
+            let w2 = weak.clone();
+            let op2 = op.clone();
+            let act: HintAct = Rc::new(move |_w: &mut Window, cx: &mut App| {
+                let _ = w2.update(cx, |this, cx| op2(this, cx));
+            });
+            keys::hintable(
+                small_btn_on(SharedString::from(id.clone()), label, &th, on, color).on_click(move |_: &ClickEvent, _, cx: &mut App| {
+                    // não deixa o clique chegar à barra da seção (que (des)seleciona)
+                    cx.stop_propagation();
+                    let _ = w1.update(cx, |this, cx| op(this, cx));
+                }),
+                id,
+                act,
+            )
+        };
+        let mk = |id: String, label: &'static str, on: bool, op: Op| mkc(id, label, on, th.accent, op);
+
+        let Some(sec) = secs.get(s) else { return div().into_any_element() };
+        let collapsed = self.is_collapsed(sec);
+        let rep = sec.repeat;
+        let cur_sec = self.cursor.map(|c| song.section_of(c.m)) == Some(s);
+        let sid = sec.id.clone();
+        let is_sel = sid.as_ref().is_some_and(|id| selected.contains(id));
+        let dragging_this = self.drag_sec == Some(s);
+        let drop_here = self.drag_sec.is_some() && self.drag_over == Some(s) && !dragging_this;
+        let key = sec_key(sec);
+        let with_sec = |f: fn(&mut Song, &str)| -> Op {
+            let sid = sid.clone();
+            Rc::new(move |this: &mut GridView, cx: &mut Context<GridView>| {
+                if let Some(id) = &sid {
+                    this.edit(cx, |song| f(song, id));
+                }
+            })
+        };
+        let rep_op = |delta: i32| -> Op {
+            let sid = sid.clone();
+            Rc::new(move |this: &mut GridView, cx: &mut Context<GridView>| {
+                if let Some(id) = &sid {
+                    let n = (rep as i32 + delta).clamp(1, 16) as u32;
+                    this.edit(cx, |song| ops::sections::set_section_repeat(song, id, n));
+                }
+            })
+        };
+        let meas_op = |add: bool| -> Op {
+            let sid = sid.clone();
+            Rc::new(move |this: &mut GridView, cx: &mut Context<GridView>| {
+                this.edit(cx, |song| if add { ops::measures::add_measure(song, sid.as_deref()) } else { ops::measures::remove_measure(song, sid.as_deref()) });
+            })
+        };
+        let sid_click = sid.clone();
+        let sid_hint = sid.clone();
+        let sid_ren = sid.clone();
+        let sec_name = sec.name.clone();
+        let key_col = key.clone();
+
+        let hov = self.hover_sec == Some(s);
+        // botão do cabeçalho (h 20): só aparece com o mouse sobre a barra (continua alvo de salto)
+        let mkh = |id: String, label: &'static str, op: Op| mk(id, label, false, op).h(px(20.0)).w(px(22.0)).when(!hov, |d| d.opacity(0.0));
+
+        let header = div()
+            .id(("sec-head", s))
+            .relative()
+            .h(px(SEC_HEAD_H))
+            .flex()
+            .items_center()
+            .overflow_hidden()
+            .rounded(px(ui::R0))
+            .bg(th.paper)
+            .border_b_1()
+            .border_color(th.line)
+            .cursor_pointer()
+            // região selecionada: wash azul + barra esquerda de 2 px
+            .when(is_sel, |d| d.bg(th.accent2_wash).child(div().absolute().left_0().top_0().bottom_0().w(px(2.0)).bg(th.accent2)))
+            .when(hov && !is_sel, |d| d.bg(th.paper_hover))
+            .on_hover(cx.listener(move |this, over: &bool, _, cx| {
+                if *over && this.hover_sec != Some(s) {
+                    this.hover_sec = Some(s);
+                    cx.notify();
+                } else if !*over && this.hover_sec == Some(s) {
+                    this.hover_sec = None;
+                    cx.notify();
+                }
+            }))
+            // clique em qualquer ponto da barra (nome, vazios, 𝄆 1× 𝄇…) seleciona SÓ esta
+            // seção para tocar; com Ctrl, junta/tira das outras. Os botões param a propagação.
+            .on_click(cx.listener(move |this, ev: &ClickEvent, _, cx| {
+                if let Some(id) = &sid_click {
+                    let additive = ev.modifiers().control || ev.modifiers().platform;
+                    this.state.update(cx, |st, cx| st.select_section(id, additive, cx));
+                }
+            }))
+            .when(drop_here, |d| d.border_t_2().border_color(th.accent))
+            .when(dragging_this, |d| d.opacity(0.5))
+            .on_mouse_move(cx.listener(move |this, ev: &MouseMoveEvent, _, cx| {
+                if this.drag_sec.is_some() && ev.pressed_button == Some(MouseButton::Left) && this.drag_over != Some(s) {
+                    this.drag_over = Some(s);
+                    cx.notify();
+                }
+            }))
+            .on_mouse_up(MouseButton::Left, cx.listener(move |this, _: &MouseUpEvent, _, cx| this.drop_section(s, cx)))
+            .child(
+                div()
+                    .w(px(LABEL_W))
+                    .flex_none()
+                    .pl(px(6.0))
+                    .flex()
+                    .items_center()
+                    .gap(px(6.0))
+                    .child(
+                        div()
+                            .id(("sec-grip", s))
+                            .w(px(20.0))
+                            .h(px(20.0))
+                            .flex_none()
+                            .rounded(px(ui::R1))
+                            .border_1()
+                            .border_color(th.line_strong)
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .text_color(th.ink_soft)
+                            .text_size(px(11.0))
+                            .cursor_grab()
+                            .child("⠿")
+                            .on_mouse_down(
+                                MouseButton::Left,
+                                cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                    this.drag_sec = Some(s);
+                                    this.drag_over = Some(s);
+                                    cx.stop_propagation();
+                                    cx.notify();
+                                }),
+                            ),
+                    )
+                    .child({
+                        let w = weak.clone();
+                        let sid2 = sid_hint.clone();
+                        keys::hintable(
+                            div()
+                                .id(("sec-name", s))
+                                .relative()
+                                .flex_1()
+                                .min_w_0()
+                                .truncate()
+                                .text_size(px(12.0))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(if cur_sec || is_sel { th.ink } else { th.ink_soft })
+                                .cursor_pointer()
+                                .child(SharedString::from(if is_sel { format!("▶ {}", sec.name) } else { sec.name.clone() })),
+                            format!("s{s}-name"),
+                            Rc::new(move |_, cx: &mut App| {
+                                let _ = w.update(cx, |this, cx| {
+                                    if let Some(id) = &sid2 {
+                                        this.state.update(cx, |st, cx| st.select_section(id, false, cx));
+                                    }
+                                });
+                            }),
+                        )
+                    })
+                    .child(mkh(
+                        format!("s{s}-ren"),
+                        "✎",
+                        Rc::new(move |_this, cx| {
+                            if let Some(id) = &sid_ren {
+                                cx.emit(GridEvent::Ask(InputTarget::SectionName(id.clone()), sec_name.clone()));
+                            }
+                        }),
+                    )),
+            )
+            .child(
+                div()
+                    .flex()
+                    .flex_1()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .items_center()
+                    .gap(px(4.0))
+                    .when(bar == BarFit::Full, |d| d.child(div().text_color(th.ink_faint).text_size(px(12.0)).child("𝄆")))
+                    .child(mkh(format!("s{s}-rep-"), "−", rep_op(-1)))
+                    .child(div().text_size(px(11.0)).font_weight(FontWeight::BOLD).text_color(if rep > 1 { th.accent } else { th.ink_soft }).child(SharedString::from(format!("{rep}×"))))
+                    .child(mkh(format!("s{s}-rep+"), "+", rep_op(1)))
+                    .when(bar == BarFit::Full, |d| d.child(div().text_color(th.ink_faint).text_size(px(12.0)).child("𝄇")))
+                    .child(
+                        mk(
+                            format!("s{s}-col"),
+                            if collapsed { "▸" } else { "▾" },
+                            false,
+                            Rc::new(move |this, cx| {
+                                if !this.collapsed.remove(&key_col) {
+                                    this.collapsed.insert(key_col.clone());
+                                }
+                                cx.notify();
+                            }),
+                        )
+                        .h(px(20.0))
+                        .w(px(22.0)),
+                    )
+                    // compassos: completo "− 4 compassos +", compacto "− 4c +", apertado some
+                    // (continua no Ctrl+K e nos atalhos de section::MeasureAdd/Remove)
+                    .when(bar != BarFit::Tight, |d| {
+                        let n = sec.end - sec.start;
+                        let label = if bar == BarFit::Full { format!("{n} compasso{}", if n == 1 { "" } else { "s" }) } else { format!("{n}c") };
+                        d.child(div().w(px(if bar == BarFit::Full { 8.0 } else { 2.0 })))
+                            .child(mkh(format!("s{s}-m-"), "−", meas_op(false)))
+                            .child(div().text_size(px(10.0)).text_color(th.ink_faint).child(SharedString::from(label)))
+                            .child(mkh(format!("s{s}-m+"), "+", meas_op(true)))
+                    }),
+            )
+            .child({
+                let w1 = weak.clone();
+                let w2 = weak.clone();
+                let op = with_sec(|song, id| {
+                    ops::sections::clone_section(song, id);
+                });
+                let op2 = op.clone();
+                keys::hintable(
+                    div()
+                        .id(("clone", s))
+                        .relative()
+                        .flex_none()
+                        .px(px(6.0))
+                        .h(px(20.0))
+                        .flex()
+                        .items_center()
+                        .rounded(px(ui::R1))
+                        .border_1()
+                        .border_color(th.line_strong)
+                        .bg(th.paper_raise)
+                        .text_size(px(10.0))
+                        .text_color(th.ink_soft)
+                        .cursor_pointer()
+                        .when(!hov, |d| d.opacity(0.0))
+                        .hover(|st| st.bg(th.paper_hover))
+                        .child(if bar == BarFit::Full { "⧉ clonar" } else { "⧉" })
+                        .on_click(move |_: &ClickEvent, _, cx: &mut App| {
+                            cx.stop_propagation();
+                            let _ = w1.update(cx, |this, cx| op(this, cx));
+                        }),
+                    format!("s{s}-clone"),
+                    Rc::new(move |_, cx: &mut App| {
+                        let _ = w2.update(cx, |this, cx| op2(this, cx));
+                    }),
+                )
+            })
+            .child(mkh(format!("s{s}-rm"), "✕", with_sec(ops::sections::remove_section)).ml(px(8.0)).mr(px(8.0)));
+
+        let mut block = div().flex().flex_col().child(header);
+
+        if !collapsed {
+            let mut labels = div()
+                .w(px(LABEL_W))
+                .flex_none()
+                .flex()
+                .flex_col()
+                .child(div().h(px(SEC_DYN_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).child("dinâmica · clique = pp…ff · < >"))
+                .child(div().h(px(TIMELINE_H)).pl(px(6.0)).flex().items_center().text_size(px(10.0)).text_color(th.ink_faint).truncate().child("↺ loop em cima · ↔ arraste · clique = tocar daqui"));
+            // listra de cor da linha (4 px, como o track header de uma DAW) + 2 px de respiro;
+            // os trilhos de pessoa vêm depois dela
+            const STRIPE_W: f32 = 6.0;
+            for (t, tr) in song.tracks.iter().enumerate() {
+                let audible = song.audible(t);
+                let cur_row = self.cursor.map(|c| c.t) == Some(t) && cur_sec;
+                let id = |n: &str| format!("s{s}-t{t}-{n}");
+                let is_main = ops::tracks::is_main_track(&song, &tr.id);
+                let tid = tr.id.clone();
+                // trilhos de pessoa: uma barra colorida por pessoa que toca a linha
+                let mut rail_el = div().absolute().left(px(STRIPE_W)).top_0().bottom_0().w(px(rail_w));
+                for (ri, rail) in rails.iter().enumerate() {
+                    if rail.rows.get(t).copied().unwrap_or(false) {
+                        let col = rail.person.color.as_deref().and_then(parse_color).unwrap_or(th.ink_soft);
+                        let last = !rail.rows.get(t + 1).copied().unwrap_or(false);
+                        rail_el = rail_el.child(
+                            div()
+                                .absolute()
+                                .left(px(ri as f32 * 5.0))
+                                .top(px(if t > 0 && rail.rows[t - 1] { 0.0 } else { 3.0 }))
+                                .h(px(if last { rows.cell_h - 3.0 } else { rows.row_h(t) }))
+                                .w(px(3.0))
+                                .rounded(px(ui::R0))
+                                .bg(if ops::people::person_audible(&song, Some(&rail.person.id)) { col } else { Theme::alpha(col, 0.3) }),
+                        );
+                    }
+                }
+                // listra na cor da linha (F1), esmaecida quando a linha não soa
+                let tcol = track_color(tr);
+                let stripe = div().absolute().left_0().top_0().h(px(rows.cell_h)).w(px(4.0)).bg(if audible { tcol } else { Theme::alpha(tcol, 0.4) });
+                let mut label = div().relative().h(px(rows.row_h(t))).flex().flex_col().child(stripe).child(rail_el).child(
+                    div()
+                        .h(px(rows.cell_h))
+                        .pl(px(STRIPE_W + rail_w))
+                        .flex()
+                        .items_center()
+                        .gap(px(3.0))
+                        .pr(px(8.0))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .flex()
+                                .flex_col()
+                                .child(
+                                    div()
+                                        .text_size(px(12.0))
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_color(if cur_row {
+                                            th.accent
+                                        } else if audible {
+                                            th.ink
+                                        } else {
+                                            th.ink_faint
+                                        })
+                                        .truncate()
+                                        .child(SharedString::from(if is_main { format!("★ {}", tr.name) } else { tr.name.clone() })),
+                                )
+                                // linha baixa (F16): só o nome
+                                .when(rows.cell_h >= 32.0, |d| {
+                                    d.child(div().text_size(px(10.0)).text_color(th.ink_faint).truncate().child(SharedString::from(ops::kit::instrument_label(&song, tr).to_string())))
+                                }),
+                        )
+                        .child(mk(
+                            id("set"),
+                            "⚙",
+                            self.menu == Some(Menu::Row { t, s }),
+                            Rc::new(move |this, cx| {
+                                this.menu = if this.menu == Some(Menu::Row { t, s }) { None } else { Some(Menu::Row { t, s }) };
+                                cx.notify();
+                            }),
+                        ))
+                        .child(mk(
+                            id("dyn"),
+                            "f",
+                            rows.dynr[t],
+                            Rc::new(move |this, cx| {
+                                if !this.show_dyn.remove(&tid) {
+                                    this.show_dyn.insert(tid.clone());
+                                }
+                                cx.notify();
+                            }),
+                        ))
+                        // M âmbar, S azul, ★ accent (convenção de DAW)
+                        .child(mkc(
+                            id("mute"),
+                            "M",
+                            tr.muted,
+                            th.warn,
+                            Rc::new(move |this, cx| {
+                                this.track_edit(t, cx, |s, tid| {
+                                    if let Some(tr) = s.track_mut(tid) {
+                                        tr.muted = !tr.muted;
+                                    }
+                                })
+                            }),
+                        ))
+                        .child(mkc(
+                            id("solo"),
+                            "S",
+                            tr.solo,
+                            th.accent2,
+                            Rc::new(move |this, cx| {
+                                this.track_edit(t, cx, |s, tid| {
+                                    if let Some(tr) = s.track_mut(tid) {
+                                        tr.solo = !tr.solo;
+                                    }
+                                })
+                            }),
+                        ))
+                        .child(mk(id("star"), "★", is_main, Rc::new(move |this, cx| this.track_edit(t, cx, ops::tracks::toggle_main_track))))
+                        .child(mk(id("rm"), "×", false, Rc::new(move |this, cx| this.track_edit(t, cx, ops::tracks::remove_track)))),
+                );
+                let sub_label = |text: String, h: f32| {
+                    div()
+                        .mt(px(if h == TDYN_H { 4.0 } else { 2.0 }))
+                        .h(px(h))
+                        .pl(px(STRIPE_W + rail_w))
+                        .flex()
+                        .items_center()
+                        .text_size(px(10.0))
+                        .italic()
+                        .text_color(th.ink_faint)
+                        .truncate()
+                        .child(SharedString::from(text))
+                };
+                if rows.dynr[t] {
+                    label = label.child(sub_label(format!("dinâmica · {}", tr.name), TDYN_H));
+                }
+                if rows.kyai[t] {
+                    label = label.child(sub_label(format!("気 kiai · {}", tr.name), KYAI_H).when(!rows.dynr[t], |d| d.mt(px(4.0))));
+                }
+                labels = labels.child(label);
+            }
+
+            let geom2 = self.geom.clone();
+            let stats = self.stats.clone();
+            let args = PaintArgs {
+                s,
+                song: song.clone(),
+                th,
+                offset: self.offset,
+                cw: self.cw,
+                cursor: self.cursor,
+                sel: self.anchor.and_then(|_| self.sel_range()),
+                vmode: self.vmode,
+                lane: self.lane,
+                edit: SharedString::from(self.edit.clone()),
+                rows: rows.clone(),
+                move_drag: self.move_drag,
+                range,
+                looping,
+                loop_preview: self.loop_drag.filter(|d| d.moved).map(|d| d.region()),
+                shaped: self.shaped.clone(),
+            };
+            let cells = div()
+                .id(("cells", s))
+                .flex_1()
+                .min_w_0()
+                .h(px(rows.body_h()))
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |this, ev: &MouseDownEvent, w, cx| {
+                        // clicar na grade solta o slider do inspector (as setas voltam a mover o cursor)
+                        if crate::views::widgets::clear_focus() {
+                            w.refresh();
+                        }
+                        this.mouse_down(s, ev, cx)
+                    }),
+                )
+                .on_mouse_down(MouseButton::Right, cx.listener(move |this, ev: &MouseDownEvent, _, cx| this.mouse_down(s, ev, cx)))
+                .on_mouse_move(cx.listener(move |this, ev: &MouseMoveEvent, _, cx| this.mouse_move(s, ev, cx)))
+                .on_mouse_up(MouseButton::Left, cx.listener(|this, _: &MouseUpEvent, _, cx| this.mouse_up(cx)))
+                .child(
+                    canvas(
+                        move |b, _, _| {
+                            if let Some(slot) = geom2.borrow_mut().sections.get_mut(s) {
+                                *slot = b;
+                            }
+                            b
+                        },
+                        move |b, _, window, cx| {
+                            let t0 = Instant::now();
+                            paint_section(b, &args, window, cx);
+                            stats.borrow_mut().grid_paint.record(t0.elapsed());
+                        },
+                    )
+                    .size_full(),
+                );
+            block = block.child(div().flex().child(labels).child(cells));
+        } else if let Some(slot) = self.geom.borrow_mut().sections.get_mut(s) {
+            *slot = Bounds::default();
+        }
+        block.into_any_element()
+    }
+}
+
+/// Uma seção da grade como view própria, desenhada em cache (`AnyView::cached`).
+/// A `GridView` calcula uma chave por seção a cada render e só notifica as
+/// seções cuja chave mudou.
+pub struct SectionView {
+    grid: gpui_kit::WeakEntity<GridView>,
+    s: usize,
+}
+
+impl Render for SectionView {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let s = self.s;
+        let t0 = Instant::now();
+        let _done = scopeguard(move || {
+            crate::shell::SEC_RENDERS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            crate::shell::SEC_RENDER_US.fetch_add(t0.elapsed().as_micros() as u64, std::sync::atomic::Ordering::Relaxed);
+        });
+        match self.grid.upgrade() {
+            Some(g) => g.update(cx, |g, cx| g.render_section(s, cx)),
+            None => div().into_any_element(),
+        }
     }
 }
 
