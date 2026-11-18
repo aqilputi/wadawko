@@ -32,6 +32,7 @@ pub mod transport {
             MetroPattern,
             MetroSubdiv,
             MetroVolume,
+            MetroSound,
             ToggleCountInLoop,
             TapTempo,
             ClearRegion,

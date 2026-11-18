@@ -138,6 +138,7 @@
       "space t a": "transport::MetroPattern",
       "space t d": "transport::MetroSubdiv",
       "space t v": "transport::MetroVolume",
+      "space t k": "transport::MetroSound",
       "space t .": "transport::TapTempo",
       "space t t": "transport::ToggleTrainer",
       "space t w": "transport::ToggleSwing",

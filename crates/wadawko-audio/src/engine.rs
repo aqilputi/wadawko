@@ -19,7 +19,7 @@ use wadawko_samples::SampleBank;
 
 use crate::dsp::{Biquad, BiquadState, Compressor, CompressorParams, FilterChain, MAX_BANDS, Rng, soft_clip};
 use crate::fue::Fue;
-use crate::metronome::{ClickTone, Metronome};
+use crate::metronome::{ClickSound, ClickTone, Metronome};
 use crate::schedule::{Event, EventKind, GrainEv, HitEv, MAX_BUSES, MAX_CHANNELS, MAX_STRIPS, NoiseEv, PPQ, PREVIEW_KYAI_SLOT, PREVIEW_SLOT, Schedule};
 
 /// Pool fixo de vozes (golpes, grãos de kiai, cliques); estourou, rouba a mais antiga.
@@ -404,6 +404,9 @@ struct Voice {
     phase: f32,
     freq: f32,
     env: f32,
+    /// timbre do clique e fases dos parciais extras (metal)
+    click: ClickSound,
+    partials: [f32; 3],
 }
 
 impl Voice {
@@ -433,6 +436,8 @@ impl Voice {
         phase: 0.0,
         freq: 0.0,
         env: 0.0,
+        click: ClickSound::Beep,
+        partials: [0.0; 3],
     };
 
     /// frames que faltam até a voz acabar sozinha (aprox.; NONE = cauda natural longa)
@@ -1029,7 +1034,22 @@ impl Engine {
         v.freq = t.freq;
         v.gain = t.gain;
         v.env = 0.0;
-        v.dur = self.click_end;
+        v.phase = 0.0;
+        v.partials = [0.0; 3];
+        v.click = t.sound;
+        v.t = 0;
+        // madeira: cauda curta; metal: cauda longa (o envelope decai por `inc`, ver render)
+        let (dur_s, tau_s) = match t.sound {
+            ClickSound::Beep => (0.0, 0.0),
+            ClickSound::Wood => (0.07, 0.012),
+            ClickSound::Metal => (0.7, 0.16),
+        };
+        if t.sound == ClickSound::Beep {
+            v.dur = self.click_end;
+        } else {
+            v.dur = (dur_s * self.sr) as u32;
+            v.inc = (-1.0 / (tau_s * self.sr)).exp();
+        }
     }
 
     // ───────────── transport ─────────────
@@ -1242,6 +1262,48 @@ impl Engine {
                 }
             }
             if f0 == n {
+                continue;
+            }
+            if v.kind == VKind::Click && v.click != ClickSound::Beep {
+                // timbres sintetizados: ataque de 1 ms e queda exponencial (`inc` por frame)
+                let k = v.inc as f32;
+                for f in f0..n {
+                    if v.t < *click_att {
+                        v.env = v.gain * (v.t + 1) as f32 / *click_att as f32;
+                    } else {
+                        v.env *= k;
+                    }
+                    let tau = std::f32::consts::TAU;
+                    let s = match v.click {
+                        ClickSound::Wood => {
+                            // afinação cai ~30 % nos primeiros 20 ms: "toc" de madeira
+                            let bend = 1.0 + 0.45 * (-(v.t as f32) / (0.02 * sr)).exp();
+                            let y = (tau * v.phase).sin();
+                            v.phase = (v.phase + v.freq * bend / sr).fract();
+                            y * 0.9
+                        }
+                        _ => {
+                            // kane: fundamental + parciais inarmônicos (sino pequeno)
+                            const R: [f32; 3] = [2.32, 4.25, 6.63];
+                            const A: [f32; 3] = [0.55, 0.32, 0.18];
+                            let mut y = (tau * v.phase).sin();
+                            v.phase = (v.phase + v.freq / sr).fract();
+                            for i in 0..3 {
+                                y += A[i] * (tau * v.partials[i]).sin();
+                                v.partials[i] = (v.partials[i] + v.freq * R[i] / sr).fract();
+                            }
+                            y * 0.5
+                        }
+                    };
+                    let out = s * v.env * 0.398_107_2;
+                    master_l[f] += out;
+                    master_r[f] += out;
+                    v.t += 1;
+                    if v.t >= v.dur {
+                        v.on = false;
+                        break;
+                    }
+                }
                 continue;
             }
             if v.kind == VKind::Click {

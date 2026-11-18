@@ -240,6 +240,13 @@ impl Shell {
                 None => this.flash("sem trecho de loop: arraste na régua ou ponha o cursor num compasso", cx),
             }
         });
+        let d = on!(d, cx, transport::MetroSound, |this, w, cx| {
+            let mut m = this.state.read(cx).tp.metro;
+            m.sound = m.sound.next();
+            this.state.update(cx, |s, cx| s.set_metronome_config(m, cx));
+            this.save_settings(cx);
+            this.flash(format!("metrônomo: som de {}", m.sound.name()), cx)
+        });
         let d = on!(d, cx, transport::TapTempo, |this, w, cx| this.tap_tempo(cx));
         let d = on!(d, cx, transport::ToggleTrainer, |this, w, cx| this.state.update(cx, |s, cx| {
             s.tp.trainer = !s.tp.trainer;

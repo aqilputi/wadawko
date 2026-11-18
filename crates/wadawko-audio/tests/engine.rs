@@ -257,6 +257,29 @@ fn metronome_pattern_and_subdivision() {
 }
 
 #[test]
+fn metronome_timbres() {
+    use wadawko_audio::ClickSound;
+    // um clique (acento no tempo 1) de cada timbre; mede o começo e a cauda
+    let shape = |sound: ClickSound| {
+        let (mut eng, mut ctl) = pair(MasterMode::Clean);
+        ctl.set_song(&one_track(&[], 1), &CompileOptions::default());
+        ctl.set_metronome(true);
+        ctl.set_metronome_config(Metronome { sound, ..Metronome::default() });
+        ctl.play(PlayOptions::default());
+        let out = pump(&mut eng, 0.55);
+        let at = |ms: f64| (288 + (ms / 1000.0 * SR as f64) as usize) * 2;
+        (peak(&out[at(0.0)..at(30.0)]), peak(&out[at(100.0)..at(130.0)]), peak(&out[at(300.0)..at(330.0)]))
+    };
+    let (b0, b1, _) = shape(ClickSound::Beep);
+    let (w0, w1, _) = shape(ClickSound::Wood);
+    let (m0, m1, m2) = shape(ClickSound::Metal);
+    assert!(b0 > 0.05 && w0 > 0.05 && m0 > 0.05, "todos soam: {b0} {w0} {m0}");
+    assert!(w1 < 1e-4, "madeira acaba antes de 100 ms: {w1}");
+    assert!(b1 < 1e-4, "bipe acaba antes de 100 ms: {b1}");
+    assert!(m1 > 0.01 && m2 > 1e-3 && m2 < m1, "kane tem cauda que decai: {m1} {m2}");
+}
+
+#[test]
 fn count_in_on_every_loop_lap() {
     let (mut eng, mut ctl) = pair(MasterMode::Clean);
     let song = one_track(&[(0, "DON")], 1);

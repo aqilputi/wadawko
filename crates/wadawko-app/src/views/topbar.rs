@@ -172,11 +172,9 @@ impl Shell {
             .child(atoggle("metro", th, tp.metronome, keys::transport::ToggleMetronome).w(px(30.0)).px(px(0.0)).child("🎵"))
             .when(tp.metronome, |d| {
                 // padrão de acentos (clique = editar) e subdivisão (clique = 1 → 2 → 3 → 4)
-                d.child(chip("m-pat", tp.metro.pattern_text(), Box::new(keys::transport::MetroPattern))).child(chip(
-                    "m-sub",
-                    format!("÷{}", tp.metro.subdiv.clamp(1, 4)),
-                    Box::new(keys::transport::MetroSubdiv),
-                ))
+                d.child(chip("m-pat", tp.metro.pattern_text(), Box::new(keys::transport::MetroPattern)))
+                    .child(chip("m-sub", format!("÷{}", tp.metro.subdiv.clamp(1, 4)), Box::new(keys::transport::MetroSubdiv)))
+                    .child(chip("m-snd", tp.metro.sound.name().to_string(), Box::new(keys::transport::MetroSound)))
             })
             .child(atoggle("countin", th, tp.count_in, keys::transport::ToggleCountIn).w(px(30.0)).px(px(0.0)).child("⏱"))
             // count-in a cada volta: só faz sentido com loop (economiza espaço em janela estreita)

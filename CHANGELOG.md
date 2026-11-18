@@ -5,6 +5,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ## [Não lançado]
 
 ### Adicionado
+- **Metrônomo com som de shime ou kane** (além do bipe): chip na barra de cima.
 - **Export MIDI** (`.mid`, uma faixa por linha, bateria GM; também `wadawko-cli midi`).
 - **Modelos de música** na paleta: Em branco, Jiuchi + 3 linhas, Ensemble 5, Matsuri (swing).
 - **Altura das linhas ajustável** (`Ctrl+Alt+↑/↓`, vim `z k`/`z j`/`z =`), salva nas configurações.

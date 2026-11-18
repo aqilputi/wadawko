@@ -132,7 +132,8 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   `ABBB`…) abre um campo: `A` = forte, `B` = fraco, `.` = mudo, um caractere por tempo (até 16,
   repete se o compasso for maior; vazio = automático, forte no 1). Ex.: `A.B.` para marcar só
   o 1 e o 3; `.B.B` para ouvir só o 2 e o 4. O chip **÷** troca a subdivisão: só os tempos →
-  colcheias → tercinas → semicolcheias. Volume pela paleta ("Metrônomo: volume…"). Tudo vale
+  colcheias → tercinas → semicolcheias; o terceiro chip troca o **som** (bipe → shime, de
+  madeira → kane, de metal). Volume pela paleta ("Metrônomo: volume…"). Tudo vale
   na hora, tocando, e fica salvo nas configurações.
 - **Trechos de ensaio** (painel TRECHOS, à direita): com um trecho de loop marcado, `+ guardar`
   (ou `Ctrl+Shift+L`; vim: `Space t g`) pede um nome — "solo do Ōdaiko", "entrada do B". Um clique

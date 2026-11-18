@@ -35,6 +35,7 @@ pub static SPECS: &[Spec] = &[
     spec!("transport::MetroPattern", "Metrônomo: padrão de acentos… (ABBB)", "Transporte", "click acento forte fraco mudo tempos"),
     spec!("transport::MetroSubdiv", "Metrônomo: subdivisão (1 → 2 → 3 → 4 por tempo)", "Transporte", "click colcheia tercina semicolcheia"),
     spec!("transport::MetroVolume", "Metrônomo: volume…", "Transporte", "click alto baixo"),
+    spec!("transport::MetroSound", "Metrônomo: timbre (bipe → shime → kane)", "Transporte", "click som madeira metal sino"),
     spec!("transport::TapTempo", "Tap tempo (bata no ritmo para marcar o BPM)", "Transporte", "bater andamento tempo marcar"),
     spec!("transport::ToggleTrainer", "Treino (rampa de tempo): ligar/desligar", "Transporte", "trainer acelerar"),
     spec!("transport::ToggleSwing", "Reto / swing", "Transporte", "hane shuffle"),
