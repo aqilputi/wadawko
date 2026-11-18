@@ -9,6 +9,7 @@ use std::collections::HashMap;
 
 use wadawko_core::kyai::{kyai_events, kyai_lag, kyai_note, kyai_profile, kyai_seed, kyai_voice_or_default};
 use wadawko_core::ops::kit::resolve_instrument;
+use wadawko_core::ops::measures::bar_beat_starts;
 use wadawko_core::ops::people::{cell_owner_of, person_audible};
 use wadawko_core::phrase::resolve_cell;
 use wadawko_core::timeline::{Region, dynamics_curve, main_mul, play_order, swing_warp};
@@ -20,8 +21,9 @@ use crate::kyai_voice::kyai_grains;
 
 /// Resolução do transport (ticks por semínima).
 pub const PPQ: f64 = 960.0;
-/// Como no web app (`bars:beats:sixteenths` do Tone em 4/4), TODO compasso
-/// ocupa 4 tempos no transport, qualquer que seja `measure.beats`.
+/// Ticks de um compasso de 4 tempos (4/4). Cada compasso ocupa `beats` tempos
+/// no transport — use [`TimeMap::bar_tick`] para o início de um compasso tocado;
+/// esta constante só vale para músicas inteiramente em 4/4.
 pub const BAR_TICKS: f64 = 4.0 * PPQ;
 
 /// Máximo de canais (linha, linha×dono, kiai). Os 2 últimos são reservados aos previews.
@@ -162,6 +164,11 @@ pub struct TimeMap {
     /// (beats, subdivision) de cada compasso-fonte
     pub shape: Vec<(usize, usize)>,
     pub swing: f64,
+    /// início de cada compasso TOCADO, em ticks (`order.len() + 1` entradas: a última
+    /// é a duração total) — compassos de fórmulas diferentes têm durações diferentes
+    pub bar_start: Vec<f64>,
+    /// início de cada compasso-FONTE na música escrita, em ticks (para o playhead dobrado)
+    pub src_start: Vec<f64>,
 }
 
 impl TimeMap {
@@ -172,19 +179,28 @@ impl TimeMap {
             cell_start.push(acc);
             acc += m.cell_count();
         }
-        TimeMap { order, cell_start, shape: song.measures.iter().map(|m| (m.beats, m.subdivision.max(1))).collect(), swing: song.swing() }
+        let bar_start = bar_beat_starts(song, &order).into_iter().map(|b| b * PPQ).collect();
+        let all: Vec<usize> = (0..song.measures.len()).collect();
+        let src_start = bar_beat_starts(song, &all).into_iter().map(|b| b * PPQ).collect();
+        TimeMap { order, cell_start, shape: song.measures.iter().map(|m| (m.beats, m.subdivision.max(1))).collect(), swing: song.swing(), bar_start, src_start }
     }
 
     pub fn len_ticks(&self) -> f64 {
-        self.order.len() as f64 * BAR_TICKS
+        self.bar_start.last().copied().unwrap_or(0.0)
+    }
+
+    /// Tick do início do compasso tocado `u` (`u == order.len()` = fim da execução).
+    pub fn bar_tick(&self, u: usize) -> f64 {
+        self.bar_start.get(u).copied().unwrap_or_else(|| self.len_ticks())
     }
 
     /// compasso tocado em `tick` (None fora da execução)
     pub fn bar_at(&self, tick: f64) -> Option<usize> {
-        if tick < 0.0 {
+        if tick < 0.0 || tick >= self.len_ticks() {
             return None;
         }
-        let u = (tick / BAR_TICKS).floor() as usize;
+        // último compasso que começa em ou antes de `tick`
+        let u = self.bar_start.partition_point(|&s| s <= tick).saturating_sub(1);
         (u < self.order.len()).then_some(u)
     }
 
@@ -192,7 +208,7 @@ impl TimeMap {
     /// numa repetição o playhead volta pro início da seção.
     pub fn fold_tick(&self, tick: f64) -> f64 {
         match self.bar_at(tick) {
-            Some(u) => self.order[u] as f64 * BAR_TICKS + (tick - u as f64 * BAR_TICKS),
+            Some(u) => self.src_start.get(self.order[u]).copied().unwrap_or(0.0) + (tick - self.bar_tick(u)),
             None => tick,
         }
     }
@@ -211,7 +227,7 @@ impl TimeMap {
         if beats == 0 {
             return None;
         }
-        let q = (tick - u as f64 * BAR_TICKS) / PPQ;
+        let q = (tick - self.bar_tick(u)) / PPQ;
         let beat = (q.floor() as usize).min(beats - 1);
         let f = if q >= beats as f64 { 1.0 } else { q - beat as f64 };
         let mut k = 0;
@@ -232,7 +248,7 @@ impl TimeMap {
             if global_cell < start + beats * sub {
                 let ci = global_cell - start;
                 let u = self.order.iter().position(|&m| m == mi).unwrap_or(0);
-                return (u as f64 * 4.0 + (ci / sub) as f64 + (ci % sub) as f64 / sub as f64) * PPQ;
+                return self.bar_tick(u) + ((ci / sub) as f64 + (ci % sub) as f64 / sub as f64) * PPQ;
             }
         }
         0.0
@@ -255,8 +271,86 @@ pub struct Schedule {
     pub time: TimeMap,
     /// andamento base da música (BPM)
     pub tempo: f64,
+    /// mapa de andamento (rallentando/accelerando) em ticks
+    pub curve: TempoCurve,
     /// compilado com região (o play começa do início dela)
     pub has_region: bool,
+}
+
+/// Mapa de andamento em ticks: trechos contíguos em que o BPM varia linearmente
+/// com o tick. O engine multiplica o seu BPM (o da música, ou o do treino) por
+/// [`TempoCurve::factor_at`] — sem marcações o fator é sempre 1.
+#[derive(Clone, Debug, PartialEq)]
+pub struct TempoCurve {
+    /// (tick inicial, tick final, bpm inicial, bpm final)
+    pub segments: Vec<(f64, f64, f64, f64)>,
+    /// andamento de referência (o da música): fator = bpm / base
+    pub base: f64,
+}
+
+impl TempoCurve {
+    pub fn constant(base: f64) -> Self {
+        TempoCurve { segments: Vec::new(), base }
+    }
+
+    /// Do mapa em tempos do core (`ops::measures::tempo_segments`).
+    pub fn from_segments(segs: &[wadawko_core::ops::measures::TempoSegment], base: f64) -> Self {
+        let constant = segs.iter().all(|s| s.bpm0 == base && s.bpm1 == base);
+        let segments = if constant { Vec::new() } else { segs.iter().map(|s| (s.start * PPQ, s.end * PPQ, s.bpm0, s.bpm1)).collect() };
+        TempoCurve { segments, base }
+    }
+
+    /// BPM (relativo ao andamento da música) no tick `t` (sem alocar: busca binária).
+    pub fn bpm_at(&self, t: f64) -> f64 {
+        if self.segments.is_empty() {
+            return self.base;
+        }
+        let i = self.segments.partition_point(|s| s.0 <= t).saturating_sub(1);
+        let (t0, t1, b0, b1) = self.segments[i];
+        if t1 <= t0 {
+            return b1;
+        }
+        b0 + (b1 - b0) * ((t - t0) / (t1 - t0)).clamp(0.0, 1.0)
+    }
+
+    /// Maior fator do mapa (1 sem marcações): limite seguro para cortes por distância.
+    pub fn max_factor(&self) -> f64 {
+        if self.base <= 0.0 {
+            return 1.0;
+        }
+        self.segments.iter().fold(1.0f64, |m, s| m.max(s.2 / self.base).max(s.3 / self.base))
+    }
+
+    /// Fator a aplicar ao BPM do engine no tick `t`.
+    pub fn factor_at(&self, t: f64) -> f64 {
+        if self.base <= 0.0 { 1.0 } else { self.bpm_at(t) / self.base }
+    }
+
+    /// Segundos de `0` a `t` com o engine em `bpm` (integral exata: numa rampa
+    /// linear em ticks o tempo decorrido é logarítmico).
+    pub fn seconds_to(&self, t: f64, bpm: f64) -> f64 {
+        let scale = bpm / self.base.max(1e-9);
+        if self.segments.is_empty() {
+            return t / PPQ * 60.0 / bpm.max(1e-9);
+        }
+        let mut secs = 0.0;
+        for &(t0, t1, b0, b1) in &self.segments {
+            if t <= t0 {
+                break;
+            }
+            let end = t.min(t1);
+            let (a0, a1) = (b0 * scale, b0 * scale + (b1 - b0) * scale * ((end - t0) / (t1 - t0).max(1e-9)));
+            let dt = end - t0;
+            // ∫ dτ / (PPQ·bpm(τ)/60), bpm linear em τ
+            secs += if (a1 - a0).abs() < 1e-9 { dt / PPQ * 60.0 / a0 } else { dt / PPQ * 60.0 * (a1 / a0).ln() / (a1 - a0) };
+        }
+        if let Some(&(_, t1, _, b1)) = self.segments.last()
+            && t > t1
+        {
+            secs += (t - t1) / PPQ * 60.0 / (b1 * scale);
+        }
+        secs
+    }
 }
 
 impl Schedule {
@@ -266,8 +360,9 @@ impl Schedule {
             len_ticks: 0.0,
             channels: Vec::new(),
             buses: vec![BusDef { person_id: String::new(), gain: 1.0, mute: false }],
-            time: TimeMap { order: Vec::new(), cell_start: Vec::new(), shape: Vec::new(), swing: 0.0 },
+            time: TimeMap { order: Vec::new(), cell_start: Vec::new(), shape: Vec::new(), swing: 0.0, bar_start: vec![0.0], src_start: vec![0.0] },
             tempo: 100.0,
+            curve: TempoCurve::constant(100.0),
             has_region: false,
         }
     }
@@ -280,9 +375,10 @@ impl Schedule {
         self.events.iter().filter_map(|e| if let EventKind::Hit(h) = &e.kind { Some((e.tick, h)) } else { None })
     }
 
-    /// duração de uma passada em segundos no andamento `bpm`
+    /// duração de uma passada em segundos com o engine em `bpm` (respeita o mapa
+    /// de andamento: rallentando alonga, accelerando encurta)
     pub fn seconds(&self, bpm: f64) -> f64 {
-        self.len_ticks / PPQ * 60.0 / bpm
+        self.curve.seconds_to(self.len_ticks, bpm)
     }
 }
 
@@ -573,7 +669,7 @@ impl Compiler {
                     for (hi, hit) in resolved.hits.iter().enumerate() {
                         // posição do golpe como fração do TEMPO, com warp de swing
                         let beat_frac = swing_warp(cell_frac + hit.offset / sub as f64, swing);
-                        let tick = (u as f64 * 4.0 + beat as f64 + beat_frac) * PPQ;
+                        let tick = time.bar_tick(u) + (beat as f64 + beat_frac) * PPQ;
                         let d0 = curves[ti].at(u, (beat as f64 + beat_frac) / meas.beats.max(1) as f64);
                         let dynv = (if hit.sfz { sfz_dyn(d0) } else { d0 }) * mains[ti];
                         let strip = (slot * 2 + (hit.zone == Zone::Rim) as usize) as u16;
@@ -588,7 +684,7 @@ impl Compiler {
             }
             // metrônomo: um clique por tempo, acento no tempo 1
             for b in 0..meas.beats {
-                events.push(Event { tick: (u as f64 * 4.0 + b as f64) * PPQ, kind: EventKind::Click { accent: b == 0 } });
+                events.push(Event { tick: time.bar_tick(u) + b as f64 * PPQ, kind: EventKind::Click { accent: b == 0 } });
             }
         }
 
@@ -633,7 +729,13 @@ impl Compiler {
                 *s = None;
             }
         }
-        Schedule { events, len_ticks: time.len_ticks(), channels, buses, time, tempo: song.tempo, has_region: opts.region.is_some() }
+        // tocando só uma região: parte do andamento que vale no início dela
+        let start_bpm = match (opts.region, order.first()) {
+            (Some(_), Some(&m0)) => wadawko_core::ops::measures::tempo_at_measure_starts(song).get(m0).copied().unwrap_or(song.tempo),
+            _ => song.tempo,
+        };
+        let curve = TempoCurve::from_segments(&wadawko_core::ops::measures::tempo_segments_from(song, &order, start_bpm), song.tempo);
+        Schedule { events, len_ticks: time.len_ticks(), channels, buses, time, tempo: song.tempo, curve, has_region: opts.region.is_some() }
     }
 }
 

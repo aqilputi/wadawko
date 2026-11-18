@@ -451,6 +451,24 @@ pub struct DynamicMark {
     pub hairpin: Option<Hairpin>,
 }
 
+fn one() -> usize {
+    1
+}
+
+/// Mudança de andamento a partir do INÍCIO do compasso: o andamento vai, em linha
+/// reta, do valor atual até `target` BPM ao FIM de `span` compassos tocados
+/// (`span = 0` = troca imediata, "a tempo"). Alvo abaixo do atual = rallentando;
+/// acima = accelerando. Depois, o andamento fica no alvo até a próxima marcação.
+/// `target` é absoluto (o BPM que se ouve com o andamento da música sem treino).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TempoMark {
+    #[serde(serialize_with = "js_num")]
+    pub target: f64,
+    #[serde(default = "one")]
+    pub span: usize,
+}
+
 /// Compasso. `cells[trackId]` tem `beats * subdivision` entradas.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -473,6 +491,9 @@ pub struct Measure {
     /// kiai/kakegoe por linha, paralelo a `cells`: UMA sílaba por célula ("so", "re!")
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kyai: Option<CellRows>,
+    /// mudança de andamento que começa neste compasso (rallentando/accelerando/a tempo)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tempo: Option<TempoMark>,
     #[serde(flatten)]
     pub extra: Extra,
 }

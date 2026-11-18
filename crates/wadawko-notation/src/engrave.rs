@@ -96,6 +96,8 @@ struct Engraver<'a> {
     cell_base: Vec<usize>,
     global_hair: Vec<HairSeg>,
     track_hair: Vec<Vec<HairSeg>>,
+    /// andamento que vinha soando antes de cada compasso (rótulo rall./accel.)
+    tempo_before: Vec<f64>,
     head_h: f32,
 }
 
@@ -184,6 +186,7 @@ impl<'a> Engraver<'a> {
             cell_base,
             global_hair,
             track_hair,
+            tempo_before: if song.measures.iter().any(|m| m.tempo.is_some()) { wadawko_core::ops::measures::tempo_at_measure_starts(song) } else { Vec::new() },
             head_h: 2.3 * sp,
         }
     }
@@ -613,9 +616,18 @@ impl<'a> Engraver<'a> {
             let st = self.text_style(1.25 * sp).bold();
             self.text_macron(&mut cmds, name, hx, head_y, st, ink);
         }
+        let mut right = x1 - 1.6 * sp;
         if let Some(times) = meta.end_repeat {
             let st = self.text_style(1.25 * sp).bold().align(TextAlign::Right);
-            Self::text(&mut cmds, &format!("×{times}"), x1 - 1.6 * sp, head_y, st, ink);
+            let label = format!("×{times}");
+            right -= self.text_width(&label, &st) + 0.8 * sp;
+            Self::text(&mut cmds, &label, x1 - 1.6 * sp, head_y, st, ink);
+        }
+        // mudança de andamento que começa aqui: "rall. → 90", "accel. → 130", "♩ = 100"
+        if let Some(t) = &meas.tempo {
+            let before = self.tempo_before.get(mi).copied().unwrap_or(song.tempo);
+            let st = self.text_style(1.05 * sp).bold().align(TextAlign::Right);
+            Self::text(&mut cmds, &wadawko_core::ops::measures::tempo_mark_label(t, before), right, head_y, st, self.theme.ink_soft);
         }
 
         // dinâmica geral (faixa ao pé do sistema)

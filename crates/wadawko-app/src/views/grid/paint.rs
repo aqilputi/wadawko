@@ -8,7 +8,7 @@ use gpui_kit::{App, BorderStyle, Bounds, Hsla, Pixels, SharedString, TextAlign, 
 use wadawko_core::ops::people::cell_owner_of;
 use wadawko_core::{Hairpin, Song, Zone, phrase};
 
-use super::{CELL_H, CELL_X0, Cur, KYAI_H, Lane, MEASURE_GAP, MoveDrag, Range4, Rows, SEC_DYN_H, TDYN_H, TIMELINE_H, TextCache, VMode, measure_xs};
+use super::{CELL_H, CELL_X0, Cur, KYAI_H, Lane, MEASURE_GAP, MoveDrag, Range4, Rows, SEC_DYN_H, TDYN_H, TEMPO_X, TIMELINE_H, TextCache, VMode, measure_xs, tempo_chip_fits, tempo_chip_w};
 use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color};
 
@@ -58,6 +58,7 @@ fn paint_dyn(
     h: f32,
     dynamic: Option<&'static str>,
     hairpin: Option<Hairpin>,
+    wedge_from: f32,
 ) {
     let label: SharedString = dynamic.unwrap_or("·").into();
     window.paint_quad(rounded(rect(mx + 2.0, y + 2.0, 56.0, h - 4.0), 5.0, if dynamic.is_some() { th.accent2_wash } else { th.paper_raise }));
@@ -73,7 +74,7 @@ fn paint_dyn(
     }
     // cunha do crescendo/diminuendo ao longo do compasso
     if let Some(hp) = hairpin {
-        let (x0, x1) = (mx + 66.0, mx + mw - 50.0);
+        let (x0, x1) = (mx + wedge_from.max(66.0), mx + mw - 50.0);
         if x1 > x0 + 12.0 {
             let mid = y + h * 0.5;
             let open = (h * 0.28).min(6.0);
@@ -120,6 +121,9 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
     let colors: HashMap<&str, Hsla> = song.people().iter().filter_map(|p| Some((p.id.as_str(), parse_color(p.color.as_deref()?)?))).collect();
     let any_person_gate = song.people().iter().any(|p| p.is_muted() || p.is_solo());
 
+    // andamento que vinha soando antes de cada compasso (rótulo rall./accel.)
+    let tempo_before = if song.measures[sa..sb].iter().any(|m| m.tempo.is_some()) { wadawko_core::ops::measures::tempo_at_measure_starts(song) } else { Vec::new() };
+
     window.with_content_mask(Some(gpui_kit::ContentMask { bounds: b }), |window| {
         let cells_top = oy + SEC_DYN_H + TIMELINE_H;
         let bar_x = ox + CELL_X0 - 10.0 - offset;
@@ -135,7 +139,30 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
             if mx > ox + w || mx + mw + MEASURE_GAP < ox {
                 continue;
             }
-            paint_dyn(window, cx, &mut text, th, mx, oy, mw, SEC_DYN_H, meas.dynamic.map(|d| d.as_str()), meas.hairpin);
+            // mudança de andamento (rall./accel./a tempo) entre o chip e os hairpins
+            let marked = meas.tempo.is_some();
+            let tempo_fits = tempo_chip_fits(mw, marked);
+            let wedge_from = if tempo_fits { TEMPO_X + tempo_chip_w(marked) + 6.0 } else { 0.0 };
+            paint_dyn(window, cx, &mut text, th, mx, oy, mw, SEC_DYN_H, meas.dynamic.map(|d| d.as_str()), meas.hairpin, wedge_from);
+            if tempo_fits {
+                let tw = tempo_chip_w(marked);
+                let r = rect(mx + TEMPO_X, oy + 2.0, tw, SEC_DYN_H - 4.0);
+                match &meas.tempo {
+                    Some(t) => {
+                        window.paint_quad(rounded(r, 5.0, th.accent_wash));
+                        let before = tempo_before.get(m).copied().unwrap_or(song.tempo);
+                        let mut label = wadawko_core::ops::measures::tempo_mark_label(t, before);
+                        if t.span > 1 {
+                            label.push_str(&format!(" ·{}c", t.span));
+                        }
+                        text(window, cx, &label.into(), 11, th.ink, 0, mx + TEMPO_X, oy + (SEC_DYN_H - 15.0) * 0.5, Some(tw));
+                    }
+                    None => {
+                        window.paint_quad(rounded(r, 5.0, th.paper_raise));
+                        text(window, cx, &"♩".into(), 12, th.ink_faint, 1, mx + TEMPO_X, oy + (SEC_DYN_H - 16.0) * 0.5, Some(tw));
+                    }
+                }
+            }
 
             let c0 = (((ox - mx) / cw).floor().max(0.0)) as usize;
             let c1 = ((((ox + w) - mx) / cw).ceil().max(0.0) as usize).min(len);
@@ -234,7 +261,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                     let dy = cells_top + rows.dyn_y(t);
                     window.paint_quad(rounded(rect(mx + 2.0, dy, mw - 4.0, TDYN_H), 4.0, Theme::alpha(th.paper_raise, 0.6)));
                     let mark = meas.track_dynamic(&track.id);
-                    paint_dyn(window, cx, &mut text, th, mx, dy, mw, TDYN_H, mark.and_then(|d| d.dynamic).map(|d| d.as_str()), mark.and_then(|d| d.hairpin));
+                    paint_dyn(window, cx, &mut text, th, mx, dy, mw, TDYN_H, mark.and_then(|d| d.dynamic).map(|d| d.as_str()), mark.and_then(|d| d.hairpin), 0.0);
                 }
                 // sub-linha de kiai
                 if rows.kyai[t] {

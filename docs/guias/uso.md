@@ -40,6 +40,17 @@ colcheia, semicolcheia ou fusa — vale para a música toda e fica na barra de f
 - **Apagar**: botão direito na célula, `Backspace` (anterior) ou `Delete` (seleção).
 - **Frases e kiai prontos**: paleta → "Inserir frase: cavalinho", "Inserir kiai: sei!" —
   escrevem a partir do cursor.
+- **Fórmula de compasso**: na barra de ferramentas, `compasso − 4/4 +` muda o compasso do cursor
+  (ou todos os compassos selecionados) — ex.: 4/4 → 5/4. Aumentar acrescenta tempos vazios no fim;
+  diminuir corta os últimos tempos (`Ctrl+Z` desfaz). Cada compasso toca com a sua duração
+  (metrônomo, esteira e partitura acompanham). Também pela paleta: "Compasso: +1 tempo".
+- **Mudança de andamento** (rallentando/accelerando): clique no `♩` da faixa de dinâmica do
+  compasso onde a mudança começa. No popover, **alvo** ajusta o BPM a atingir (±1/±5) e
+  **chegar em** diz em quantos compassos (a rampa é linear; "na hora" troca de uma vez — "a
+  tempo"). A faixa mostra `rall. → 90 ·2c`; a partitura, `rall. → 90`. Pela paleta: "Andamento:
+  rallentando" / "accelerando" (±10 BPM; com seleção, a rampa dura os compassos selecionados),
+  "a tempo" (volta ao BPM da música) e "remover". O campo BPM da barra de cima continua sendo o
+  da música; tocando, o `♪ 110` ao lado mostra o que está soando. O treino escala o mapa inteiro.
 - **Modos** (barra de ferramentas, ou `Ctrl+Shift+S`): **editar** (padrão: digitar) e
   **selecionar**. Com o **vim** ligado (Config), a grade usa normal/inserção/visual.
 

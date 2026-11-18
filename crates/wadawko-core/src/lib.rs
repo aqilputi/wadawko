@@ -27,8 +27,8 @@ pub mod timeline;
 pub mod vocab;
 
 pub use model::{
-    Dynamic, DynamicMark, Hairpin, InstrumentDef, InstrumentId, InstrumentTone, KyaiVoice, Measure, Person, Section, Song, SongError, ToneType,
-    Track, Zone, ZoneParams,
+    Dynamic, DynamicMark, Hairpin, InstrumentDef, InstrumentId, InstrumentTone, KyaiVoice, Measure, Person, Section, Song, SongError, TempoMark,
+    ToneType, Track, Zone, ZoneParams,
 };
 pub use ops::CellPos;
 

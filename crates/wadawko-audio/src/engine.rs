@@ -709,7 +709,8 @@ impl Engine {
                 self.playing = true;
                 if p.count_in {
                     // 1 compasso (4 tempos) de cliques antes de começar
-                    let spb = 60.0 / self.bpm as f64 * self.sr;
+                    // no andamento do ponto de partida (mapa de andamento incluído)
+                    let spb = 60.0 / (self.bpm as f64 * self.schedule.curve.factor_at(self.pos)) * self.sr;
                     for i in 0..4 {
                         self.trigger_click(i == 0, self.lead + (i as f64 * spb) as u32);
                     }
@@ -961,7 +962,15 @@ impl Engine {
             self.emit(EngineEvent::Ended { frame });
             return n;
         }
-        let tpf = self.bpm as f64 / 60.0 * PPQ / self.sr;
+        // andamento efetivo neste bloco: BPM do engine × mapa (rallentando/accelerando)
+        // (taxa no meio do bloco: numa rampa o erro não acumula bloco a bloco)
+        let base_tpf = self.bpm as f64 / 60.0 * PPQ / self.sr;
+        let curve = &self.schedule.curve;
+        let tpf = if curve.segments.is_empty() {
+            base_tpf
+        } else {
+            base_tpf * curve.factor_at(self.pos + n as f64 * base_tpf * curve.factor_at(self.pos) * 0.5)
+        };
         let mut n = n;
         let mut end = self.pos + n as f64 * tpf;
         // tolerância de 1 milionésimo de frame: o acúmulo de ponto flutuante não
@@ -1058,7 +1067,8 @@ impl Engine {
         c.frames.store(self.frames, Ordering::Relaxed);
         c.len_bits.store(self.schedule.len_ticks.to_bits(), Ordering::Relaxed);
         c.preroll.store(self.preroll, Ordering::Relaxed);
-        c.bpm_bits.store(self.bpm.to_bits(), Ordering::Relaxed);
+        // andamento que está soando (com o mapa de andamento): o playhead extrapola com ele
+        c.bpm_bits.store(((self.bpm as f64 * self.schedule.curve.factor_at(self.pos)) as f32).to_bits(), Ordering::Relaxed);
         c.wraps.store(self.wraps, Ordering::Relaxed);
         c.playing.store(self.playing, Ordering::Relaxed);
         c.looping.store(self.looping, Ordering::Relaxed);

@@ -483,3 +483,118 @@ fn kiai_silabacao_e_contorno() {
     let q = kyai::kyai_profile("person-1", &track);
     assert!((q.pitch - p.pitch - 3.0).abs() < 1e-12 && q.vary == 0.1);
 }
+
+// ───────────────────────────── fórmula de compasso ─────────────────────────────
+
+#[test]
+fn formula_de_compasso_muda_sem_mexer_nas_notas() {
+    let mut s = demo::demo_song();
+    let t = s.tracks[0].id.clone();
+    let sub = s.measures[0].subdivision;
+    let antes: Vec<Option<String>> = s.measures[0].cells[&t].clone();
+    assert_eq!(s.measures[0].beats, 4);
+
+    // 4/4 → 5/4: um tempo vazio no fim, notas no lugar
+    assert!(measures::set_measure_beats(&mut s, 0, 5));
+    assert_eq!(s.measures[0].beats, 5);
+    assert_eq!(s.measures[0].cell_count(), 5 * sub);
+    for row in s.measures[0].cells.values() {
+        assert_eq!(row.len(), 5 * sub);
+    }
+    assert_eq!(&s.measures[0].cells[&t][..4 * sub], &antes[..]);
+    assert!(s.measures[0].cells[&t][4 * sub..].iter().all(Option::is_none));
+
+    // 5/4 → 3/4: corta os últimos tempos
+    assert!(measures::set_measure_beats(&mut s, 0, 3));
+    assert_eq!(&s.measures[0].cells[&t][..], &antes[..3 * sub]);
+    // kiai acompanha
+    cells::set_kyai(&mut s, &t, 0, 0, Some("sa!"));
+    assert!(measures::set_measure_beats(&mut s, 0, 6));
+    assert_eq!(s.measures[0].kyai.as_ref().unwrap()[&t].len(), 6 * sub);
+
+    // mesma fórmula / compasso inexistente: nada muda; limites
+    assert!(!measures::set_measure_beats(&mut s, 0, 6));
+    assert!(!measures::set_measure_beats(&mut s, 999, 5));
+    assert!(measures::set_measure_beats(&mut s, 0, 99));
+    assert_eq!(s.measures[0].beats, measures::MAX_BEATS);
+    assert!(measures::set_measure_beats(&mut s, 0, 0));
+    assert_eq!(s.measures[0].beats, measures::MIN_BEATS);
+    // a música continua válida e faz round-trip
+    assert_eq!(Song::from_json(&s.to_json()).unwrap(), s);
+}
+
+#[test]
+fn inicio_dos_compassos_soma_os_tempos() {
+    let mut s = demo::demo_song();
+    measures::set_measure_beats(&mut s, 1, 5);
+    measures::set_measure_beats(&mut s, 2, 3);
+    let b: Vec<usize> = s.measures.iter().map(|m| m.beats).collect();
+    assert_eq!(&b[..3], &[4, 5, 3]);
+    // ordem com repetição: 0 1 2 1
+    assert_eq!(measures::bar_beat_starts(&s, &[0, 1, 2, 1]), vec![0.0, 4.0, 9.0, 12.0, 17.0]);
+    assert_eq!(measures::bar_beat_starts(&s, &[]), vec![0.0]);
+}
+
+// ───────────────────────────── andamento (rallentando / accelerando) ─────────────────────────────
+
+#[test]
+fn mapa_de_andamento_rall_accel_e_a_tempo() {
+    use wadawko_core::TempoMark;
+    let mut s = empty_song(6);
+    s.tempo = 100.0;
+    let all: Vec<usize> = (0..6).collect();
+    // sem marcações: um trecho constante
+    assert_eq!(measures::tempo_segments(&s, &all), vec![measures::TempoSegment { start: 0.0, end: 24.0, bpm0: 100.0, bpm1: 100.0 }]);
+    // rall. de 100 → 80 ao longo dos compassos 2 e 3; a tempo (100) no 5
+    assert!(measures::set_tempo_mark(&mut s, 1, Some(TempoMark { target: 80.0, span: 2 })));
+    assert!(!measures::set_tempo_mark(&mut s, 1, Some(TempoMark { target: 80.0, span: 2 })), "igual = sem mudança");
+    assert!(measures::set_tempo_mark(&mut s, 4, Some(TempoMark { target: 100.0, span: 0 })));
+    let segs = measures::tempo_segments(&s, &all);
+    let tuples: Vec<(f64, f64, f64, f64)> = segs.iter().map(|g| (g.start, g.end, g.bpm0, g.bpm1)).collect();
+    assert_eq!(tuples, vec![(0.0, 4.0, 100.0, 100.0), (4.0, 12.0, 100.0, 80.0), (12.0, 16.0, 80.0, 80.0), (16.0, 24.0, 100.0, 100.0)]);
+    assert_eq!(segs[1].bpm_at(8.0), 90.0);
+    // rótulos com o andamento de antes de cada marcação
+    let before = measures::tempo_at_measure_starts(&s);
+    assert_eq!(before[1], 100.0);
+    assert_eq!(before[2], 90.0);
+    assert_eq!(before[3], 80.0);
+    assert_eq!(before[4], 80.0);
+    assert_eq!(measures::tempo_mark_label(s.measures[1].tempo.as_ref().unwrap(), before[1]), "rall. → 80");
+    assert_eq!(measures::tempo_mark_label(s.measures[4].tempo.as_ref().unwrap(), before[4]), "♩ = 100");
+    assert_eq!(measures::tempo_mark_label(&TempoMark { target: 120.0, span: 1 }, 100.0), "accel. → 120");
+    // limites
+    assert!(measures::set_tempo_mark(&mut s, 0, Some(TempoMark { target: 5.0, span: 999 })));
+    assert_eq!(s.measures[0].tempo, Some(TempoMark { target: measures::MIN_TEMPO, span: measures::MAX_TEMPO_SPAN }));
+    assert!(measures::set_tempo_mark(&mut s, 0, None));
+    assert!(s.measures[0].tempo.is_none());
+    // começando no meio (região): parte do andamento informado
+    let segs = measures::tempo_segments_from(&s, &[3, 4, 5], 90.0);
+    assert_eq!((segs[0].bpm0, segs[0].end), (90.0, 4.0));
+}
+
+#[test]
+fn marcacao_no_meio_de_uma_rampa_corta_a_rampa() {
+    use wadawko_core::TempoMark;
+    let mut s = empty_song(4);
+    s.tempo = 100.0;
+    measures::set_tempo_mark(&mut s, 0, Some(TempoMark { target: 60.0, span: 4 })); // 100 → 60 em 16 tempos
+    measures::set_tempo_mark(&mut s, 2, Some(TempoMark { target: 120.0, span: 1 })); // no tempo 8 (80 BPM) sobe a 120
+    let segs = measures::tempo_segments(&s, &[0, 1, 2, 3]);
+    let tuples: Vec<(f64, f64, f64, f64)> = segs.iter().map(|g| (g.start, g.end, g.bpm0, g.bpm1)).collect();
+    assert_eq!(tuples, vec![(0.0, 8.0, 100.0, 80.0), (8.0, 12.0, 80.0, 120.0), (12.0, 16.0, 120.0, 120.0)]);
+}
+
+#[test]
+fn marcacao_de_andamento_faz_round_trip_no_json() {
+    use wadawko_core::TempoMark;
+    let mut s = empty_song(2);
+    measures::set_tempo_mark(&mut s, 1, Some(TempoMark { target: 90.0, span: 2 }));
+    let json = serde_json::to_string(&s).unwrap();
+    assert!(json.contains(r#""tempo":{"target":90,"span":2}"#), "{json}");
+    let back: Song = serde_json::from_str(&json).unwrap();
+    assert_eq!(back.measures[1].tempo, s.measures[1].tempo);
+    assert!(back.measures[0].tempo.is_none());
+    // span ausente = 1 compasso
+    let m: Measure = serde_json::from_str(r#"{"beats":4,"subdivision":2,"cells":{},"tempo":{"target":70}}"#).unwrap();
+    assert_eq!(m.tempo, Some(TempoMark { target: 70.0, span: 1 }));
+}

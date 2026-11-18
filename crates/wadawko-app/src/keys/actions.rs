@@ -52,7 +52,7 @@ pub mod song {
 }
 pub mod measure {
     use gpui_kit::actions;
-    actions!(measure, [CycleDynamic, ToggleCresc, ToggleDim]);
+    actions!(measure, [CycleDynamic, ToggleCresc, ToggleDim, BeatsUp, BeatsDown, TempoRall, TempoAccel, ATempo, TempoClear]);
 }
 pub mod grid {
     use gpui_kit::actions;

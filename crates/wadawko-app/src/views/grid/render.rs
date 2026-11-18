@@ -6,7 +6,7 @@ use std::time::Instant;
 
 use gpui_kit::{App, Bounds, ClickEvent, Context, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Render, ScrollEvent, SharedString, Window, canvas, div, prelude::*, px};
 use wadawko_core::ops;
-use wadawko_core::{Song, kyai};
+use wadawko_core::{Song, TempoMark, kyai};
 
 use super::paint::{PaintArgs, paint_section};
 use super::{CELL_H, DYNAMICS, GridEvent, GridView, InputTarget, KYAI_H, LABEL_W, Menu, SEC_DYN_H, SEC_GAP, SEC_HEAD_H, TDYN_H, TIMELINE_H, sec_key};
@@ -209,6 +209,68 @@ impl GridView {
             })));
         }
         popover(th).left(px(x.max(0.0))).top(px(y)).child(row)
+    }
+}
+
+impl GridView {
+    /// Popover da mudança de andamento do compasso `m`: alvo (±1/±5 BPM), duração
+    /// em compassos (0 = na hora) e remover. Os ajustes não fecham o popover.
+    fn tempo_menu(&self, m: usize, x: f32, y: f32, th: &Theme, cx: &mut Context<Self>) -> gpui_kit::Div {
+        let before = ops::measures::tempo_at_measure_starts(&self.song).get(m).copied().unwrap_or(self.song.tempo);
+        let cur = self.song.measures.get(m).and_then(|x| x.tempo.clone());
+        let target = cur.as_ref().map_or(before, |t| t.target);
+        let span = cur.as_ref().map(|t| t.span);
+        let caption = |t: &'static str| div().w(px(58.0)).text_size(px(11.0)).text_color(th.ink_faint).child(t);
+
+        let mut alvo = div().flex().items_center().gap(px(4.0)).child(caption("alvo"));
+        for (i, d) in [-5.0, -1.0].into_iter().enumerate() {
+            alvo = alvo.child(chip(("tempo-dn", i), th, false).child(SharedString::from(format!("{d:+.0}"))).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                let span = this.song.measures.get(m).and_then(|x| x.tempo.as_ref()).map_or(1, |t| t.span);
+                this.set_tempo(m, Some(TempoMark { target: target + d, span }), cx);
+            })));
+        }
+        alvo = alvo.child(
+            div().w(px(70.0)).flex().justify_center().text_size(px(13.0)).font_weight(FontWeight::BOLD).text_color(if cur.is_some() { th.ink } else { th.ink_faint }).child(SharedString::from(format!("♩ = {target:.0}"))),
+        );
+        for (i, d) in [1.0, 5.0].into_iter().enumerate() {
+            alvo = alvo.child(chip(("tempo-up", i), th, false).child(SharedString::from(format!("{d:+.0}"))).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                let span = this.song.measures.get(m).and_then(|x| x.tempo.as_ref()).map_or(1, |t| t.span);
+                this.set_tempo(m, Some(TempoMark { target: target + d, span }), cx);
+            })));
+        }
+
+        let mut dur = div().flex().items_center().gap(px(4.0)).child(caption("chegar em"));
+        for (i, n) in [0usize, 1, 2, 4, 8].into_iter().enumerate() {
+            let label: SharedString = match n {
+                0 => "na hora".into(),
+                1 => "1 compasso".into(),
+                n => format!("{n}").into(),
+            };
+            dur = dur.child(chip(("tempo-span", i), th, span == Some(n)).child(label).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                this.set_tempo(m, Some(TempoMark { target, span: n }), cx);
+            })));
+        }
+
+        let foot = div()
+            .flex()
+            .items_center()
+            .gap(px(8.0))
+            .child(div().flex_1().text_size(px(11.0)).text_color(th.ink_faint).child(SharedString::from(format!("antes: ♩ = {before:.0} · música: {:.0}", self.song.tempo))))
+            .child(chip("tempo-none", th, false).child("remover").when(cur.is_none(), |d| d.opacity(0.4)).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                this.menu = None;
+                this.set_tempo(m, None, cx);
+            })));
+
+        // não deixa o popover (~420 px) passar da borda direita da grade
+        let root_w = f32::from(self.geom.borrow().root.size.width);
+        let x = if root_w > 0.0 { x.min(root_w - 430.0) } else { x };
+        popover(th)
+            .left(px(x.max(0.0)))
+            .top(px(y))
+            .child(div().text_size(px(12.0)).font_weight(FontWeight::BOLD).text_color(th.ink).child(SharedString::from(format!("Andamento a partir do compasso {}", m + 1))))
+            .child(alvo)
+            .child(dur)
+            .child(foot)
     }
 }
 
@@ -654,6 +716,7 @@ impl Render for GridView {
         // ── popovers ──
         match self.menu.clone() {
             Some(Menu::Dyn { m, track, x, y }) => root = root.child(self.dyn_menu(m, track, x, y, &th, cx)),
+            Some(Menu::Tempo { m, x, y }) => root = root.child(self.tempo_menu(m, x, y, &th, cx)),
             Some(Menu::Row { t, .. }) => {
                 if let Some((_, top)) = row_menu_at {
                     root = root.child(self.row_menu(t, top, &th, cx));

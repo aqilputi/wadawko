@@ -44,7 +44,7 @@ pub use engine::{BLOCK, Clock, ClockSnapshot, Command, Engine, EngineConfig, Eng
 pub use fue::fue_total_secs;
 pub use offline::{Cancelled, RenderOptions, Rendered, render, render_with};
 pub use schedule::{
-    BAR_TICKS, BusDef, ChannelDef, CompileOptions, Compiler, Event, EventKind, GrainEv, HitEv, MAX_BUSES, MAX_CHANNELS, NoiseEv, PPQ, PREVIEW_SLOT, Schedule, TimeMap,
+    BAR_TICKS, BusDef, ChannelDef, CompileOptions, Compiler, Event, EventKind, GrainEv, HitEv, MAX_BUSES, MAX_CHANNELS, NoiseEv, PPQ, PREVIEW_SLOT, Schedule, TempoCurve, TimeMap,
     compile, sfz_dyn, vel_gain,
 };
 pub use wadawko_core::timeline::Region;

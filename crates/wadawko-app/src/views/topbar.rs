@@ -15,7 +15,7 @@ impl Shell {
         let song = st.song().clone();
         let tp = st.tp.clone();
         let bpm = song.tempo;
-        let sounding = st.playback_bpm;
+        let sounding = st.sounding_bpm;
         let title: SharedString = wadawko_store::display_title(&song).into();
         let chip = |id: &'static str, text: String, a: Box<dyn Action>| {
             abtn_boxed(id, th, a).h(px(26.0)).px(px(8.0)).text_size(px(12.0)).child(SharedString::from(text))
