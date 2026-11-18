@@ -66,6 +66,18 @@ impl Shell {
         }
     }
 
+    /// Altura das linhas da grade (F16): `Some(Δ)` soma, `None` volta ao padrão. Fica salva.
+    pub(crate) fn set_row_h(&mut self, delta: Option<f32>, cx: &mut Context<Self>) {
+        use crate::views::grid::{CELL_H, CELL_H_MAX, CELL_H_MIN};
+        let h = self.grid.update(cx, |g, cx| {
+            g.cell_h = delta.map_or(CELL_H, |d| (g.cell_h + d).clamp(CELL_H_MIN, CELL_H_MAX));
+            cx.notify();
+            g.cell_h
+        });
+        self.save_settings(cx);
+        self.flash(format!("linhas: {h:.0} px"), cx);
+    }
+
     /// Põe em loop o trecho de ensaio `id` (F7b).
     pub(crate) fn loop_spot(&mut self, id: &str, cx: &mut Context<Self>) {
         let song = self.song(cx);
@@ -293,6 +305,9 @@ impl Shell {
             g.zoom_reset();
             cx.notify()
         }));
+        let d = on!(d, cx, view::RowTaller, |this, w, cx| this.set_row_h(Some(crate::views::grid::CELL_H_STEP), cx));
+        let d = on!(d, cx, view::RowShorter, |this, w, cx| this.set_row_h(Some(-crate::views::grid::CELL_H_STEP), cx));
+        let d = on!(d, cx, view::RowReset, |this, w, cx| this.set_row_h(None, cx));
         let d = on!(d, cx, view::ToggleNav, |this, w, cx| this.nav_open = !this.nav_open);
         let d = on!(d, cx, nav::Editor, |this, w, cx| this.go(Page::Editor, None));
         let d = on!(d, cx, nav::Pessoas, |this, w, cx| this.go(Page::Pessoas, None));
@@ -355,6 +370,7 @@ impl Shell {
             s.flash(msg)
         }));
         let d = on!(d, cx, project::ExportJson, |this, w, cx| this.export_json(cx));
+        let d = on!(d, cx, project::ExportMidi, |this, w, cx| this.export_midi(cx));
         let d = on!(d, cx, project::ImportJson, |this, w, cx| this.import_json(cx));
         let d = on!(d, cx, project::ImportLibrary, |this, w, cx| this.import_library(cx));
         let d = on!(d, cx, project::ExportMp3, |this, w, cx| this.export_audio("mp3", cx));

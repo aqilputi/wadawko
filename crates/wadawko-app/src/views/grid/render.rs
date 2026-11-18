@@ -10,7 +10,7 @@ use wadawko_core::ops;
 use wadawko_core::{Song, TempoMark, kyai};
 
 use super::paint::{PaintArgs, paint_section};
-use super::{CELL_H, DYNAMICS, GridEvent, GridView, InputTarget, KYAI_H, LABEL_W, Menu, SEC_DYN_H, SEC_GAP, SEC_HEAD_H, TDYN_H, TIMELINE_H, sec_key};
+use super::{DYNAMICS, GridEvent, GridView, InputTarget, KYAI_H, LABEL_W, Menu, SEC_DYN_H, SEC_GAP, SEC_HEAD_H, TDYN_H, TIMELINE_H, sec_key};
 use crate::keys::{self, HintAct};
 use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color, track_color};
@@ -480,7 +480,7 @@ impl Render for GridView {
                     && ms == s
                     && t < rows.y.len()
                 {
-                    row_menu_at = Some((t, y_acc + SEC_DYN_H + TIMELINE_H + rows.y[t] + CELL_H + 4.0));
+                    row_menu_at = Some((t, y_acc + SEC_DYN_H + TIMELINE_H + rows.y[t] + rows.cell_h + 4.0));
                 }
                 y_acc += rows.body_h();
                 h += rows.body_h();
@@ -523,7 +523,7 @@ impl GridView {
             (Arc::as_ptr(&self.song) as usize, st.revision, st.theme.dark, selected, format!("{range:?}"), looping, format!("{bar:?}")).hash(k);
             (format!("{:?}", self.cursor), format!("{:?}", self.anchor), self.vmode, format!("{:?}", self.lane), &self.edit).hash(k);
             (format!("{:?}", self.menu), format!("{:?}", self.move_drag), format!("{:?}", self.loop_drag), self.drag_sec, self.drag_over).hash(k);
-            (self.cw.to_bits(), self.offset.to_bits(), collapsed, dyn_rows, kyai_rows).hash(k);
+            (self.cw.to_bits(), self.offset.to_bits(), self.cell_h.to_bits(), collapsed, dyn_rows, kyai_rows).hash(k);
         })
     }
 
@@ -823,7 +823,7 @@ impl GridView {
                                 .absolute()
                                 .left(px(ri as f32 * 5.0))
                                 .top(px(if t > 0 && rail.rows[t - 1] { 0.0 } else { 3.0 }))
-                                .h(px(if last { CELL_H - 3.0 } else { rows.row_h(t) }))
+                                .h(px(if last { rows.cell_h - 3.0 } else { rows.row_h(t) }))
                                 .w(px(3.0))
                                 .rounded(px(ui::R0))
                                 .bg(if ops::people::person_audible(&song, Some(&rail.person.id)) { col } else { Theme::alpha(col, 0.3) }),
@@ -832,10 +832,10 @@ impl GridView {
                 }
                 // listra na cor da linha (F1), esmaecida quando a linha não soa
                 let tcol = track_color(tr);
-                let stripe = div().absolute().left_0().top_0().h(px(CELL_H)).w(px(4.0)).bg(if audible { tcol } else { Theme::alpha(tcol, 0.4) });
+                let stripe = div().absolute().left_0().top_0().h(px(rows.cell_h)).w(px(4.0)).bg(if audible { tcol } else { Theme::alpha(tcol, 0.4) });
                 let mut label = div().relative().h(px(rows.row_h(t))).flex().flex_col().child(stripe).child(rail_el).child(
                     div()
-                        .h(px(CELL_H))
+                        .h(px(rows.cell_h))
                         .pl(px(STRIPE_W + rail_w))
                         .flex()
                         .items_center()
@@ -861,7 +861,10 @@ impl GridView {
                                         .truncate()
                                         .child(SharedString::from(if is_main { format!("★ {}", tr.name) } else { tr.name.clone() })),
                                 )
-                                .child(div().text_size(px(10.0)).text_color(th.ink_faint).truncate().child(SharedString::from(ops::kit::instrument_label(&song, tr).to_string()))),
+                                // linha baixa (F16): só o nome
+                                .when(rows.cell_h >= 32.0, |d| {
+                                    d.child(div().text_size(px(10.0)).text_color(th.ink_faint).truncate().child(SharedString::from(ops::kit::instrument_label(&song, tr).to_string())))
+                                }),
                         )
                         .child(mk(
                             id("set"),

@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use anyhow::{Context as _, Result};
 use wadawko_audio::Metronome;
 
+use crate::views::grid::{CELL_H, CELL_H_MAX, CELL_H_MIN};
+
 use super::keymap::user_keymap_path;
 
 pub fn settings_path() -> PathBuf {
@@ -22,6 +24,8 @@ pub struct Settings {
     pub metro: Metronome,
     /// count-in a cada volta do loop (F7c)
     pub count_in_loop: bool,
+    /// altura das linhas da grade em px (F16)
+    pub row_h: f32,
 }
 
 pub fn load_settings() -> Settings {
@@ -33,7 +37,8 @@ pub fn load_settings() -> Settings {
     }
     metro.subdiv = v["metro_subdiv"].as_u64().map_or(1, |d| d.clamp(1, 4) as u8);
     metro.gain = v["metro_gain"].as_f64().map_or(1.0, |g| g.clamp(0.0, 2.0) as f32);
-    Settings { vim: v["vim"].as_bool().unwrap_or(true), av_offset_ms: v["av_offset_ms"].as_f64().unwrap_or(0.0) as f32, metro, count_in_loop: v["count_in_loop"].as_bool().unwrap_or(false) }
+    let row_h = v["row_h"].as_f64().map_or(CELL_H, |h| (h as f32).clamp(CELL_H_MIN, CELL_H_MAX));
+    Settings { vim: v["vim"].as_bool().unwrap_or(true), av_offset_ms: v["av_offset_ms"].as_f64().unwrap_or(0.0) as f32, metro, count_in_loop: v["count_in_loop"].as_bool().unwrap_or(false), row_h }
 }
 
 pub fn save_settings(s: Settings) -> Result<()> {
@@ -46,6 +51,7 @@ pub fn save_settings(s: Settings) -> Result<()> {
         "metro_subdiv": s.metro.subdiv,
         "metro_gain": s.metro.gain,
         "count_in_loop": s.count_in_loop,
+        "row_h": s.row_h,
     });
     std::fs::write(&p, format!("{}\n", serde_json::to_string_pretty(&v)?))?;
     Ok(())

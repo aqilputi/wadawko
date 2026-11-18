@@ -47,6 +47,31 @@ impl Shell {
         .detach();
     }
 
+    /// Export MIDI (F10): mesmo schedule do áudio; precisa do banco de samples carregado.
+    pub fn export_midi(&mut self, cx: &mut Context<Self>) {
+        let song = self.song(cx);
+        let Some(bank) = self.state.read(cx).bank.clone() else {
+            self.flash("carregando samples… tente de novo em instantes", cx);
+            return;
+        };
+        let dir = default_dir();
+        let name = format!("{}.mid", song.slug());
+        let rx = cx.prompt_for_new_path(&dir, Some(&name));
+        cx.spawn(async move |this, cx| {
+            let path = match rx.await {
+                Ok(Ok(Some(p))) => with_ext(p, "mid"),
+                Ok(Ok(None)) => return,
+                _ => dir.join(&name),
+            };
+            let res = std::fs::write(&path, wadawko_export::midi::song_to_midi(&song, &bank));
+            let _ = this.update(cx, |this, cx| match res {
+                Ok(()) => this.flash(format!("MIDI exportado: {}", path.display()), cx),
+                Err(e) => this.flash(format!("erro ao exportar MIDI: {e}"), cx),
+            });
+        })
+        .detach();
+    }
+
     pub fn import_json(&mut self, cx: &mut Context<Self>) {
         let rx = cx.prompt_for_paths(gpui_kit::PathPromptOptions { files: true, directories: false, multiple: false, prompt: Some("Importar música".into()) });
         cx.spawn(async move |this, cx| {

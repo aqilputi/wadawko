@@ -158,7 +158,11 @@ impl Shell {
         });
 
         let stats = Rc::new(RefCell::new(Stats::default()));
-        let grid = cx.new(|cx| GridView::new(state.clone(), stats.clone(), vim_on, cx));
+        let grid = cx.new(|cx| {
+            let mut g = GridView::new(state.clone(), stats.clone(), vim_on, cx);
+            g.cell_h = settings.row_h;
+            g
+        });
         cx.subscribe_in(&grid, window, |this: &mut Self, _g, ev: &GridEvent, window, cx| match ev {
             GridEvent::Ask(target, initial) => this.ask(target.clone(), initial.clone(), window, cx),
         })
@@ -353,7 +357,8 @@ impl Shell {
 
     pub fn save_settings(&self, cx: &App) {
         let st = self.state.read(cx);
-        let _ = keys::save_settings(keys::Settings { vim: self.vim_on, av_offset_ms: st.av_offset_ms, metro: st.tp.metro, count_in_loop: st.tp.count_in_loop });
+        let row_h = self.grid.read(cx).cell_h;
+        let _ = keys::save_settings(keys::Settings { vim: self.vim_on, av_offset_ms: st.av_offset_ms, metro: st.tp.metro, count_in_loop: st.tp.count_in_loop, row_h });
     }
 
     // ───────── transporte / projeto ─────────
@@ -636,7 +641,7 @@ impl Shell {
                 if (l.level <= 0.0 && l.peak <= 0.0) || t >= g.rows.y.len() {
                     continue;
                 }
-                let y = top + g.rows.y[t] + grid::CELL_H - 4.0;
+                let y = top + g.rows.y[t] + g.rows.cell_h - 4.0;
                 out.push((Bounds::new(point(px(x), px(y)), size(px(w), px(3.0))), l.level, l.peak));
             }
         }
@@ -682,10 +687,11 @@ impl Shell {
         let y = f32::from(b.origin.y);
         let vb = self.scroll.bounds();
         let (vt, vbm) = (f32::from(vb.origin.y), f32::from(vb.origin.y) + f32::from(vb.size.height));
-        if f32::from(vb.size.height) > 0.0 && (y < vt + 10.0 || y + grid::CELL_H > vbm - 10.0) {
+        let ch = f32::from(b.size.height);
+        if f32::from(vb.size.height) > 0.0 && (y < vt + 10.0 || y + ch > vbm - 10.0) {
             let cur = self.scroll.offset();
             let max = self.scroll.max_offset();
-            let target = if y < vt { y - vt - 80.0 } else { y + grid::CELL_H - vbm + 80.0 };
+            let target = if y < vt { y - vt - 80.0 } else { y + ch - vbm + 80.0 };
             let ny = (f32::from(cur.y) - target).clamp(-f32::from(max.y), 0.0);
             self.scroll.set_offset(point(cur.x, px(ny)));
         }

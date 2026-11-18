@@ -46,6 +46,12 @@ generated:
    tools/headless.sh --db /tmp/teste.db --mute --demo hoverstat
    ```
    Renderiza em software (~10 fps): bom para comportamento e para comparar versões.
+   O probe depende da música aberta (linha 2 com notas no compasso 1 etc.). Para um resultado
+   que não muda com o uso, monte um banco só com as fixtures:
+   ```sh
+   wadawko-cli --db /tmp/fix.db import-backup crates/wadawko-core/tests/fixtures/backup-localstorage-2026-10-02.json
+   tools/headless.sh --db /tmp/fix.db --mute --demo probe | grep PROBE
+   ```
 5. **Página de atalhos** — depois de mudar teclas ou títulos de comandos:
    ```sh
    python3 tools/gen-atalhos.py          # regenera docs/referencia/atalhos.md

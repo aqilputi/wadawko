@@ -5,6 +5,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ## [Não lançado]
 
 ### Adicionado
+- **Export MIDI** (`.mid`, uma faixa por linha, bateria GM; também `wadawko-cli midi`).
+- **Modelos de música** na paleta: Em branco, Jiuchi + 3 linhas, Ensemble 5, Matsuri (swing).
+- **Altura das linhas ajustável** (`Ctrl+Alt+↑/↓`, vim `z k`/`z j`/`z =`), salva nas configurações.
 - **Trechos de ensaio com nome** (painel TRECHOS): guarde o trecho de loop com um nome e volte a
   ele com um clique ou pela paleta. Campo opcional `practice` na música.
 - **Metrônomo com acentos**: padrão por tempo (`A` forte, `B` fraco, `.` mudo — ex.: `A.B.`),

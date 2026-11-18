@@ -53,6 +53,8 @@
       "shift-tab": "grid::PrevCell",
       "ctrl-l": "transport::LoopSelection",
       "alt-t": "transport::TapTempo",
+      "ctrl-alt-up": "view::RowTaller",
+      "ctrl-alt-down": "view::RowShorter",
       "ctrl-shift-l": "practice::Save"
     }
   },
@@ -108,6 +110,9 @@
       "z i": "view::ZoomIn",
       "z o": "view::ZoomOut",
       "z 0": "view::ZoomReset",
+      "z k": "view::RowTaller",
+      "z j": "view::RowShorter",
+      "z =": "view::RowReset",
       "z a": "section::ToggleCollapse",
       "z shift-r": "section::ExpandAll",
       "z shift-m": "section::CollapseAll",

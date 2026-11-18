@@ -938,6 +938,30 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             println!("PROBE tap tempo: esperado pelas batidas {expect:?}");
             check("tap tempo marca o BPM das batidas (~120) e um Ctrl+Z volta", expect == Some(t1) && (90.0..=150.0).contains(&t1) && t2 == t0);
         }
+        // altura das linhas (F16): Ctrl+Alt+↓ duas vezes = 28 px; o clique ainda acerta a célula; padrão volta a 36
+        {
+            let h = |cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m: 0, t: 2, k: 1 }).map(|b| f32::from(b.size.height)));
+            cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            key("ctrl-alt-down", cx);
+            key("ctrl-alt-down", cx);
+            wait(cx, 250).await;
+            let h1 = h(cx);
+            let mut hit = None;
+            if let Some(c) = cell(0, 2, 1, cx) {
+                mouse(PlatformInput::MouseMove(MouseMoveEvent { position: c, pressed_button: None, modifiers: none }), cx);
+                wait(cx, 60).await;
+                mouse(down(c, none), cx);
+                wait(cx, 60).await;
+                mouse(up(c, none), cx);
+                wait(cx, 120).await;
+                hit = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| (c.m, c.t, c.k)));
+            }
+            let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::view::RowReset), cx));
+            wait(cx, 250).await;
+            let h2 = h(cx);
+            println!("PROBE altura das linhas: {h1:?} · clique em (0,2,1) → {hit:?} · padrão {h2:?}");
+            check("altura das linhas: Ctrl+Alt+↓ encolhe, clique acerta, padrão volta", h1 == Some(28.0) && hit == Some((0, 2, 1)) && h2 == Some(views::grid::CELL_H));
+        }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
             let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());

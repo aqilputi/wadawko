@@ -9,7 +9,7 @@ use wadawko_core::ops::people::cell_owner_of;
 use wadawko_core::timeline::Region;
 use wadawko_core::{Hairpin, Song, Zone, phrase};
 
-use super::{CELL_H, CELL_X0, Cur, KYAI_H, Lane, MEASURE_GAP, MoveDrag, Range4, Rows, SEC_DYN_H, TDYN_H, TEMPO_X, TIMELINE_H, TextCache, VMode, measure_xs, tempo_chip_fits, tempo_chip_w};
+use super::{CELL_X0, Cur, KYAI_H, Lane, MEASURE_GAP, MoveDrag, Range4, Rows, SEC_DYN_H, TDYN_H, TEMPO_X, TIMELINE_H, TextCache, VMode, measure_xs, tempo_chip_fits, tempo_chip_w};
 use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color};
 use crate::ui::{R0, R1};
@@ -127,7 +127,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
         // barra de compasso: 2 px `line_bar` (escurece, como o arranger das DAWs)
         let bar_x = ox + CELL_X0 - 9.0 - offset;
         for t in 0..n_tracks {
-            window.paint_quad(fill(rect(bar_x, cells_top + rows.y[t], 2.0, CELL_H), th.line_bar));
+            window.paint_quad(fill(rect(bar_x, cells_top + rows.y[t], 2.0, rows.cell_h), th.line_bar));
         }
 
         for (i, m) in (sa..sb).enumerate() {
@@ -221,9 +221,9 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                     let lx = x + 1.0;
                     let cell = row.and_then(|r| r.get(k)).and_then(|c| c.as_deref());
                     let bg = if cell.is_some() { th.cell_filled } else { th.cell_empty };
-                    window.paint_quad(fill(rect(lx, y, x + cw - lx, CELL_H), bg));
+                    window.paint_quad(fill(rect(lx, y, x + cw - lx, rows.cell_h), bg));
                     if beat_start && k > 0 {
-                        window.paint_quad(fill(rect(x, y, 1.0, CELL_H), th.line_beat));
+                        window.paint_quad(fill(rect(x, y, 1.0, rows.cell_h), th.line_beat));
                     }
                     let mut dim = !audible;
                     if let Some(word) = cell {
@@ -245,14 +245,14 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                                     let gx1 = groups.get(gi + 1).map(|n| lx + n.0 * inner - 1.0).unwrap_or(x + cw - 2.0);
                                     let col = if g.1 { th.accent2 } else { th.accent };
                                     let col = Theme::alpha(col, (0.45 + 0.55 * g.2.min(1.0)).min(1.0));
-                                    window.paint_quad(quad(rect(gx0, y + CELL_H - 13.0, (gx1 - gx0).max(2.0), 10.0), px(R0), col, px(0.0), gpui_kit::transparent_black(), BorderStyle::Solid));
+                                    window.paint_quad(quad(rect(gx0, y + rows.cell_h - 13.0, (gx1 - gx0).max(2.0), 10.0), px(R0), col, px(0.0), gpui_kit::transparent_black(), BorderStyle::Solid));
                                 }
                                 if res.sfz {
                                     window.paint_quad(rounded(rect(x + cw - 7.0, y + 3.0, 4.0, 4.0), R0, th.accent));
                                 }
                             }
                             // sílaba que o vocabulário não reconhece: contorno `danger`
-                            None => window.paint_quad(outline(rect(lx, y, inner, CELL_H), th.danger, BorderStyle::Solid)),
+                            None => window.paint_quad(outline(rect(lx, y, inner, rows.cell_h), th.danger, BorderStyle::Solid)),
                         }
                         // dono da nota: faixa na cor da pessoa (só em linha compartilhada)
                         if has_people {
@@ -272,7 +272,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                     }
                     if dim {
                         // dono/linha em mudo: nota transparente
-                        window.paint_quad(fill(rect(lx, y, x + cw - lx, CELL_H), Theme::alpha(th.bg, 0.6)));
+                        window.paint_quad(fill(rect(lx, y, x + cw - lx, rows.cell_h), Theme::alpha(th.bg, 0.6)));
                     }
                 }
                 // sub-linha de dinâmica própria do instrumento
@@ -302,7 +302,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
             }
             let sx = mx + mw + MEASURE_GAP * 0.5 - 1.0;
             for t in 0..n_tracks {
-                window.paint_quad(fill(rect(sx, cells_top + rows.y[t], 2.0, CELL_H), th.line_bar));
+                window.paint_quad(fill(rect(sx, cells_top + rows.y[t], 2.0, rows.cell_h), th.line_bar));
             }
         }
 
@@ -338,7 +338,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
                     let (y0, y1) = if a.lane == Lane::Kyai && rows.kyai[t0] {
                         (cells_top + rows.kyai_y(t0), cells_top + rows.kyai_y(t1) + KYAI_H)
                     } else {
-                        (cells_top + rows.y[t0], cells_top + rows.y[t1] + CELL_H)
+                        (cells_top + rows.y[t0], cells_top + rows.y[t1] + rows.cell_h)
                     };
                     let r = rect(x0, y0, x1 - x0, y1 - y0);
                     window.paint_quad(fill(r, Theme::alpha(col, alpha)));
@@ -355,7 +355,7 @@ pub fn paint_section(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: 
             && c.t < n_tracks
         {
             let x = ox + xs[c.m - sa] + c.k as f32 * cw - offset;
-            let (y, h) = if a.lane == Lane::Kyai && rows.kyai[c.t] { (cells_top + rows.kyai_y(c.t), KYAI_H) } else { (cells_top + rows.y[c.t], CELL_H) };
+            let (y, h) = if a.lane == Lane::Kyai && rows.kyai[c.t] { (cells_top + rows.kyai_y(c.t), KYAI_H) } else { (cells_top + rows.y[c.t], rows.cell_h) };
             let r = rect(x, y, cw, h);
             let wash = if matches!(a.vmode, VMode::Normal | VMode::Visual | VMode::VLine) { Theme::alpha(th.accent, 0.18) } else { gpui_kit::transparent_black() };
             window.paint_quad(quad(r, px(R0), wash, px(2.0), th.accent, BorderStyle::Solid));

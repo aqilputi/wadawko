@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-18T19:29:53Z
+  at: 2026-11-18T20:16:25Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -79,6 +79,8 @@ Valem na área do editor (grade, partitura, esteira), com ou sem vim.
 | `Shift+Tab` | `grid::PrevCell` | grava e volta uma célula |
 | `Ctrl+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
 | `Alt+T` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
+| `Ctrl+Alt+↑` | `view::RowTaller` | Linhas mais altas |
+| `Ctrl+Alt+↓` | `view::RowShorter` | Linhas mais baixas (cabem mais linhas) |
 | `Ctrl+Shift+L` | `practice::Save` | Trechos: guardar o trecho de loop com um nome… |
 
 ## Editor — modo simples (vim desligado)
@@ -138,6 +140,9 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `z` `i` | `view::ZoomIn` | Zoom + |
 | `z` `o` | `view::ZoomOut` | Zoom − |
 | `z` `0` | `view::ZoomReset` | Zoom 100% |
+| `z` `k` | `view::RowTaller` | Linhas mais altas |
+| `z` `j` | `view::RowShorter` | Linhas mais baixas (cabem mais linhas) |
+| `z` `=` | `view::RowReset` | Altura das linhas: padrão |
 | `z` `a` | `section::ToggleCollapse` | Recolher/expandir seção |
 | `z` `Shift+R` | `section::ExpandAll` | Expandir todas as seções |
 | `z` `Shift+M` | `section::CollapseAll` | Recolher todas as seções |

@@ -23,6 +23,7 @@ pub mod kyai;
 pub mod model;
 pub mod ops;
 pub mod phrase;
+pub mod templates;
 pub mod timeline;
 pub mod vocab;
 
