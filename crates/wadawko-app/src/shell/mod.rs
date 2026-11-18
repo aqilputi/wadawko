@@ -26,7 +26,7 @@ use crate::song_ext::SongExt;
 use crate::state::AppState;
 use crate::stats::Stats;
 use crate::theme::Theme;
-use crate::views::grid::{self, Cur, GridEvent, GridView, InputTarget, Lane, Mode, Motion, VMode};
+use crate::views::grid::{self, Cur, GridEvent, GridView, InputTarget, Lane, Layout, Mode, Motion, VMode};
 use crate::views::{Page, Tab, Views};
 
 thread_local! {
@@ -82,6 +82,18 @@ pub struct Bench {
     last_zoom: Instant,
     zoom_in: bool,
     warmed: bool,
+}
+
+/// Onde desenhar o playhead: `pos` é x (grade horizontal) ou y (editor vertical, topo
+/// da linha audível), `b` o canvas da seção e `row_h` a altura da linha (vertical).
+#[derive(Clone, Copy)]
+pub struct PlayheadAt {
+    pub pos: f32,
+    pub b: Bounds<Pixels>,
+    pub vertical: bool,
+    pub row_h: f32,
+    /// vertical: largura ocupada (gutter + compasso + colunas), para a linha não passar das colunas
+    pub w: f32,
 }
 
 /// Célula soando agora: bounds, intensidade (1 = golpe acabou de soar → 0) e se é borda.
@@ -167,10 +179,15 @@ impl Shell {
         let grid = cx.new(|cx| {
             let mut g = GridView::new(state.clone(), stats.clone(), vim_on, cx);
             g.cell_h = settings.row_h;
+            g.layout = settings.layout;
+            g.row_h = settings.tracker_row_h;
+            g.col_w = settings.tracker_col_w;
+            g.col_w_eff = settings.tracker_col_w;
             g
         });
         cx.subscribe_in(&grid, window, |this: &mut Self, _g, ev: &GridEvent, window, cx| match ev {
             GridEvent::Ask(target, initial) => this.ask(target.clone(), initial.clone(), window, cx),
+            GridEvent::SettingsChanged => this.save_settings(cx),
         })
         .detach();
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
@@ -366,8 +383,17 @@ impl Shell {
 
     pub fn save_settings(&self, cx: &App) {
         let st = self.state.read(cx);
-        let row_h = self.grid.read(cx).cell_h;
-        let _ = keys::save_settings(keys::Settings { vim: self.vim_on, av_offset_ms: st.av_offset_ms, metro: st.tp.metro, count_in_loop: st.tp.count_in_loop, row_h });
+        let g = self.grid.read(cx);
+        let _ = keys::save_settings(keys::Settings {
+            vim: self.vim_on,
+            av_offset_ms: st.av_offset_ms,
+            metro: st.tp.metro,
+            count_in_loop: st.tp.count_in_loop,
+            row_h: g.cell_h,
+            layout: g.layout,
+            tracker_row_h: g.row_h,
+            tracker_col_w: g.col_w,
+        });
     }
 
     // ───────── transporte / projeto ─────────
@@ -563,9 +589,9 @@ impl Shell {
         self.page == Page::Editor && self.tab == Tab::Grade
     }
 
-    /// (x na janela, bounds do canvas da seção) do playhead — tocando, a posição
-    /// audível; parado, a célula de onde o play vai começar.
-    fn playhead(&self, cx: &App) -> Option<(f32, Bounds<Pixels>)> {
+    /// Posição do playhead (x na grade horizontal; y no editor vertical) e o canvas da
+    /// seção — tocando, a posição audível; parado, a célula de onde o play vai começar.
+    fn playhead(&self, cx: &App) -> Option<PlayheadAt> {
         let st = self.state.read(cx);
         let song = st.song();
         let (m, frac) = if st.playing() {
@@ -591,9 +617,17 @@ impl Shell {
         if f32::from(b.size.width) <= 0.0 {
             return None;
         }
+        if grid.layout == Layout::Vertical {
+            // topo da linha (célula) audível — o playhead anda de linha em linha
+            let len = song.mlen(m).max(1);
+            let k = ((frac * len as f32).floor() as usize).min(len - 1);
+            let y = f32::from(b.origin.y) + grid::measure_y(song, s, m, g.row_h)? + k as f32 * g.row_h;
+            let w = (grid::LEFT_W + g.cols.w - g.offset).min(f32::from(b.size.width));
+            return Some(PlayheadAt { pos: y, b, vertical: true, row_h: g.row_h, w });
+        }
         let xs = grid::measure_xs(song, s, g.cw);
         let x = f32::from(b.origin.x) + xs.get(m.checked_sub(a)?)? + frac * song.mlen(m) as f32 * g.cw - offset;
-        Some((x, b))
+        Some(PlayheadAt { pos: x, b, vertical: false, row_h: 0.0, w: 0.0 })
     }
 
     /// Células que acabaram de soar (eventos `HitFired` do engine, já atrasados
@@ -644,6 +678,22 @@ impl Shell {
         }
         let grid = self.grid.read(cx);
         let g = grid.geom.borrow();
+        if grid.layout == Layout::Vertical {
+            // vertical: 3 px no rodapé do cabeçalho de colunas, na largura da nota
+            let hb = g.col_head;
+            if f32::from(hb.size.width) <= 0.0 {
+                return Vec::new();
+            }
+            let x0 = f32::from(hb.origin.x) + grid::LEFT_W - g.offset;
+            let y = f32::from(hb.origin.y) + f32::from(hb.size.height) - 3.0;
+            return levels
+                .iter()
+                .enumerate()
+                .filter(|(t, l)| (l.level > 0.0 || l.peak > 0.0) && *t < g.cols.x.len())
+                .map(|(t, l)| (Bounds::new(point(px(x0 + g.cols.x[t] + 2.0), px(y)), size(px(g.cols.note_w - 4.0), px(3.0))), l.level, l.peak))
+                .filter(|(b, _, _)| f32::from(b.origin.x) >= f32::from(hb.origin.x) + grid::LEFT_W - 2.0)
+                .collect();
+        }
         let w = (grid::LABEL_W - g.label_pad - 150.0).max(24.0);
         let mut out = Vec::new();
         for b in g.sections.iter().filter(|b| f32::from(b.size.width) > 0.0) {
@@ -664,7 +714,24 @@ impl Shell {
         if !self.playing(cx) || !self.on_grid() {
             return;
         }
-        let Some((x, b)) = self.playhead(cx) else { return };
+        let Some(ph) = self.playhead(cx) else { return };
+        if ph.vertical {
+            // follow "page" (T3a): vira a página quando o playhead passa de 85 % da área
+            // visível (só `scroll.set_offset`); o "center" é da T3b
+            let vb = self.scroll.bounds();
+            let (vt, vh) = (f32::from(vb.origin.y), f32::from(vb.size.height));
+            if vh > 0.0 && (ph.pos + ph.row_h > vt + vh * 0.85 || ph.pos < vt) {
+                let cur = self.scroll.offset();
+                let max = self.scroll.max_offset();
+                let ny = (f32::from(cur.y) - (ph.pos - vt - vh * 0.1)).clamp(-f32::from(max.y), 0.0);
+                if (ny - f32::from(cur.y)).abs() > 0.5 {
+                    DBG_FOLLOW_V.fetch_add(1, Ordering::Relaxed);
+                    self.scroll.set_offset(point(cur.x, px(ny)));
+                }
+            }
+            return;
+        }
+        let (x, b) = (ph.pos, ph.b);
         let left = f32::from(b.origin.x);
         let w = f32::from(b.size.width);
         if x > left + w * 0.85 || x < left {
@@ -786,6 +853,8 @@ impl Shell {
         }
 
         let th = self.theme(cx);
+        // área visível do editor (do último frame): culling e alvos de salto do editor vertical
+        self.grid.read(cx).geom.borrow_mut().viewport = self.scroll.bounds();
         // playhead + notas soando agora (overlay sem cache, irmão da grade)
         let ph = if self.on_grid() { self.playhead(cx) } else { None };
         let (flashes, play_pos) = if self.on_grid() { self.playing_cells(cx) } else { (Vec::new(), None) };
@@ -816,6 +885,39 @@ impl Shell {
                             let cell = self.ctx_h.clone();
                             head.child(div().w_full().on_children_prepainted(move |b, _, _| cell.set(b.first().map_or(0.0, |b| f32::from(b.size.height)))).child(bar.clone()))
                         };
+                        // editor vertical: cabeçalho de colunas fixo (fora da rolagem), em cache;
+                        // os mini-medidores são pintados por cima, num canvas sem cache
+                        let col_head = {
+                            let g = self.grid.read(cx);
+                            (g.layout == Layout::Vertical).then(|| g.col_head_view.clone()).flatten()
+                        };
+                        if let Some(v) = col_head {
+                            let meters = row_meters.clone();
+                            head = head.child(
+                                div()
+                                    .relative()
+                                    .w_full()
+                                    .flex_none()
+                                    .h(px(grid::COL_HEAD_H))
+                                    .px(px(20.0))
+                                    .bg(th.bg)
+                                    .border_b_1()
+                                    .border_color(th.line)
+                                    .child(v.cached(gpui_kit::StyleRefinement::default().w_full().h(px(grid::COL_HEAD_H))))
+                                    .child(
+                                        canvas(
+                                            |_, _, _| {},
+                                            move |vb, _, window, _| {
+                                                for (b, level, peak) in &meters {
+                                                    window.with_content_mask(Some(gpui_kit::ContentMask { bounds: vb }), |window| crate::ui::paint_meter(window, *b, *level, *peak, false, &th));
+                                                }
+                                            },
+                                        )
+                                        .absolute()
+                                        .inset_0(),
+                                    ),
+                            );
+                        }
                         let grid_h = self.grid.read(cx).grid_height();
                         // a grade NÃO fica em cache aqui: no gpui, uma view em cache que
                         // re-renderiza redesenha todo o seu subárvore (`refreshing`), o que
@@ -859,8 +961,31 @@ impl Shell {
                         ));
                     });
                 }
-                let Some((x, b)) = ph else { return };
+                let Some(ph) = ph else { return };
+                let b = ph.b;
                 let clip = vb.intersect(&b);
+                if ph.vertical {
+                    // linha de 2 px no topo da linha audível + wash 12 % da linha inteira + ▶ no gutter
+                    window.with_content_mask(Some(gpui_kit::ContentMask { bounds: clip }), |window| {
+                        let (x0, w) = (f32::from(b.origin.x), ph.w);
+                        let y = ph.pos;
+                        if playing {
+                            window.paint_quad(fill(Bounds::new(point(px(x0), px(y)), size(px(w), px(ph.row_h))), Theme::alpha(th.accent, 0.12)));
+                            window.paint_quad(fill(Bounds::new(point(px(x0 + grid::LEFT_W), px(y)), size(px(w - grid::LEFT_W), px(2.0))), th.playhead));
+                        }
+                        let mut tri = gpui_kit::PathBuilder::fill();
+                        let (tx, cy) = (x0 + 3.0, y + ph.row_h * 0.5);
+                        tri.move_to(point(px(tx), px(cy - 5.0)));
+                        tri.line_to(point(px(tx + 8.0), px(cy)));
+                        tri.line_to(point(px(tx), px(cy + 5.0)));
+                        tri.close();
+                        if let Ok(p) = tri.build() {
+                            window.paint_path(p, th.accent);
+                        }
+                    });
+                    return;
+                }
+                let x = ph.pos;
                 window.with_content_mask(Some(gpui_kit::ContentMask { bounds: clip }), |window| {
                     let top = f32::from(b.origin.y) + grid::SEC_DYN_H;
                     let h = f32::from(b.size.height) - grid::SEC_DYN_H;
@@ -895,7 +1020,8 @@ impl Shell {
 
         // ── workspace (contexto de teclas da grade) ──
         let vmode = self.grid.read(cx).vmode;
-        let ctx = format!("Workspace vim={} mode={}{}", if self.vim_on { "on" } else { "off" }, vmode.ctx(), if self.count.is_some() { " count" } else { "" });
+        let layout = self.grid.read(cx).layout;
+        let ctx = format!("Workspace vim={} mode={} layout={}{}", if self.vim_on { "on" } else { "off" }, vmode.ctx(), layout.name(), if self.count.is_some() { " count" } else { "" });
         let workspace = div()
             .id("workspace")
             .key_context(KeyContext::parse(&ctx).unwrap_or_default())

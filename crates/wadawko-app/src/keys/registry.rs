@@ -42,6 +42,7 @@ pub static SPECS: &[Spec] = &[
     spec!("transport::BpmUp", "BPM +1", "Transporte", "tempo andamento"),
     spec!("transport::BpmDown", "BPM −1", "Transporte", "tempo andamento"),
     spec!("view::Grade", "Ver: grade", "Ver", "grid"),
+    spec!("view::ToggleLayout", "Editor: vertical / horizontal", "Ver", "layout tracker grade vertical horizontal orientação"),
     spec!("view::Partitura", "Ver: partitura", "Ver", "score pauta"),
     spec!("view::Esteira", "Ver: esteira", "Ver", "lane taiko"),
     spec!("view::ToggleTheme", "Tema: claro/escuro", "Ver", "dark light"),

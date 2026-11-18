@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-18T20:35:04Z
+  at: 2026-11-18T22:23:41Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -202,6 +202,7 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `v` `p` | `view::Partitura` | Ver: partitura |
 | `Space` `v` `e` | `view::Esteira` | Ver: esteira |
 | `Space` `v` `t` | `view::ToggleTheme` | Tema: claro/escuro |
+| `Space` `v` `l` | `view::ToggleLayout` | Editor: vertical / horizontal |
 | `Space` `g` `e` | `nav::Editor` | Ir para Editor |
 | `Space` `g` `m` | `nav::Mixer` | Ir para Mixer |
 | `Space` `g` `p` | `nav::Pessoas` | Ir para Pessoas |
@@ -309,6 +310,36 @@ Com a paleta aberta. Tab/Shift+Tab e ↑/↓ andam na lista, Enter executa, Esc 
 | `Ctrl+S` | `keys::ShowShortcuts` | Mapa de atalhos |
 | `Tab` | `keys::PaletteNext` | próximo comando |
 | `Shift+Tab` | `keys::PalettePrev` | comando anterior |
+
+## Contexto `Workspace && layout == vertical`
+
+| Tecla | Comando | Ação |
+|---|---|---|
+| `↓` | `grid::Right` | célula → |
+| `↑` | `grid::Left` | célula ← |
+| `→` | `grid::Down` | linha ↓ |
+| `←` | `grid::Up` | linha ↑ |
+| `Shift+↓` | `grid::ExtendRight` | estender seleção → |
+| `Shift+↑` | `grid::ExtendLeft` | estender seleção ← |
+| `Shift+→` | `grid::ExtendDown` | estender seleção ↓ |
+| `Shift+←` | `grid::ExtendUp` | estender seleção ↑ |
+| `Alt+↓` | `grid::MoveSelRight` | Mover seleção → |
+| `Alt+↑` | `grid::MoveSelLeft` | Mover seleção ← |
+| `Alt+→` | `grid::MoveSelDown` | Mover seleção ↓ |
+| `Alt+←` | `grid::MoveSelUp` | Mover seleção ↑ |
+| `Alt+Shift+↓` | `grid::CloneSelRight` | Clonar seleção → |
+| `Alt+Shift+↑` | `grid::CloneSelLeft` | Clonar seleção ← |
+| `Alt+Shift+→` | `grid::CloneSelDown` | Clonar seleção ↓ |
+| `Alt+Shift+←` | `grid::CloneSelUp` | Clonar seleção ↑ |
+
+## Contexto `Workspace && layout == vertical && (mode == normal || mode == visual || mode == vline)`
+
+| Tecla | Comando | Ação |
+|---|---|---|
+| `j` | `grid::Right` | célula → |
+| `k` | `grid::Left` | célula ← |
+| `l` | `grid::Down` | linha ↓ |
+| `h` | `grid::Up` | linha ↑ |
 
 ## Prefixos (which-key)
 

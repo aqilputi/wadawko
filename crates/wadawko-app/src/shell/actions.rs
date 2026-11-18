@@ -67,12 +67,19 @@ impl Shell {
     }
 
     /// Altura das linhas da grade (F16): `Some(Δ)` soma, `None` volta ao padrão. Fica salva.
+    /// No editor vertical, a altura da linha-tempo (`tracker_row_h`, passo de 4 px).
     pub(crate) fn set_row_h(&mut self, delta: Option<f32>, cx: &mut Context<Self>) {
-        use crate::views::grid::{CELL_H, CELL_H_MAX, CELL_H_MIN};
+        use crate::views::grid::{CELL_H, CELL_H_MAX, CELL_H_MIN, Layout, ROW_H, ROW_H_MAX, ROW_H_MIN, ROW_H_STEP};
         let h = self.grid.update(cx, |g, cx| {
-            g.cell_h = delta.map_or(CELL_H, |d| (g.cell_h + d).clamp(CELL_H_MIN, CELL_H_MAX));
+            let h = if g.layout == Layout::Vertical {
+                g.row_h = delta.map_or(ROW_H, |d| (g.row_h + ROW_H_STEP.copysign(d)).clamp(ROW_H_MIN, ROW_H_MAX));
+                g.row_h
+            } else {
+                g.cell_h = delta.map_or(CELL_H, |d| (g.cell_h + d).clamp(CELL_H_MIN, CELL_H_MAX));
+                g.cell_h
+            };
             cx.notify();
-            g.cell_h
+            h
         });
         self.save_settings(cx);
         self.flash(format!("linhas: {h:.0} px"), cx);
@@ -300,18 +307,37 @@ impl Shell {
             let dark = !this.theme(cx).dark;
             this.set_theme(dark, cx)
         });
-        let d = on!(d, cx, view::ZoomIn, |this, w, cx| this.g(cx, |g, cx, _| {
-            g.zoom_at(1.25, 0.0);
-            cx.notify()
-        }));
-        let d = on!(d, cx, view::ZoomOut, |this, w, cx| this.g(cx, |g, cx, _| {
-            g.zoom_at(0.8, 0.0);
-            cx.notify()
-        }));
-        let d = on!(d, cx, view::ZoomReset, |this, w, cx| this.g(cx, |g, cx, _| {
-            g.zoom_reset();
-            cx.notify()
-        }));
+        let d = on!(d, cx, view::ZoomIn, |this, w, cx| {
+            this.g(cx, |g, cx, _| {
+                g.zoom_at(1.25, 0.0);
+                cx.notify()
+            });
+            this.save_settings(cx)
+        });
+        let d = on!(d, cx, view::ZoomOut, |this, w, cx| {
+            this.g(cx, |g, cx, _| {
+                g.zoom_at(0.8, 0.0);
+                cx.notify()
+            });
+            this.save_settings(cx)
+        });
+        let d = on!(d, cx, view::ZoomReset, |this, w, cx| {
+            this.g(cx, |g, cx, _| {
+                g.zoom_reset();
+                cx.notify()
+            });
+            this.save_settings(cx)
+        });
+        let d = on!(d, cx, view::ToggleLayout, |this, w, cx| {
+            let layout = this.grid.update(cx, |g, cx| {
+                let l = g.layout.toggled();
+                g.set_layout(l, cx);
+                l
+            });
+            this.save_settings(cx);
+            this.flash(format!("editor: {}", layout.name()), cx);
+            this.reveal_cursor(cx)
+        });
         let d = on!(d, cx, view::Director, |this, w, cx| {
             if this.director.is_some() {
                 this.director_close = true;

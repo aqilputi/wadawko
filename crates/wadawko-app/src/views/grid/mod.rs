@@ -10,6 +10,12 @@
 
 mod paint;
 mod render;
+mod vgeom;
+mod vpaint;
+mod vrender;
+pub use vrender::{COL_HEAD_RENDERS, COL_HEAD_US};
+
+pub use vgeom::{COL_HEAD_H, COL_W, COL_W_MAX, COL_W_MIN, COL_W_STEP, Cols, LEFT_W, Layout, ROW_H, ROW_H_MAX, ROW_H_MIN, ROW_H_STEP, measure_y, section_body_h};
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -222,6 +228,13 @@ pub struct Geom {
     /// recuo do texto dos rótulos de linha (listra + trilhos de pessoa), para o
     /// mini-medidor do overlay
     pub label_pad: f32,
+    /// editor vertical: layout desenhado, colunas (com a largura efetiva da nota),
+    /// altura da linha, área visível do editor (posta pelo Shell) e o cabeçalho de colunas
+    pub layout: Layout,
+    pub cols: Cols,
+    pub row_h: f32,
+    pub viewport: Bounds<Pixels>,
+    pub col_head: Bounds<Pixels>,
 }
 
 /// O que a grade pede ao Shell para perguntar ao usuário (prompt de texto).
@@ -247,6 +260,8 @@ pub enum InputTarget {
 
 pub enum GridEvent {
     Ask(InputTarget, String),
+    /// tamanhos do editor mudaram (Ctrl+roda): o Shell grava o settings.json
+    SettingsChanged,
 }
 
 /// Popover aberto sobre a grade.
@@ -374,6 +389,18 @@ pub struct GridView {
     pub hover_sec: Option<usize>,
     /// altura da célula das linhas (F16), em px
     pub cell_h: f32,
+    /// editor vertical (padrão) ou grade horizontal
+    pub layout: Layout,
+    /// editor vertical: altura da linha e largura pedida da coluna de nota
+    pub row_h: f32,
+    pub col_w: f32,
+    /// largura da coluna de nota no último render ("ajustar à largura")
+    pub col_w_eff: f32,
+    /// coluna cujo cabeçalho está sob o mouse
+    pub hover_col: Option<usize>,
+    /// cabeçalho de colunas (view em cache) e a chave do último desenho
+    pub(crate) col_head_view: Option<Entity<vrender::ColHeadView>>,
+    col_head_key: u64,
     /// uma view em cache por seção (`render::SectionView`)
     pub(crate) sec_views: Vec<Entity<render::SectionView>>,
     /// chave do último desenho de cada seção
@@ -457,6 +484,13 @@ impl GridView {
             hover_sec: None,
             sec_views: Vec::new(),
             cell_h: CELL_H,
+            layout: Layout::Vertical,
+            row_h: ROW_H,
+            col_w: COL_W,
+            col_w_eff: COL_W,
+            hover_col: None,
+            col_head_view: None,
+            col_head_key: 0,
             sec_keys: Vec::new(),
             drag_over: None,
             dragging: false,
@@ -511,7 +545,47 @@ impl GridView {
 
     pub fn grid_height(&self) -> f32 {
         let body = self.rows().body_h();
-        self.song.secs().iter().map(|sec| SEC_HEAD_H + if self.is_collapsed(sec) { 0.0 } else { body } + SEC_GAP).sum::<f32>() + 20.0
+        let vertical = self.layout == Layout::Vertical;
+        self.song
+            .secs()
+            .iter()
+            .enumerate()
+            .map(|(s, sec)| {
+                SEC_HEAD_H
+                    + if self.is_collapsed(sec) {
+                        0.0
+                    } else if vertical {
+                        section_body_h(&self.song, s, self.row_h)
+                    } else {
+                        body
+                    }
+                    + SEC_GAP
+            })
+            .sum::<f32>()
+            + 20.0
+    }
+
+    /// Colunas do editor vertical com a largura de nota do último render.
+    pub fn cols(&self) -> Cols {
+        Cols::new(&self.rows(), self.col_w_eff)
+    }
+
+    /// Troca o layout do editor (vertical ⇄ horizontal); cursor e seleção ficam.
+    pub fn set_layout(&mut self, layout: Layout, cx: &mut Context<Self>) {
+        if self.layout == layout {
+            return;
+        }
+        self.commit_edit_in_place(cx);
+        self.layout = layout;
+        self.menu = None;
+        self.loop_drag = None;
+        self.hover_col = None;
+        self.offset = 0.0;
+        self.offset_target = 0.0;
+        if let Some(c) = self.cursor {
+            self.ensure_visible(c);
+        }
+        cx.notify();
     }
 
     pub fn reset_for_song(&mut self) {
@@ -563,6 +637,9 @@ impl GridView {
     }
 
     fn max_offset(&self, cw: f32) -> f32 {
+        if self.layout == Layout::Vertical {
+            return (LEFT_W + self.cols().w - self.view_w()).max(0.0);
+        }
         let song = &self.song;
         let widest = song.secs().iter().map(|sec| (sec.start..sec.end).map(|m| song.mlen(m) as f32 * cw + MEASURE_GAP).sum::<f32>()).fold(0.0, f32::max);
         (widest + CELL_X0 - self.view_w() * 0.6).max(0.0)
@@ -592,6 +669,18 @@ impl GridView {
     }
 
     pub fn zoom_at(&mut self, factor: f32, anchor_x: f32) {
+        if self.layout == Layout::Vertical {
+            // vertical: zoom = largura da coluna, em passos de COL_W_STEP
+            let step = if factor > 1.0 {
+                COL_W_STEP
+            } else if factor < 1.0 {
+                -COL_W_STEP
+            } else {
+                0.0
+            };
+            self.col_w = (self.col_w + step).clamp(COL_W_MIN, COL_W_MAX);
+            return;
+        }
         let new_cw = (self.cw_target * factor).clamp(14.0, 140.0);
         let snapped = if (new_cw - BASE_CW).abs() < 1.5 { BASE_CW } else { new_cw };
         self.zoom_anchor = anchor_x;
@@ -599,11 +688,19 @@ impl GridView {
     }
 
     pub fn zoom_reset(&mut self) {
+        if self.layout == Layout::Vertical {
+            self.col_w = COL_W;
+            self.row_h = ROW_H;
+            return;
+        }
         self.zoom_anchor = 0.0;
         self.cw_target = BASE_CW;
     }
 
     pub fn zoom_pct(&self) -> u32 {
+        if self.layout == Layout::Vertical {
+            return (self.col_w / COL_W * 100.0).round() as u32;
+        }
         (self.cw_target / BASE_CW * 100.0).round() as u32
     }
 
@@ -621,6 +718,9 @@ impl GridView {
     }
 
     pub fn hit(&self, s: usize, pos: Point<Pixels>) -> Option<Hit> {
+        if self.layout == Layout::Vertical {
+            return self.vhit(s, pos);
+        }
         let g = self.geom.borrow();
         let b = *g.sections.get(s)?;
         let x = f32::from(pos.x) - f32::from(b.origin.x) + self.offset;
@@ -883,6 +983,9 @@ impl GridView {
     }
 
     pub fn ensure_visible(&mut self, c: Cur) {
+        if self.layout == Layout::Vertical {
+            return self.vensure_visible(c);
+        }
         let song = self.song.clone();
         let s = song.section_of(c.m);
         let secs = song.secs();
@@ -1505,7 +1608,10 @@ impl GridView {
             }
             Some(Hit::LoopLane) if ev.button == MouseButton::Left => self.loop_lane_down(s, ev, cx),
             Some(Hit::Timeline(cell)) if ev.button == MouseButton::Left => {
-                self.pan = Some((f32::from(ev.position.x), self.offset_target));
+                // horizontal: arrastar a régua rola a grade; vertical: o gutter só marca o início
+                if self.layout == Layout::Horizontal {
+                    self.pan = Some((f32::from(ev.position.x), self.offset_target));
+                }
                 if let Some((m, k)) = cell {
                     let g = self.song.flat(m, k);
                     self.state.update(cx, |st, cx| {
@@ -1679,6 +1785,9 @@ impl GridView {
 
     /// Alvos de salto das células visíveis: `track` = só a linha do cursor; `beats` = só inícios de tempo.
     pub fn visible_cells(&self, beats: bool, track: bool) -> Vec<(Cur, Bounds<Pixels>)> {
+        if self.layout == Layout::Vertical {
+            return self.vvisible_cells(beats, track);
+        }
         let g = self.geom.borrow();
         let song = &self.song;
         let mut out = Vec::new();
@@ -1718,6 +1827,9 @@ impl GridView {
 
     /// Bounds (em coordenadas de janela) da célula `c`, pela geometria do último frame.
     pub fn cell_bounds(&self, c: Cur) -> Option<Bounds<Pixels>> {
+        if self.layout == Layout::Vertical {
+            return self.vcell_bounds(c);
+        }
         let g = self.geom.borrow();
         let song = &self.song;
         let s = song.section_of(c.m);

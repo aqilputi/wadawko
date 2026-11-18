@@ -173,6 +173,7 @@
       "space v p": "view::Partitura",
       "space v e": "view::Esteira",
       "space v t": "view::ToggleTheme",
+      "space v l": "view::ToggleLayout",
       "space g e": "nav::Editor",
       "space g m": "nav::Mixer",
       "space g p": "nav::Pessoas",
@@ -262,6 +263,36 @@
     "bindings": {
       "escape": "vim::Normal",
       "ctrl-[": "vim::Normal"
+    }
+  },
+  {
+    "context": "Workspace && layout == vertical",
+    "bindings": {
+      "down": "grid::Right",
+      "up": "grid::Left",
+      "right": "grid::Down",
+      "left": "grid::Up",
+      "shift-down": "grid::ExtendRight",
+      "shift-up": "grid::ExtendLeft",
+      "shift-right": "grid::ExtendDown",
+      "shift-left": "grid::ExtendUp",
+      "alt-down": "grid::MoveSelRight",
+      "alt-up": "grid::MoveSelLeft",
+      "alt-right": "grid::MoveSelDown",
+      "alt-left": "grid::MoveSelUp",
+      "alt-shift-down": "grid::CloneSelRight",
+      "alt-shift-up": "grid::CloneSelLeft",
+      "alt-shift-right": "grid::CloneSelDown",
+      "alt-shift-left": "grid::CloneSelUp"
+    }
+  },
+  {
+    "context": "Workspace && layout == vertical && (mode == normal || mode == visual || mode == vline)",
+    "bindings": {
+      "j": "grid::Right",
+      "k": "grid::Left",
+      "l": "grid::Down",
+      "h": "grid::Up"
     }
   },
   {

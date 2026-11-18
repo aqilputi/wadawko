@@ -30,7 +30,7 @@ use shell::{HintScope, RENDERS, Shell};
 use song_ext::SongExt;
 use state::AppState;
 use theme::Theme;
-use views::grid::{Cur, Lane, Motion, VMode};
+use views::grid::{Cur, Lane, Layout, Motion, VMode};
 
 const HELP: &str = "\
 WaDAWko — editor/DAW de taiko
@@ -408,7 +408,13 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         let up = |p, m: Modifiers| PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: p, modifiers: m, click_count: 1 });
         let mv = |p, m: Modifiers| PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: Some(MouseButton::Left), modifiers: m });
 
+        // troca o layout do editor (o probe passa pelos dois; os passos com régua usam o horizontal)
+        let set_layout = |l: Layout, cx: &mut AsyncApp| {
+            cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| g.set_layout(l, cx)));
+        };
+        let vertical = |cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).layout == Layout::Vertical);
         report("início", cx);
+        println!("PROBE layout do editor: {}", if vertical(cx) { "vertical" } else { "horizontal" });
         // linha 2 da música aberta (use uma com notas no compasso 0 dessa linha)
         let (Some(a), Some(b)) = (cell(0, 2, 0, cx), cell(0, 2, 1, cx)) else {
             println!("PROBE sem geometria de células");
@@ -477,7 +483,11 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         println!("PROBE Esc no meio do arrasto: {} · arrasto={:?}", row(cx), drag_state(cx));
         check("Esc no meio do arrasto não muda nada", row(cx) == row0 && drag_state(cx).0.is_none());
         // 6) soltar FORA da grade (no painel da direita) também larga o bloco
-        let outside = gpui_kit::point(gpui_kit::px(900.0), gpui_kit::px(500.0));
+        // no painel da direita (no editor vertical, x = 900 ainda é grade)
+        let outside = {
+            let vw = w.update(cx, |_, window, _| f32::from(window.viewport_size().width)).unwrap_or(1600.0);
+            gpui_kit::point(gpui_kit::px(vw - 140.0), gpui_kit::px(500.0))
+        };
         mouse(down(b, none), cx);
         sweep(b, e2, none, cx);
         wait(cx, 120).await; // como na vida real: a janela desenha frames durante o arrasto
@@ -705,7 +715,8 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             println!("PROBE inspector: célula (0,2,0) em {c:?} · slider em {p:?}");
             report("inspector: depois do clique na grade", cx);
             let k0 = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| c.k));
-            key("right", cx);
+            // no editor vertical o tempo anda com ↓ (→ é linha/sub-coluna)
+            key(if vertical(cx) { "down" } else { "right" }, cx);
             wait(cx, 80).await;
             let v3 = vol(cx);
             let k1 = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| c.k));
@@ -786,6 +797,10 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                     })
                 })
             };
+            // a faixa de loop vertical (no gutter) é da T3b: este passo roda na grade horizontal
+            let was_vertical = vertical(cx);
+            set_layout(Layout::Horizontal, cx);
+            wait(cx, 250).await;
             zoom_to(16.0, 1, cx);
             wait(cx, 200).await;
             match (lane(1, cx), lane(2, cx)) {
@@ -808,7 +823,10 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 _ => println!("PROBE sem compassos 2–3 para testar a faixa de loop"),
             }
             zoom_to(views::grid::BASE_CW, 0, cx);
-            wait(cx, 200).await;
+            if was_vertical {
+                set_layout(Layout::Vertical, cx);
+            }
+            wait(cx, 250).await;
             // Loop: seleção — arrasto numa célula vazia seleciona no compasso 0; a ação faz
             // o trecho c1; limpar (ação da barra) volta a tocar a música inteira
             if let (Some(e2), Some(e3)) = (cell(0, 2, 2, cx), cell(0, 2, 3, cx)) {
@@ -943,8 +961,13 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         {
             let h = |cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m: 0, t: 2, k: 1 }).map(|b| f32::from(b.size.height)));
             cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            // vertical: 28 → 24 (uma vez); horizontal: 36 → 28 (duas)
+            let vert = vertical(cx);
+            let (want, default) = if vert { (24.0, views::grid::ROW_H) } else { (28.0, views::grid::CELL_H) };
             key("ctrl-alt-down", cx);
-            key("ctrl-alt-down", cx);
+            if !vert {
+                key("ctrl-alt-down", cx);
+            }
             wait(cx, 250).await;
             let h1 = h(cx);
             let mut hit = None;
@@ -961,7 +984,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             wait(cx, 250).await;
             let h2 = h(cx);
             println!("PROBE altura das linhas: {h1:?} · clique em (0,2,1) → {hit:?} · padrão {h2:?}");
-            check("altura das linhas: Ctrl+Alt+↓ encolhe, clique acerta, padrão volta", h1 == Some(28.0) && hit == Some((0, 2, 1)) && h2 == Some(views::grid::CELL_H));
+            check("altura das linhas: Ctrl+Alt+↓ encolhe, clique acerta, padrão volta", h1 == Some(want) && hit == Some((0, 2, 1)) && h2 == Some(default));
         }
         // modo projeção (F7d): F10 abre por cima de tudo; Esc fecha
         {
@@ -1005,6 +1028,52 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             cx.update(|cx| state.update(cx, |s, cx| s.set_range(None, cx)));
             println!("PROBE trechos: {before} → {} ({saved:?}) · clique na lista → {r1:?} · Ctrl+Z → {undone}", after.len());
             check("trechos: guardar com nome, clicar põe em loop, Ctrl+Z desfaz", after.len() == before + 1 && saved.as_deref() == Some("entrada") && r1 == Some(r0) && undone == before);
+        }
+        // editor vertical (T3a): clique numa célula põe o cursor; ↓ desce no tempo, → muda de
+        // linha; ToggleLayout alterna (a célula continua a mesma) e volta
+        {
+            set_layout(Layout::Vertical, cx);
+            cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            let _ = w.update(cx, |_, window, _| window.refresh());
+            wait(cx, 250).await;
+            let cur = |cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| (c.m, c.t, c.k)));
+            let ctx_ok = w.update(cx, |_, window, _| window.context_stack().iter().any(|c| format!("{c:?}").contains("layout=vertical"))).unwrap_or(false);
+            let mut clicked = None;
+            if let Some(p) = cell(0, 1, 2, cx) {
+                mouse(PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: None, modifiers: none }), cx);
+                wait(cx, 50).await;
+                click(p, none, cx).await;
+                clicked = cur(cx);
+            }
+            key("down", cx);
+            wait(cx, 80).await;
+            let after_down = cur(cx);
+            key("right", cx);
+            wait(cx, 80).await;
+            let after_right = cur(cx);
+            // bounds de células vizinhas no tempo ficam uma embaixo da outra
+            let (b0, b1) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.cell_bounds(Cur { m: 0, t: 1, k: 2 }), g.cell_bounds(Cur { m: 0, t: 1, k: 3 }))
+            });
+            let stacked = matches!((b0, b1), (Some(a), Some(b)) if a.origin.x == b.origin.x && b.origin.y > a.origin.y);
+            let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::view::ToggleLayout), cx));
+            wait(cx, 250).await;
+            let (l1, c1) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.layout, g.cursor.map(|c| (c.m, c.t, c.k)))
+            });
+            let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::view::ToggleLayout), cx));
+            wait(cx, 250).await;
+            let (l2, c2) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.layout, g.cursor.map(|c| (c.m, c.t, c.k)))
+            });
+            println!("PROBE editor vertical: contexto layout=vertical {ctx_ok} · clique (0,1,2) → {clicked:?} · ↓ → {after_down:?} · → → {after_right:?} · células empilhadas {stacked} · ToggleLayout → {l1:?} {c1:?} → {l2:?} {c2:?}");
+            check(
+                "editor vertical: clique põe o cursor; ↓ desce no tempo; ToggleLayout alterna e a célula continua a mesma",
+                ctx_ok && clicked == Some((0, 1, 2)) && after_down == Some((0, 1, 3)) && after_right == Some((0, 2, 3)) && stacked && l1 == Layout::Horizontal && c1 == after_right && l2 == Layout::Vertical && c2 == after_right,
+            );
         }
         key("ctrl-k", cx);
         wait(cx, 100).await;
@@ -1146,6 +1215,7 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
             // ponto neutro entre os dois (célula/rótulo sem hover próprio)
             let (g0, u0, r0) = (shell::DBG_GRID_RENDERS.load(Ordering::Relaxed), shell::GRID_RENDER_US.load(Ordering::Relaxed), RENDERS.load(Ordering::Relaxed));
             let (sn0, su0) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
+            let (ch0, chu0) = (views::grid::COL_HEAD_RENDERS.load(Ordering::Relaxed), views::grid::COL_HEAD_US.load(Ordering::Relaxed));
             for i in 0..200 {
                 let p = pts[i % 2];
                 let _ = w.update(cx, |_, window, cx| {
@@ -1157,6 +1227,8 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
             let n = (g1 - g0).max(1);
             let (sn1, su1) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
             println!("STAT hover: {} renders de seção (média {:.2} ms)", sn1 - sn0, (su1 - su0) as f64 / (sn1 - sn0).max(1) as f64 / 1000.0);
+            let (ch1, chu1) = (views::grid::COL_HEAD_RENDERS.load(Ordering::Relaxed), views::grid::COL_HEAD_US.load(Ordering::Relaxed));
+            println!("STAT hover: {} renders do cabeçalho de colunas (editor vertical; média {:.2} ms)", ch1 - ch0, (chu1 - chu0) as f64 / (ch1 - ch0).max(1) as f64 / 1000.0);
             println!(
                 "STAT hover: 200 movimentos · {} renders da grade (média {:.2} ms, total {:.1} ms) · {} renders da raiz",
                 g1 - g0,
@@ -1174,6 +1246,9 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 if tab == "esteira" {
                     window.dispatch_action(Box::new(keys::view::Esteira), cx);
                 }
+                // `grade` = grade horizontal (linha de base); `tracker` = editor vertical
+                let layout = if tab == "tracker" { Layout::Vertical } else { Layout::Horizontal };
+                shell.read(cx).grid.clone().update(cx, |g, cx| g.set_layout(layout, cx));
                 shell.update(cx, |s: &mut Shell, cx| s.toggle_play(false, cx));
             });
             cx.background_executor().timer(Duration::from_millis(2000)).await;

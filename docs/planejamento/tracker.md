@@ -857,6 +857,47 @@ seção), `GridView.layout: Layout` + `view::ToggleLayout`; `hit()`, `cell_bound
 `row_h`/`col_w` em `settings`. Clique, seleção por arraste, edição, menus de dinâmica/andamento
 funcionam. **Pronto quando**: VP (probe com os ajustes de §8); captura `play` no vertical;
 `hoverstat` ≤ +5 %.
+> **Decisões na implementação (2026-11-18)**: (1) **Cabeçalho de colunas** = `grid::vrender::ColHeadView`,
+> view em cache posta pelo Shell na faixa fixa do editor (abaixo da barra de contexto, fora da
+> rolagem), com `px(20)` para alinhar com o conteúdo; a chave (`GridView::col_head_key`) é
+> calculada no render da grade e a view é notificada só quando muda. Ele desloca as colunas por
+> `-offset` (o mesmo `GridView::offset` das seções) — o risco do T3 não se confirmou. Os
+> mini-medidores são um `canvas` sem cache por cima dele (3 px no rodapé, largura da nota).
+> (2) O popover `⚙` (`Menu::Row`) **não** fica no cabeçalho: um irmão pintado depois (a área
+> rolável) o cobriria e `deferred` dentro de view em cache é arriscado; ele abre na raiz da
+> grade, no topo da área visível (`Geom::viewport`, posto pelo Shell a cada frame), sob a coluna.
+> (3) Gutter: clique = "tocar daqui" (sem o arrasto-para-rolar da régua); a faixa de loop (8 px)
+> só **pinta** o trecho — o arrasto vertical é da T3b, e o passo do probe "faixa de loop" roda no
+> `Layout::Horizontal` (troca e volta). (4) Coluna do compasso: 1ª linha = chip 30 px + `<` `>`
+> 16 px; 2ª linha = chip de andamento (58 px, texto 10 px); a cunha fica nos 10 px da direita a
+> partir da 3ª linha. Compasso de 1 linha não mostra o chip de andamento (inspector/paleta).
+> Sub-coluna `dyn`: chip na 1ª linha, `<` | `>` na 2ª, cunha da 3ª em diante. (5) Teclas: bloco
+> `Workspace && layout == vertical` no fim do keymap (no gpui, na mesma profundidade, o binding
+> definido depois vence) remapeando setas, `shift-`, `alt-` e `alt-shift-` + `h j k l` do vim
+> para as ações `grid::Left/Right/Up/Down` (e `Extend*`, `MoveSel*`, `CloneSel*`) existentes;
+> `pageup/pagedown` continuam trocando de linha (T4). Os sliders do inspector também ouvem essas
+> ações (`views/widgets.rs`): no vertical o sinal foi invertido para seguir a tecla física. O
+> contexto `layout=…` está no div `workspace` do Shell (é ele quem tem o foco). (6) Zoom no
+> vertical: `Ctrl+roda`, `z i`/`z o` = ±8 px na coluna, sem animação (o `cw` animado é da
+> horizontal); `z 0` volta a 96/28; tudo gravado (`layout`, `tracker_row_h`, `tracker_col_w` no
+> `settings.json`; `GridEvent::SettingsChanged` para o `Ctrl+roda`). "Ajustar à largura" =
+> `vgeom::fit_col_w` com a largura da grade do último frame (re-render quando a faixa muda, como o
+> `BarFit`). (7) Follow vertical "page": vira quando a linha do playhead passa de 85 % e põe-na a
+> 10 % do topo. **Risco para a T3b**: no gpui, `AnyView::cached` só reaproveita se os *bounds* não
+> mudaram (`view.rs`: `cache_key.bounds == bounds`) — rolar (inclusive `scroll.set_offset`)
+> re-renderiza as seções visíveis. O "page" custa um re-render por página; o "center" (rolar a
+> cada frame) re-renderizaria as seções visíveis a cada frame: medir antes, e se pesar, pintar o
+> deslocamento dentro do canvas (offset y próprio, como o `offset` x) em vez de rolar o
+> container. (8) O arrasto de bloco (`MoveDrag`) já funciona no vertical de graça (o `hit`
+> despacha: dx → coluna, dy → tempo); o ghost e a mola não foram revistos. (9) `Cols.fx_x` existe
+> e é sempre `None` (T8); o `hit` numa sub-coluna fx devolve `None`. Cor da seção no gutter =
+> `ink_faint` até a T7 (`VPaintArgs::sec_color`). (10) O `--demo hoverstat` agora imprime os
+> renders do cabeçalho de colunas e o tempo deles; `playstat-grade` força o horizontal e
+> `playstat-tracker` o vertical. Medidas (weston headless, pixman; T0 → T3a): `playstat` Shell::render
+> 0,31–0,32 ms (grade, T0) → 0,33–0,34 ms (tracker) com a grade a 0,34 ms na mesma rodada (máquina
+> mais carregada); `hoverstat` por hover 0,04 ms (grade) + 0,20 ms (uma seção) → 0,07 ms (grade) +
+> 0,13 ms (cabeçalho de colunas), 0 renders de seção.
+
 **T3b (1 dia)** — `Shell::playhead` devolve `y`; overlay: linha + wash + ▶ no gutter, flash,
 hover de linha, mini-medidores no cabeçalho; `follow` vertical (`center`/`page`/`off`,
 `ToggleFollow`, pausa em arrasto); loop-lane no gutter (`LoopDrag` vertical, alças); arrasto de

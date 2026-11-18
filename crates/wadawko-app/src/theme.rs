@@ -27,6 +27,10 @@ pub struct Theme {
     pub cell_empty: Hsla,
     /// célula com nota
     pub cell_filled: Hsla,
+    /// editor vertical: 1ª linha de cada tempo (destaque de tempo)
+    pub cell_beat: Hsla,
+    /// editor vertical: fundo do cabeçalho de colunas (fixo)
+    pub col_head: Hsla,
     /// texto principal (não é branco puro)
     pub ink: Hsla,
     /// texto secundário, rótulos, ícones
@@ -80,6 +84,8 @@ impl Theme {
             paper_hover: rgb(0xe2e2e2).into(),
             cell_empty: rgb(0xe6e6e6).into(),
             cell_filled: rgb(0xffffff).into(),
+            cell_beat: rgb(0xe9e9e9).into(),
+            col_head: rgb(0xf0f0f0).into(),
             ink: rgb(0x1f1f1f).into(),
             ink_soft: rgb(0x5a5a5a).into(),
             ink_faint: rgb(0x9a9a9a).into(),
@@ -116,6 +122,8 @@ impl Theme {
             paper_hover: rgb(0x474747).into(),
             cell_empty: rgb(0x2b2b2b).into(),
             cell_filled: rgb(0x363636).into(),
+            cell_beat: rgb(0x2e2e2e).into(),
+            col_head: rgb(0x222222).into(),
             ink: rgb(0xe6e6e6).into(),
             ink_soft: rgb(0xa6a6a6).into(),
             ink_faint: rgb(0x707070).into(),
@@ -162,6 +170,8 @@ impl Theme {
             ("paper_hover", self.paper_hover),
             ("cell_empty", self.cell_empty),
             ("cell_filled", self.cell_filled),
+            ("cell_beat", self.cell_beat),
+            ("col_head", self.col_head),
             ("ink", self.ink),
             ("ink_soft", self.ink_soft),
             ("ink_faint", self.ink_faint),
