@@ -64,9 +64,8 @@ impl GridView {
         let cur_def = track.def_id().to_string();
         let lbl = |s: &'static str| div().w(px(74.0)).flex_none().text_size(px(10.5)).text_color(th.ink_faint).child(s);
         let row = || div().flex().flex_wrap().items_center().gap(px(4.0));
-        let click = |id: &'static str, label: SharedString, on: bool, cx: &mut Context<Self>, f: Op| {
-            chip((id, t), th, on).child(label).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| f(this, cx)))
-        };
+        let click =
+            |id: &'static str, label: SharedString, on: bool, cx: &mut Context<Self>, f: Op| chip((id, t), th, on).child(label).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| f(this, cx)));
 
         let mut insts = row().child(lbl("instrumento"));
         for (i, def) in ops::kit::palette_instruments(&song).into_iter().enumerate() {
@@ -86,16 +85,12 @@ impl GridView {
             let pid = p.id.clone();
             let on = track.person_ids().contains(&p.id);
             let col = p.color.as_deref().and_then(parse_color).unwrap_or(th.ink_soft);
-            people = people.child(
-                chip(("pers", t * 100 + i), th, on)
-                    .gap(px(5.0))
-                    .child(div().size(px(8.0)).rounded(px(4.0)).bg(col))
-                    .child(SharedString::from(p.name.clone()))
-                    .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
-                        let pid = pid.clone();
-                        this.track_edit(t, cx, |s, tid| ops::people::toggle_track_person(s, tid, &pid));
-                    })),
-            );
+            people = people.child(chip(("pers", t * 100 + i), th, on).gap(px(5.0)).child(div().size(px(8.0)).rounded(px(4.0)).bg(col)).child(SharedString::from(p.name.clone())).on_click(
+                cx.listener(move |this, _: &ClickEvent, _, cx| {
+                    let pid = pid.clone();
+                    this.track_edit(t, cx, |s, tid| ops::people::toggle_track_person(s, tid, &pid));
+                }),
+            ));
         }
 
         let (pitch, vary, gain) = kyai::kyai_voice_or_default(track.kyai.as_ref());
@@ -127,51 +122,93 @@ impl GridView {
             .child(
                 row()
                     .child(div().flex_1().text_size(px(14.0)).font_weight(FontWeight::BOLD).child(SharedString::from(track.name.clone())))
-                    .child(click("r-ren", "✎ renomear".into(), false, cx, Rc::new(move |this, cx| {
-                        this.menu = None;
-                        cx.emit(GridEvent::Ask(InputTarget::TrackName(tid.clone()), name.clone()));
-                    })))
-                    .child(click("r-up", "↑".into(), false, cx, Rc::new(move |this, cx| {
-                        this.track_edit(t, cx, |s, tid| ops::tracks::move_track(s, tid, -1));
-                        if t > 0 {
-                            this.menu = this.menu.take().map(|m| if let Menu::Row { s, .. } = m { Menu::Row { t: t - 1, s } } else { m });
-                        }
-                    })))
-                    .child(click("r-down", "↓".into(), false, cx, Rc::new(move |this, cx| {
-                        let last = this.song.tracks.len().saturating_sub(1);
-                        this.track_edit(t, cx, |s, tid| ops::tracks::move_track(s, tid, 1));
-                        if t < last {
-                            this.menu = this.menu.take().map(|m| if let Menu::Row { s, .. } = m { Menu::Row { t: t + 1, s } } else { m });
-                        }
-                    })))
+                    .child(click(
+                        "r-ren",
+                        "✎ renomear".into(),
+                        false,
+                        cx,
+                        Rc::new(move |this, cx| {
+                            this.menu = None;
+                            cx.emit(GridEvent::Ask(InputTarget::TrackName(tid.clone()), name.clone()));
+                        }),
+                    ))
+                    .child(click(
+                        "r-up",
+                        "↑".into(),
+                        false,
+                        cx,
+                        Rc::new(move |this, cx| {
+                            this.track_edit(t, cx, |s, tid| ops::tracks::move_track(s, tid, -1));
+                            if t > 0 {
+                                this.menu = this.menu.take().map(|m| if let Menu::Row { s, .. } = m { Menu::Row { t: t - 1, s } } else { m });
+                            }
+                        }),
+                    ))
+                    .child(click(
+                        "r-down",
+                        "↓".into(),
+                        false,
+                        cx,
+                        Rc::new(move |this, cx| {
+                            let last = this.song.tracks.len().saturating_sub(1);
+                            this.track_edit(t, cx, |s, tid| ops::tracks::move_track(s, tid, 1));
+                            if t < last {
+                                this.menu = this.menu.take().map(|m| if let Menu::Row { s, .. } = m { Menu::Row { t: t + 1, s } } else { m });
+                            }
+                        }),
+                    ))
                     .child(click("r-main", "★ principal".into(), is_main, cx, Rc::new(move |this, cx| this.track_edit(t, cx, ops::tracks::toggle_main_track))))
-                    .child(click("r-rm", "✕ remover".into(), false, cx, Rc::new(move |this, cx| {
-                        this.menu = None;
-                        this.track_edit(t, cx, ops::tracks::remove_track);
-                    })))
-                    .child(click("r-close", "fechar".into(), false, cx, Rc::new(|this, cx| {
-                        this.menu = None;
-                        cx.notify();
-                    }))),
+                    .child(click(
+                        "r-rm",
+                        "✕ remover".into(),
+                        false,
+                        cx,
+                        Rc::new(move |this, cx| {
+                            this.menu = None;
+                            this.track_edit(t, cx, ops::tracks::remove_track);
+                        }),
+                    ))
+                    .child(click(
+                        "r-close",
+                        "fechar".into(),
+                        false,
+                        cx,
+                        Rc::new(|this, cx| {
+                            this.menu = None;
+                            cx.notify();
+                        }),
+                    )),
             )
             .child(insts)
             .child(people)
             .child(
                 row()
                     .child(lbl("sub-linhas"))
-                    .child(click("r-dyn", "f dinâmica própria".into(), has_dyn, cx, Rc::new(move |this, cx| {
-                        if !this.show_dyn.remove(&tid_d) {
-                            this.show_dyn.insert(tid_d.clone());
-                        }
-                        cx.notify();
-                    })))
-                    .child(click("r-kyai", "気 kiai".into(), has_kyai, cx, Rc::new(move |this, cx| {
-                        if !this.show_kyai.remove(&tid_k) {
-                            this.show_kyai.insert(tid_k.clone());
-                        }
-                        this.clamp_cursor();
-                        cx.notify();
-                    }))),
+                    .child(click(
+                        "r-dyn",
+                        "f dinâmica própria".into(),
+                        has_dyn,
+                        cx,
+                        Rc::new(move |this, cx| {
+                            if !this.show_dyn.remove(&tid_d) {
+                                this.show_dyn.insert(tid_d.clone());
+                            }
+                            cx.notify();
+                        }),
+                    ))
+                    .child(click(
+                        "r-kyai",
+                        "気 kiai".into(),
+                        has_kyai,
+                        cx,
+                        Rc::new(move |this, cx| {
+                            if !this.show_kyai.remove(&tid_k) {
+                                this.show_kyai.insert(tid_k.clone());
+                            }
+                            this.clamp_cursor();
+                            cx.notify();
+                        }),
+                    )),
             )
             .child(
                 row()
@@ -230,7 +267,14 @@ impl GridView {
             })));
         }
         alvo = alvo.child(
-            div().w(px(70.0)).flex().justify_center().text_size(px(13.0)).font_weight(FontWeight::BOLD).text_color(if cur.is_some() { th.ink } else { th.ink_faint }).child(SharedString::from(format!("♩ = {target:.0}"))),
+            div()
+                .w(px(70.0))
+                .flex()
+                .justify_center()
+                .text_size(px(13.0))
+                .font_weight(FontWeight::BOLD)
+                .text_color(if cur.is_some() { th.ink } else { th.ink_faint })
+                .child(SharedString::from(format!("♩ = {target:.0}"))),
         );
         for (i, d) in [1.0, 5.0].into_iter().enumerate() {
             alvo = alvo.child(chip(("tempo-up", i), th, false).child(SharedString::from(format!("{d:+.0}"))).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
@@ -328,13 +372,16 @@ impl Render for GridView {
             .w_full()
             .flex()
             .flex_col()
-            .on_mouse_up(MouseButton::Left, cx.listener(|this, _: &MouseUpEvent, _, cx| {
-                // soltou fora de um cabeçalho: cancela o arrasto de seção
-                if this.drag_sec.take().is_some() {
-                    this.drag_over = None;
-                    cx.notify();
-                }
-            }))
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|this, _: &MouseUpEvent, _, cx| {
+                    // soltou fora de um cabeçalho: cancela o arrasto de seção
+                    if this.drag_sec.take().is_some() {
+                        this.drag_over = None;
+                        cx.notify();
+                    }
+                }),
+            )
             .on_scroll(cx.listener(|this, ev: &ScrollEvent, _w, cx| {
                 let d = ev.delta.pixel_delta(px(20.0));
                 let (dx, dy) = (f32::from(d.x), f32::from(d.y));
@@ -454,12 +501,15 @@ impl Render for GridView {
                                 .text_size(px(12.0))
                                 .cursor_grab()
                                 .child("⠿")
-                                .on_mouse_down(MouseButton::Left, cx.listener(move |this, _: &MouseDownEvent, _, cx| {
-                                    this.drag_sec = Some(s);
-                                    this.drag_over = Some(s);
-                                    cx.stop_propagation();
-                                    cx.notify();
-                                })),
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(move |this, _: &MouseDownEvent, _, cx| {
+                                        this.drag_sec = Some(s);
+                                        this.drag_over = Some(s);
+                                        cx.stop_propagation();
+                                        cx.notify();
+                                    }),
+                                ),
                         )
                         .child({
                             let w = weak.clone();
@@ -475,8 +525,7 @@ impl Render for GridView {
                                     .font_weight(FontWeight::MEDIUM)
                                     .cursor_pointer()
                                     .when(cur_sec || is_sel, |d| d.text_color(th.accent))
-                                    .child(SharedString::from(if is_sel { format!("▶ {}", sec.name) } else { sec.name.clone() }))
-,
+                                    .child(SharedString::from(if is_sel { format!("▶ {}", sec.name) } else { sec.name.clone() })),
                                 format!("s{s}-name"),
                                 Rc::new(move |_, cx: &mut App| {
                                     let _ = w.update(cx, |this, cx| {
@@ -487,11 +536,16 @@ impl Render for GridView {
                                 }),
                             )
                         })
-                        .child(mk(format!("s{s}-ren"), "✎", false, Rc::new(move |_this, cx| {
-                            if let Some(id) = &sid_ren {
-                                cx.emit(GridEvent::Ask(InputTarget::SectionName(id.clone()), sec_name.clone()));
-                            }
-                        }))),
+                        .child(mk(
+                            format!("s{s}-ren"),
+                            "✎",
+                            false,
+                            Rc::new(move |_this, cx| {
+                                if let Some(id) = &sid_ren {
+                                    cx.emit(GridEvent::Ask(InputTarget::SectionName(id.clone()), sec_name.clone()));
+                                }
+                            }),
+                        )),
                 )
                 .child(
                     div()
@@ -506,12 +560,17 @@ impl Render for GridView {
                         .child(div().text_size(px(13.0)).text_color(if rep > 1 { th.accent } else { th.ink_soft }).child(SharedString::from(format!("{rep}×"))))
                         .child(mk(format!("s{s}-rep+"), "+", false, rep_op(1)))
                         .when(bar == BarFit::Full, |d| d.child(div().text_color(th.accent).text_size(px(14.0)).child("𝄇")))
-                        .child(mk(format!("s{s}-col"), if collapsed { "▸" } else { "▾" }, false, Rc::new(move |this, cx| {
-                            if !this.collapsed.remove(&key_col) {
-                                this.collapsed.insert(key_col.clone());
-                            }
-                            cx.notify();
-                        })))
+                        .child(mk(
+                            format!("s{s}-col"),
+                            if collapsed { "▸" } else { "▾" },
+                            false,
+                            Rc::new(move |this, cx| {
+                                if !this.collapsed.remove(&key_col) {
+                                    this.collapsed.insert(key_col.clone());
+                                }
+                                cx.notify();
+                            }),
+                        ))
                         // compassos: completo "− 4 compassos +", compacto "− 4c +", apertado some
                         // (continua no Ctrl+K e nos atalhos de section::MeasureAdd/Remove)
                         .when(bar != BarFit::Tight, |d| {
@@ -521,7 +580,7 @@ impl Render for GridView {
                                 .child(mk(format!("s{s}-m-"), "−", false, meas_op(false)))
                                 .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(SharedString::from(label)))
                                 .child(mk(format!("s{s}-m+"), "+", false, meas_op(true)))
-                        })
+                        }),
                 )
                 .child({
                     let w1 = weak.clone();
@@ -615,44 +674,73 @@ impl Render for GridView {
                                     .min_w_0()
                                     .flex()
                                     .flex_col()
-                                    .child(
-                                        div()
-                                            .text_size(px(14.0))
-                                            .font_weight(FontWeight::BOLD)
-                                            .when(cur_row, |d| d.text_color(th.accent))
-                                            .truncate()
-                                            .child(SharedString::from(if is_main { format!("★ {}", tr.name) } else { tr.name.clone() })),
-                                    )
+                                    .child(div().text_size(px(14.0)).font_weight(FontWeight::BOLD).when(cur_row, |d| d.text_color(th.accent)).truncate().child(SharedString::from(if is_main {
+                                        format!("★ {}", tr.name)
+                                    } else {
+                                        tr.name.clone()
+                                    })))
                                     .child(div().text_size(px(11.0)).text_color(th.ink_faint).truncate().child(SharedString::from(ops::kit::instrument_label(&song, tr).to_string()))),
                             )
-                            .child(mk(id("set"), "⚙", self.menu == Some(Menu::Row { t, s }), Rc::new(move |this, cx| {
-                                this.menu = if this.menu == Some(Menu::Row { t, s }) { None } else { Some(Menu::Row { t, s }) };
-                                cx.notify();
-                            })))
-                            .child(mk(id("dyn"), "f", rows.dynr[t], Rc::new(move |this, cx| {
-                                if !this.show_dyn.remove(&tid) {
-                                    this.show_dyn.insert(tid.clone());
-                                }
-                                cx.notify();
-                            })))
-                            .child(mk(id("mute"), "M", tr.muted, Rc::new(move |this, cx| {
-                                this.track_edit(t, cx, |s, tid| {
-                                    if let Some(tr) = s.track_mut(tid) {
-                                        tr.muted = !tr.muted;
+                            .child(mk(
+                                id("set"),
+                                "⚙",
+                                self.menu == Some(Menu::Row { t, s }),
+                                Rc::new(move |this, cx| {
+                                    this.menu = if this.menu == Some(Menu::Row { t, s }) { None } else { Some(Menu::Row { t, s }) };
+                                    cx.notify();
+                                }),
+                            ))
+                            .child(mk(
+                                id("dyn"),
+                                "f",
+                                rows.dynr[t],
+                                Rc::new(move |this, cx| {
+                                    if !this.show_dyn.remove(&tid) {
+                                        this.show_dyn.insert(tid.clone());
                                     }
-                                })
-                            })))
-                            .child(mk(id("solo"), "S", tr.solo, Rc::new(move |this, cx| {
-                                this.track_edit(t, cx, |s, tid| {
-                                    if let Some(tr) = s.track_mut(tid) {
-                                        tr.solo = !tr.solo;
-                                    }
-                                })
-                            })))
+                                    cx.notify();
+                                }),
+                            ))
+                            .child(mk(
+                                id("mute"),
+                                "M",
+                                tr.muted,
+                                Rc::new(move |this, cx| {
+                                    this.track_edit(t, cx, |s, tid| {
+                                        if let Some(tr) = s.track_mut(tid) {
+                                            tr.muted = !tr.muted;
+                                        }
+                                    })
+                                }),
+                            ))
+                            .child(mk(
+                                id("solo"),
+                                "S",
+                                tr.solo,
+                                Rc::new(move |this, cx| {
+                                    this.track_edit(t, cx, |s, tid| {
+                                        if let Some(tr) = s.track_mut(tid) {
+                                            tr.solo = !tr.solo;
+                                        }
+                                    })
+                                }),
+                            ))
                             .child(mk(id("star"), "★", is_main, Rc::new(move |this, cx| this.track_edit(t, cx, ops::tracks::toggle_main_track))))
                             .child(mk(id("rm"), "×", false, Rc::new(move |this, cx| this.track_edit(t, cx, ops::tracks::remove_track)))),
                     );
-                    let sub_label = |text: String, h: f32| div().mt(px(if h == TDYN_H { 4.0 } else { 2.0 })).h(px(h)).pl(px(rail_w)).flex().items_center().text_size(px(10.0)).italic().text_color(th.ink_faint).truncate().child(SharedString::from(text));
+                    let sub_label = |text: String, h: f32| {
+                        div()
+                            .mt(px(if h == TDYN_H { 4.0 } else { 2.0 }))
+                            .h(px(h))
+                            .pl(px(rail_w))
+                            .flex()
+                            .items_center()
+                            .text_size(px(10.0))
+                            .italic()
+                            .text_color(th.ink_faint)
+                            .truncate()
+                            .child(SharedString::from(text))
+                    };
                     if rows.dynr[t] {
                         label = label.child(sub_label(format!("dinâmica · {}", tr.name), TDYN_H));
                     }

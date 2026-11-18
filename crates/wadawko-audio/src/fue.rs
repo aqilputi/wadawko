@@ -16,8 +16,7 @@ const F5: f32 = 698.456_5;
 const E5: f32 = 659.255_1;
 
 /// [nota, duração em semínimas] — frase de abertura de Sakura Sakura
-const MELODY: [(f32, f64); 15] =
-    [(A5, 1.0), (A5, 1.0), (B5, 2.0), (A5, 1.0), (A5, 1.0), (B5, 2.0), (A5, 1.0), (B5, 1.0), (C6, 1.0), (B5, 1.0), (A5, 1.0), (B5, 0.5), (A5, 0.5), (F5, 1.0), (E5, 3.0)];
+const MELODY: [(f32, f64); 15] = [(A5, 1.0), (A5, 1.0), (B5, 2.0), (A5, 1.0), (A5, 1.0), (B5, 2.0), (A5, 1.0), (B5, 1.0), (C6, 1.0), (B5, 1.0), (A5, 1.0), (B5, 0.5), (A5, 0.5), (F5, 1.0), (E5, 3.0)];
 
 /// duração total da melodia (s)
 pub fn fue_total_secs() -> f64 {
@@ -140,7 +139,13 @@ impl Fue {
             let vib = 1.0 + 0.008 * (self.lfo * std::f32::consts::TAU).sin();
             self.phase = (self.phase + self.freq * vib / sr).fract();
             let p = self.phase;
-            let tri = if p < 0.25 { 4.0 * p } else if p < 0.75 { 2.0 - 4.0 * p } else { 4.0 * p - 4.0 };
+            let tri = if p < 0.25 {
+                4.0 * p
+            } else if p < 0.75 {
+                2.0 - 4.0 * p
+            } else {
+                4.0 * p - 4.0
+            };
             // sopro: ruído rosa em bandpass, bem baixo, acompanha a melodia
             let w = self.rng.bipolar();
             self.pink[0] = 0.99765 * self.pink[0] + w * 0.099_046;

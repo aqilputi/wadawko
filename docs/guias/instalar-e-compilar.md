@@ -13,16 +13,21 @@ generated:
 
 # Pacote pronto (Linux x86_64)
 
-Cada versão publica um `.tar.gz` em
-[Releases](https://github.com/aqilputi/wadawko/releases) (gerado pela CI com `tools/package.sh`):
+Cada versão publica em [Releases](https://github.com/aqilputi/wadawko/releases) (gerados pela CI):
 
-```sh
-tar xzf wadawko-*-linux-x86_64.tar.gz
-cd wadawko-*-linux-x86_64 && ./install.sh      # binários em ~/.local/bin + atalho no menu
-```
+- **AppImage** (`tools/appimage.sh`): um arquivo só, sem instalar —
+  `chmod +x WaDAWko-*-x86_64.AppImage && ./WaDAWko-*-x86_64.AppImage`.
+- **`.tar.gz`** (`tools/package.sh`): instala em `~/.local` com atalho e ícone no menu —
+  ```sh
+  tar xzf wadawko-*-linux-x86_64.tar.gz
+  cd wadawko-*-linux-x86_64 && ./install.sh
+  ```
 
-O pacote é compilado no Ubuntu 24.04: precisa de **glibc ≥ 2.39**. AppImage/Flatpak estão na
-[fase E do plano](/planejamento/repo.md). Para compilar do código, siga abaixo.
+Os dois são compilados no Ubuntu 24.04: precisam de **glibc ≥ 2.39**.
+
+**Flatpak**: há um manifesto em `assets/linux/flatpak/io.github.aqilputi.WaDAWko.yml` para build
+local (instruções no topo do arquivo; o build baixa os crates, então ainda não serve para o
+Flathub). Para compilar do código, siga abaixo.
 
 # Requisitos
 
@@ -44,31 +49,24 @@ cargo build --release -p wadawko-cli      # a linha de comando (opcional)
 ```
 
 A **primeira** compilação demora (~20 min numa máquina de notebook: o GPUI é grande); as
-seguintes levam de segundos a ~2 min. O `.cargo/config.toml` manda os artefatos para
-`spike/target/` (herança do protótipo — muda na fase B do plano), então o binário fica em
-`spike/target/release/wadawko`.
+seguintes levam de segundos a ~2 min. O binário fica em `target/release/wadawko`.
 
 > Trabalhando em outro checkout (worktree) do mesmo repositório, reaproveite o cache com
-> `CARGO_TARGET_DIR=<repo>/spike/target` — e leia as armadilhas em
+> `CARGO_TARGET_DIR=<repo>/target` — e leia as armadilhas em
 > [desempenho](/desenvolvimento/desempenho.md#armadilhas-de-build).
 
 # Instalar para uso diário
 
 ```sh
-ln -sfn "$PWD/spike/target/release/wadawko" ~/.local/bin/wadawko
+ln -sfn "$PWD/target/release/wadawko" ~/.local/bin/wadawko
 ```
 
-Entrada no menu de aplicativos (`~/.local/share/applications/wadawko.desktop`):
+Atalho e ícone no menu de aplicativos (o ID do app é `io.github.aqilputi.WaDAWko`):
 
-```ini
-[Desktop Entry]
-Type=Application
-Name=WaDAWko
-Comment=Editor de partituras de taiko
-Exec=wadawko
-Icon=audio-x-generic
-Terminal=false
-Categories=AudioVideo;Audio;Music;
+```sh
+install -Dm644 assets/linux/io.github.aqilputi.WaDAWko.desktop -t ~/.local/share/applications/
+cp -r assets/linux/icons/hicolor ~/.local/share/icons/
+rm -f ~/.local/share/applications/wadawko.desktop      # atalho antigo, se houver
 ```
 
 Com o link simbólico, cada `cargo build --release` atualiza o app instalado (feche e abra).
@@ -76,15 +74,21 @@ Com o link simbólico, cada `cargo build --release` atualiza o app instalado (fe
 # Primeira execução e migração do banco
 
 O banco fica em `~/.local/share/wadawko/wadawko.db` ([dados e arquivos](/referencia/dados-e-arquivos.md)).
-Sem banco, o app não abre. Para trazer as músicas do app web (o banco `data/wadawko.db` dele):
+Na primeira vez o app cria o banco com uma música de exemplo e avisa como trazer as suas.
+
+Para trazer as músicas do app web (o banco `data/wadawko.db` de um checkout antigo), de outro
+PC ou de um backup do `localStorage` (`.json`): **Config → importar músicas de outro banco ou
+backup…** (ou `Ctrl+K` → "importar músicas"). A origem é só lida; músicas novas entram e as
+que já existem ficam como estão.
+
+Pela linha de comando, antes de abrir o app pela primeira vez, o banco inteiro também pode ser
+copiado (`VACUUM INTO`, a origem é só lida):
 
 ```sh
-wadawko --migrate-from data/wadawko.db --read-only
+wadawko --migrate-from <checkout-antigo>/data/wadawko.db
 ```
 
-A origem é só lida (cópia consolidada com `VACUUM INTO`); depois disso abra normalmente com
-`wadawko`. Um backup do `localStorage` do navegador entra pela CLI:
-`wadawko-cli import-backup arquivo.json` ([linha de comando](/referencia/linha-de-comando.md)).
+Ou um backup JSON: `wadawko-cli import-backup arquivo.json` ([linha de comando](/referencia/linha-de-comando.md)).
 
 # Conferir
 

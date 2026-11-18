@@ -79,17 +79,7 @@ impl Autosave {
     /// Tempos explícitos (testes).
     pub fn with_timing(db: Db, debounce: Duration, max_wait: Duration) -> Autosave {
         let shared = Arc::new(Shared {
-            state: Mutex::new(State {
-                pending: BTreeMap::new(),
-                first: None,
-                due: None,
-                flush: false,
-                shutdown: false,
-                writing: false,
-                last_error: None,
-                attempts: 0,
-                writes: 0,
-            }),
+            state: Mutex::new(State { pending: BTreeMap::new(), first: None, due: None, flush: false, shutdown: false, writing: false, last_error: None, attempts: 0, writes: 0 }),
             wake: Condvar::new(),
             done: Condvar::new(),
         });
@@ -151,10 +141,13 @@ impl Autosave {
             self.shared.wake.notify_all();
             st = self.shared.done.wait(st).unwrap_or_else(|e| e.into_inner());
             // só vale o erro de uma tentativa feita depois deste pedido
-            if !st.writing && st.attempts != before && !st.pending.is_empty()
-                && let Some(e) = &st.last_error {
-                    return Err(anyhow!("falha ao gravar no banco: {e}"));
-                }
+            if !st.writing
+                && st.attempts != before
+                && !st.pending.is_empty()
+                && let Some(e) = &st.last_error
+            {
+                return Err(anyhow!("falha ao gravar no banco: {e}"));
+            }
             if self.thread.as_ref().is_none_or(|t| t.is_finished()) && !st.pending.is_empty() {
                 return Err(anyhow!("a thread de autosave terminou com gravações pendentes"));
             }

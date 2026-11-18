@@ -99,9 +99,10 @@ impl ProjectStore {
         let (workspace, song) = 'boot: {
             let mut ws = existing.unwrap_or_default();
             if let Some(id) = ws.current_id.clone()
-                && let Some(song) = try_read_song(&db, &id) {
-                    break 'boot (ws, song);
-                }
+                && let Some(song) = try_read_song(&db, &id)
+            {
+                break 'boot (ws, song);
+            }
             let readable = ws.projects.iter().find_map(|p| try_read_song(&db, &p.id).map(|s| (p.id.clone(), s)));
             if let Some((id, song)) = readable {
                 ws.current_id = Some(id);
@@ -209,6 +210,31 @@ impl ProjectStore {
         }
     }
 
+    /// Traz para este banco as músicas de **outro banco** (`.db` do app web ou de
+    /// outra instalação, aberto só para leitura) ou de um **backup JSON** do
+    /// localStorage: músicas novas entram; as que já existem ficam como estão
+    /// (mesma fusão de [`crate::import_backup`]). A música aberta não muda.
+    pub fn import_library(&mut self, path: impl AsRef<std::path::Path>) -> Result<crate::BackupReport> {
+        let path = path.as_ref();
+        self.ensure_writable()?;
+        // o autosave pendente gravaria o workspace antigo por cima do importado
+        self.flush()?;
+        let mut head = [0u8; 16];
+        let is_sqlite = std::fs::File::open(path).and_then(|mut f| std::io::Read::read_exact(&mut f, &mut head)).is_ok() && &head == b"SQLite format 3\0";
+        let report = if is_sqlite {
+            let src = Db::open_read_only(path)?;
+            let dict: Map<String, Value> = src.all()?.into_iter().map(|(k, v)| (k, Value::String(v))).collect();
+            crate::import_backup(&self.db, &Value::Object(dict).to_string(), crate::BackupOptions::default()).with_context(|| format!("importar {}", path.display()))?
+        } else {
+            crate::import_backup_file(&self.db, path, crate::BackupOptions::default())?
+        };
+        if let Some(mut ws) = read_workspace(&self.db)? {
+            ws.current_id = self.workspace.current_id.clone();
+            self.workspace = ws;
+        }
+        Ok(report)
+    }
+
     /// Há edição ainda não gravada?
     pub fn has_unsaved_changes(&self) -> bool {
         self.autosave.as_ref().is_some_and(Autosave::is_dirty)
@@ -230,18 +256,16 @@ impl ProjectStore {
     fn touch_current(&mut self) {
         let title = display_title(&self.song);
         if let Some(id) = self.workspace.current_id.clone()
-            && let Some(meta) = self.workspace.projects.iter_mut().find(|p| p.id == id) {
-                meta.title = title;
-                meta.updated_at = now();
-            }
+            && let Some(meta) = self.workspace.projects.iter_mut().find(|p| p.id == id)
+        {
+            meta.title = title;
+            meta.updated_at = now();
+        }
     }
 
     fn schedule_current(&self) {
         let (Some(autosave), Some(id)) = (&self.autosave, &self.workspace.current_id) else { return };
-        autosave.schedule_many([
-            (project_key(id), Payload::Song(self.song.clone())),
-            (WORKSPACE_KEY.to_string(), Payload::Text(self.workspace.to_json())),
-        ]);
+        autosave.schedule_many([(project_key(id), Payload::Song(self.song.clone())), (WORKSPACE_KEY.to_string(), Payload::Text(self.workspace.to_json()))]);
     }
 
     fn write_workspace_with(&self, mut writes: Vec<KvWrite>) -> Result<()> {

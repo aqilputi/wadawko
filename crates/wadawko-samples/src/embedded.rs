@@ -1,5 +1,5 @@
 //! Lista única dos arquivos do banco e (feature `embed`) os bytes embutidos,
-//! lidos de `public/samples/` na raiz do repositório — sem copiar os arquivos.
+//! lidos de `assets/samples/` na raiz do repositório — sem copiar os arquivos.
 
 /// Chama `$m!` com os nomes (sem extensão) de todos os `.ogg` do banco.
 macro_rules! with_sample_names {
@@ -37,7 +37,7 @@ pub static SAMPLE_NAMES: &[&str] = with_sample_names!(names_array);
 #[cfg(feature = "embed")]
 macro_rules! bytes_array {
     ($($n:literal),* $(,)?) => {
-        &[$(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../public/samples/", $n, ".ogg")) as &[u8]),*]
+        &[$(include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/samples/", $n, ".ogg")) as &[u8]),*]
     };
 }
 
@@ -45,6 +45,6 @@ macro_rules! bytes_array {
 #[cfg(feature = "embed")]
 pub static EMBEDDED: &[&[u8]] = with_sample_names!(bytes_array);
 
-/// Texto de `public/samples/CREDITS.md` (obrigação das licenças CC BY / CC BY-SA:
+/// Texto de `assets/samples/CREDITS.md` (obrigação das licenças CC BY / CC BY-SA:
 /// a UI precisa mostrar). Embutido sempre, com ou sem a feature `embed`.
-pub static CREDITS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../public/samples/CREDITS.md"));
+pub static CREDITS: &str = include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../assets/samples/CREDITS.md"));

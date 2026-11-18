@@ -89,14 +89,7 @@ pub fn render(song: &Song, bank: &SampleBank, opts: &RenderOptions) -> Rendered 
 /// Como [`render`], com progresso (0..1, chamado a cada ~0,7 s de áudio) e
 /// cancelamento (`cancel` é lido a cada bloco). `samples` pode ser o mesmo
 /// `SampleSet` do engine ao vivo.
-pub fn render_with(
-    song: &Song,
-    bank: &SampleBank,
-    samples: &Arc<SampleSet>,
-    opts: &RenderOptions,
-    progress: &mut dyn FnMut(f32),
-    cancel: &AtomicBool,
-) -> Result<Rendered, Cancelled> {
+pub fn render_with(song: &Song, bank: &SampleBank, samples: &Arc<SampleSet>, opts: &RenderOptions, progress: &mut dyn FnMut(f32), cancel: &AtomicBool) -> Result<Rendered, Cancelled> {
     let sr = opts.sample_rate.max(8_000);
     let schedule = Arc::new(compile(song, bank, sr, &CompileOptions { region: opts.region, skip_inaudible: true, seed: opts.seed, bpm: None }));
     let hits = schedule.hits().count();

@@ -45,6 +45,9 @@ jobs:
           cat >> notes.md <<'EOF'
 
           ### Instalar (Linux x86_64)
+          **AppImage** (um arquivo só): baixe `WaDAWko-*-x86_64.AppImage`, `chmod +x` e rode.
+
+          **Pacote** (instala em `~/.local`, com atalho no menu):
           ```sh
           tar xzf wadawko-*-linux-x86_64.tar.gz
           cd wadawko-*-linux-x86_64 && ./install.sh     # copia para ~/.local

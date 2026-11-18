@@ -104,7 +104,9 @@ pub enum EventKind {
     Grain(GrainEv),
     Noise(NoiseEv),
     /// clique do metrônomo (só soa com o metrônomo ligado no engine)
-    Click { accent: bool },
+    Click {
+        accent: bool,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]

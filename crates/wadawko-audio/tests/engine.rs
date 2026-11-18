@@ -7,9 +7,7 @@ use std::sync::Arc;
 
 use common::{bank, peak, rms};
 use wadawko_audio::schedule::{PREVIEW_SLOT, hit_event};
-use wadawko_audio::{
-    Command, CompileOptions, Controller, Engine, EngineConfig, EngineEvent, EventKind, MasterMode, PPQ, PlayOptions, Region, SampleSet, TrainerOptions, engine_pair,
-};
+use wadawko_audio::{Command, CompileOptions, Controller, Engine, EngineConfig, EngineEvent, EventKind, MasterMode, PPQ, PlayOptions, Region, SampleSet, TrainerOptions, engine_pair};
 use wadawko_core::demo::demo_song;
 use wadawko_core::model::{BUILTIN_INSTRUMENTS, Person, Section};
 use wadawko_core::ops::cells::set_cell;

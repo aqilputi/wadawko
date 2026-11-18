@@ -18,7 +18,7 @@ toca o resultado com samples reais, mostra a partitura e anima uma "esteira" de 
 ensaio.
 
 O projeto nasceu como app web (Svelte, 2026-07) e foi reescrito como **app desktop nativo em
-Rust + GPUI** (2026-11). O app web está arquivado no branch `web-legacy`.
+Rust + GPUI** (2026-11). O app web está arquivado na tag `web-final` (e no branch `web-legacy`).
 
 # O que dá para fazer
 
@@ -43,11 +43,11 @@ Passo a passo de uso: [guia de uso](/guias/uso.md). Instalar e compilar:
 |---|---|
 | `crates/` | Workspace Rust — um crate por responsabilidade ([mapa](/arquitetura/workspace.md)) |
 | `docs/` | Esta documentação, um bundle [OKF v0.2](https://github.com/GoogleCloudPlatform/open-knowledge-format) |
-| `public/samples/` | Samples `.ogg` e créditos — embutidos no binário ([créditos](/creditos.md)) |
+| `assets/samples/` | Samples `.ogg` e créditos — embutidos no binário ([créditos](/creditos.md)) |
 | `assets/fonts/` | Fontes embutidas (Zen Kaku Gothic New, Shippori Mincho, Bravura) |
-| `tools/` | Scripts do repositório (gerar a página de atalhos, checar o bundle OKF) |
-| `data/` | Fixtures de teste (backup das músicas do app web) |
-| `spike/`, `src/`, `server/`… | Protótipo GPUI e app web antigos — saem do `main` na [fase B do plano](/planejamento/repo.md) |
+| `assets/linux/` | Atalho `.desktop`, ícone e metadados AppStream |
+| `tools/` | Scripts do repositório (atalhos, bundle OKF, pacote, extração dos samples) |
+| `crates/wadawko-core/tests/fixtures/` | Fixtures de teste (backup de músicas do app web, golden do porte) |
 
 # Estado
 

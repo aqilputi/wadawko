@@ -14,7 +14,7 @@ generated:
 # Steps
 
 1. **Branch**: trabalhe num branch a partir do `main` e abra um PR para o `main`
-   (`github.com/aqilputi/wadawko`). O `web-legacy` guarda o app web e não recebe mudanças.
+   (`github.com/aqilputi/wadawko`). O app web antigo fica na tag `web-final` (e no branch `web-legacy`) e não recebe mudanças.
 2. **Compilar**: `cargo build -p wadawko-app` (dev já otimiza as dependências). Em outro
    checkout, reaproveite o cache com `CARGO_TARGET_DIR` — leia antes as
    [armadilhas de build](/desenvolvimento/desempenho.md#armadilhas-de-build).
@@ -22,7 +22,8 @@ generated:
    chama `AppState::edit`. Página/aba nova, comando novo, atalho novo: siga a
    [arquitetura do app](/arquitetura/app.md).
 4. **Antes do commit**:
-   - `cargo test --workspace` e `cargo clippy --workspace --all-targets` (a CI recusa avisos);
+   - `cargo fmt --all`, `cargo test --workspace` e `cargo clippy --workspace --all-targets`
+     (a CI recusa código fora do `rustfmt.toml` e avisos do clippy);
    - mudou interação? rode o probe ([testes e depuração](/desenvolvimento/testes-e-depuracao.md))
      e acrescente um passo para o caso novo;
    - mudou teclas ou títulos de comandos? `python3 tools/gen-atalhos.py`;

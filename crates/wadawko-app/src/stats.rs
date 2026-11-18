@@ -86,13 +86,7 @@ impl Stats {
         let Some(a) = a else { return "sem áudio".to_string() };
         let p95 = self.frames.recent_pct(240, 0.95);
         let fps = if p95 > 0.0 { 1000.0 / self.frames.recent_pct(240, 0.5) } else { 0.0 };
-        format!(
-            "{:.0} fps · grade {:.1} ms · áudio {} · atrasos {}",
-            fps,
-            self.grid_paint.recent_pct(240, 0.95),
-            a.buffer_frames.load(Ordering::Relaxed),
-            a.late_callbacks.load(Ordering::Relaxed)
-        )
+        format!("{:.0} fps · grade {:.1} ms · áudio {} · atrasos {}", fps, self.grid_paint.recent_pct(240, 0.95), a.buffer_frames.load(Ordering::Relaxed), a.late_callbacks.load(Ordering::Relaxed))
     }
 
     pub fn report(&self, a: Option<&Clock>, secs: f32) -> String {

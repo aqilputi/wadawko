@@ -17,15 +17,19 @@ verde a cada PR; documentação de uso e de arquitetura; backlog organizado.**
 
 ---
 
-## Andamento (atualizado em 2026-11-16, fim do dia)
+## Andamento (atualizado em 2026-11-17)
 
 | Fase | Situação |
 |---|---|
 | A — Consolidar | **feita**: branch de trabalho juntado no `main` (fast-forward), `main` padrão no GitHub, release `v0.1.0` |
-| B — Limpar a raiz | parcial: planos/arquitetura já em `docs/`; falta tirar web, `spike/`, mover samples e fixtures |
-| C — Qualidade e CI | parcial: **CI no ar** (`ci.yml` + `build.yml`: docs, `cargo test --workspace --release`, build, pacote); avisos de compilação e do clippy zerados, clippy na CI; falta `cargo fmt` e testes de GUI headless |
-| D — Documentação | quase: README com capturas, `docs/` OKF, `CHANGELOG.md`; templates de issue/PR; falta `LICENSE` (D1) |
-| E — Distribuição | parcial: **release automático** por tag (`release.yml`) com `.tar.gz` + `install.sh` + `.desktop`; falta ícone, AppImage, Flatpak |
+| B — Limpar a raiz | **feita**: web e `spike/` fora do `main` (tag `web-final`), samples em `assets/samples/`, fixtures no core, `target/` padrão |
+| C — Qualidade e CI | quase: avisos e clippy zerados, `cargo fmt` (+ `.git-blame-ignore-revs`), fmt e clippy na CI; `--demo probe` com verificações e código de saída; falta rodar o probe na CI (compositor headless) |
+| D — Documentação | **feita**: README com capturas, `docs/` OKF, `CHANGELOG.md`, templates de issue/PR, `LICENSE-MIT`/`LICENSE-APACHE`/`NOTICE` |
+| E — Distribuição | quase: ícone próprio, `.desktop`/metainfo com o ID `io.github.aqilputi.WaDAWko`, AppImage (`tools/appimage.sh`) no release, manifesto Flatpak para build local; falta publicar no Flathub (opcional) |
+
+Decisões tomadas em 2026-11-16: D1 MIT OR Apache-2.0 · D2 repositório público · D3
+`io.github.aqilputi.WaDAWko` · D4 web fora do `main` (tag `web-final`) · D5 `spike/` apagado ·
+D6 fixtures reduzidas a duas músicas.
 
 ## 0. Onde estamos (2026-11-16, início do dia)
 
@@ -140,8 +144,11 @@ gera os índices.
 Abrir como **issues** com milestones, em vez de listas em markdown:
 - **Verificações manuais** que faltam: fps em X11, sincronia som × imagem a olho, 10 min tocando
   sem xrun, Ctrl+C para fora do app (área de transferência do Wayland).
-- **Desempenho:** barra de contexto e status bar ainda redesenham a cada frame (~4,7 ms/frame
-  tocando); grade re-renderizada em hover de botões (~2.500 elementos) — virtualizar por seção.
+- **Desempenho:** ~~barra de contexto e status bar redesenhando a cada frame~~ (em cache desde
+  2026-11-17, −19% de CPU por frame tocando); falta a grade re-renderizada em hover de botões
+  (~2.500 elementos) — uma view em cache por seção.
+- **Probe na CI:** rodar `--demo probe` (já sai com código ≠ 0 em falha) num job com
+  compositor headless + lavapipe.
 - **Fase 6 (bonecos)** — adiada; rig, estações, lane de movimentos, export de vídeo.
 - Itens "só planejados" do `/planejamento/gpui.md` §1.2: vocabulário editável, dinâmica por
   célula, export MIDI/TJA/PDF, MIDI input, i18n, compartilhar por URL.

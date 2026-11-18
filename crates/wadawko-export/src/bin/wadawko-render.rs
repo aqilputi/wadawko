@@ -7,7 +7,7 @@ use std::sync::atomic::AtomicBool;
 use std::time::Instant;
 
 use anyhow::{Context, Result, bail};
-use wadawko_audio::{MasterMode, Region, SampleSet, compile, CompileOptions};
+use wadawko_audio::{CompileOptions, MasterMode, Region, SampleSet, compile};
 use wadawko_export::{AudioFormat, BitDepth, ExportOptions, ExportStage, export_song, load_song_file};
 use wadawko_samples::SampleBank;
 

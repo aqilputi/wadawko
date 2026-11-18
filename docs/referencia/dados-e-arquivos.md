@@ -25,7 +25,9 @@ fontes: [crates/wadawko-store/src/db.rs, crates/wadawko-app/src/keys/settings.rs
   música — o JSON descrito em [formato da música](/referencia/formato-da-musica.md)),
   `wadawko:theme` (tema) e `wadawko:native:settings` (preferências só do app nativo).
 - **Autosave** 400 ms depois da última edição; desfazer/refazer guardam até 100 passos (na memória).
-- Sem banco o app não abre — crie com `--migrate-from` ([instalar e compilar](/guias/instalar-e-compilar.md)).
+- Sem banco, o app cria um com a música de exemplo. Para trazer músicas de outro banco
+  (o `data/wadawko.db` do app web, ou o de outro PC) ou de um backup `.json`: **Config →
+  importar músicas** (ou `Ctrl+K` "importar músicas") — junta sem sobrescrever nada.
 - Backup: copie o arquivo `.db` com o app fechado (ou use `wadawko-cli export` por música).
 
 # settings.json

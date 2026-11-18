@@ -21,24 +21,10 @@ pub struct Theme {
 
 impl Theme {
     pub const fn light() -> Self {
-        Theme {
-            ink: Color::rgb(0x1c1b1a),
-            ink_soft: Color::rgb(0x6b6660),
-            staff: Color::rgb(0x1c1b1a),
-            kyai: Color::rgb(0xd6452b),
-            accent: Color::rgb(0xe8590c),
-            paper: Some(Color::WHITE),
-        }
+        Theme { ink: Color::rgb(0x1c1b1a), ink_soft: Color::rgb(0x6b6660), staff: Color::rgb(0x1c1b1a), kyai: Color::rgb(0xd6452b), accent: Color::rgb(0xe8590c), paper: Some(Color::WHITE) }
     }
     pub const fn dark() -> Self {
-        Theme {
-            ink: Color::rgb(0xeae6df),
-            ink_soft: Color::rgb(0xa39d94),
-            staff: Color::rgb(0xcfc9c0),
-            kyai: Color::rgb(0xff7a5c),
-            accent: Color::rgb(0xffa94d),
-            paper: Some(Color::rgb(0x1b1a19)),
-        }
+        Theme { ink: Color::rgb(0xeae6df), ink_soft: Color::rgb(0xa39d94), staff: Color::rgb(0xcfc9c0), kyai: Color::rgb(0xff7a5c), accent: Color::rgb(0xffa94d), paper: Some(Color::rgb(0x1b1a19)) }
     }
 }
 
@@ -120,12 +106,7 @@ impl EngraveOptions {
     }
     /// Impressão: A4 paisagem, escala reduzida (2 sistemas de 4 linhas por página).
     pub fn a4_landscape() -> Self {
-        EngraveOptions {
-            zoom: 0.65,
-            beat_width: 86.0,
-            mode: LayoutMode::Paged(PageSpec::a4_landscape()),
-            ..Default::default()
-        }
+        EngraveOptions { zoom: 0.65, beat_width: 86.0, mode: LayoutMode::Paged(PageSpec::a4_landscape()), ..Default::default() }
     }
     pub fn with_zoom(mut self, zoom: f32) -> Self {
         self.zoom = zoom;

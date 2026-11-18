@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.aqilputi.WaDAWko</id>
+  <name>WaDAWko</name>
+  <summary>Write, hear and rehearse taiko pieces in kuchi shōga</summary>
+  <summary xml:lang="pt-BR">Escreva, ouça e ensaie músicas de taiko em kuchi shōga</summary>
+  <developer id="io.github.aqilputi">
+    <name>Fernando Pucci</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+  <description>
+    <p>
+      WaDAWko is a score editor and small DAW for taiko groups. Pieces are written in
+      kuchi shōga, the spoken syllables of the drums (don, doko, ka, tsuku…), on a grid
+      with one row per instrument.
+    </p>
+    <ul>
+      <li>Sections with repeats, dynamics, crescendo, tempo changes and kiai</li>
+      <li>Playback with real taiko samples, loop, metronome, count-in and a practice trainer</li>
+      <li>Generated score, a note highway for rehearsal, and a mixer per player</li>
+      <li>Export to JSON, WAV, MP3, SVG, PNG and PDF</li>
+      <li>Keyboard first: command palette, jump labels and optional vim mode</li>
+    </ul>
+    <p xml:lang="pt-BR">
+      O WaDAWko é um editor de partituras e uma pequena DAW para grupos de taiko. As músicas
+      são escritas em kuchi shōga, as sílabas faladas dos tambores, numa grade com uma linha
+      por instrumento.
+    </p>
+  </description>
+  <launchable type="desktop-id">io.github.aqilputi.WaDAWko.desktop</launchable>
+  <provides>
+    <binary>wadawko</binary>
+  </provides>
+  <url type="homepage">https://github.com/aqilputi/wadawko</url>
+  <url type="bugtracker">https://github.com/aqilputi/wadawko/issues</url>
+  <url type="vcs-browser">https://github.com/aqilputi/wadawko</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>The grid: sections, one row per instrument and the syllable of each cell</caption>
+      <image>https://raw.githubusercontent.com/aqilputi/wadawko/main/docs/imagens/grade.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Score generated from the grid</caption>
+      <image>https://raw.githubusercontent.com/aqilputi/wadawko/main/docs/imagens/partitura.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Note highway for rehearsal</caption>
+      <image>https://raw.githubusercontent.com/aqilputi/wadawko/main/docs/imagens/esteira.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-11-16">
+      <description>
+        <p>First release of the native app (Rust + GPUI).</p>
+      </description>
+    </release>
+  </releases>
+</component>

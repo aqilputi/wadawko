@@ -91,8 +91,13 @@ pub struct Shell {
     pub views: Views,
     pub focus: FocusHandle,
     pub palette_focus: FocusHandle,
-    /// moldura em cache (barra de cima, lateral, painel de músicas) — ver `chrome.rs`
-    pub chrome: [Entity<chrome::Chrome>; 3],
+    /// moldura em cache (barra de cima, lateral, painel de músicas, barra de contexto,
+    /// status bar) — ver `chrome.rs`; índices em `chrome::Part`
+    pub chrome: [Entity<chrome::Chrome>; 5],
+    /// o que a status bar mostra (recalculado a cada frame; ela redesenha quando muda)
+    pub status: crate::views::status_bar::StatusModel,
+    /// altura medida da barra de contexto (0 = medir no próximo frame, sem cache)
+    ctx_h: Rc<std::cell::Cell<f32>>,
     /// física do balanço do bloco arrastado (notas)
     pub swing: Rc<RefCell<crate::views::drag_ghost::Swing>>,
     pub hint_focus: FocusHandle,
@@ -207,8 +212,10 @@ impl Shell {
             swing: Rc::new(RefCell::new(Default::default())),
             chrome: {
                 let me = cx.weak_entity();
-                [chrome::Part::Top, chrome::Part::Nav, chrome::Part::Panel].map(|p| cx.new(|_| chrome::Chrome::new(me.clone(), p)))
+                [chrome::Part::Top, chrome::Part::Nav, chrome::Part::Panel, chrome::Part::Context, chrome::Part::Status].map(|p| cx.new(|_| chrome::Chrome::new(me.clone(), p)))
             },
+            status: Default::default(),
+            ctx_h: Rc::new(std::cell::Cell::new(0.0)),
             hint_focus: cx.focus_handle(),
             prompt_focus: cx.focus_handle(),
             scroll: ScrollHandle::new(),
@@ -245,7 +252,7 @@ impl Shell {
 
     /// Calcula a chave de cada peça da moldura (tudo que ela mostra) e notifica
     /// só as que mudaram — o resto é reaproveitado do frame anterior.
-    fn refresh_chrome(&mut self, playing: bool, cx: &mut Context<Self>) {
+    fn refresh_chrome(&mut self, playing: bool, viewport_w: f32, cx: &mut Context<Self>) {
         use chrome::hash_into as h;
         let st = self.state.read(cx);
         let dark = st.theme.dark;
@@ -264,12 +271,24 @@ impl Shell {
                     h(k, &(&p.id, &p.title, p.updated_at));
                 }
             }),
+            // barra de contexto: tudo que ela lê + a largura (quebra de linha muda a altura)
+            chrome::key(|k| {
+                let g = self.grid.read(cx);
+                let beats = g.cursor.and_then(|c| st.song().measures.get(c.m)).map(|m| m.beats);
+                h(k, &(dark, rev, &st.pen, &st.tp.selected, self.vim_on, &self.add_instrument));
+                h(k, &(g.mode, g.zoom_pct(), g.anchor.is_some(), beats, viewport_w.round() as i32));
+            }),
+            chrome::key(|k| h(k, &(dark, &self.status))),
         ];
-        for (view, key) in self.chrome.iter().zip(keys) {
+        for (i, (view, key)) in self.chrome.iter().zip(keys).enumerate() {
             view.update(cx, |c, cx| {
                 if c.key != key {
                     c.key = key;
                     cx.notify();
+                    if i == chrome::Part::Context as usize {
+                        // conteúdo novo pode ter outra altura: mede de novo
+                        self.ctx_h.set(0.0);
+                    }
                 }
             });
         }
@@ -569,11 +588,7 @@ impl Shell {
             }
             let (m, k) = song.unflat(h.cell);
             let Some(bounds) = grid.cell_bounds(Cur { m, t: h.track, k }) else { continue };
-            let (rim, vel) = song
-                .cell(h.track, m, k)
-                .and_then(phrase::resolve_cell)
-                .and_then(|r| r.hits.get(h.hit).map(|x| (x.zone == Zone::Rim, x.vel as f32)))
-                .unwrap_or((false, 0.8));
+            let (rim, vel) = song.cell(h.track, m, k).and_then(phrase::resolve_cell).and_then(|r| r.hits.get(h.hit).map(|x| (x.zone == Zone::Rim, x.vel as f32))).unwrap_or((false, 0.8));
             out.push(Flash { bounds, strength: (1.0 - age / dur).powf(0.8) * (0.7 + 0.3 * vel.min(1.0)), rim });
         }
         (out, label)
@@ -703,8 +718,12 @@ impl Shell {
         }
 
         let th = self.theme(cx);
+        // playhead + notas soando agora (overlay sem cache, irmão da grade)
+        let ph = if self.on_grid() { self.playhead(cx) } else { None };
+        let (flashes, play_pos) = if self.on_grid() { self.playing_cells(cx) } else { (Vec::new(), None) };
+        self.status = self.status_model(playing, play_pos, cx);
         // moldura em cache: só re-renderiza quando a chave dela muda
-        self.refresh_chrome(playing, cx);
+        self.refresh_chrome(playing, f32::from(window.viewport_size().width), cx);
         let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(200.0)).h_full().flex_none());
         let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(57.0)).flex_none());
 
@@ -716,7 +735,16 @@ impl Shell {
                 let mut head = div().flex().flex_col().gap(px(12.0)).child(div().flex().child(self.view_tabs(&th)));
                 let body = match self.views.tab(self.tab) {
                     None => {
-                        head = head.child(self.context_toolbar(&th, cx));
+                        // em cache com a altura medida; sem medida (chave nova), desenha
+                        // sem cache e mede pelo prepaint do wrapper
+                        let h = self.ctx_h.get();
+                        let bar = &self.chrome[chrome::Part::Context as usize];
+                        head = if h > 0.0 {
+                            head.child(bar.clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(h)).flex_none()))
+                        } else {
+                            let cell = self.ctx_h.clone();
+                            head.child(div().w_full().on_children_prepainted(move |b, _, _| cell.set(b.first().map_or(0.0, |b| f32::from(b.size.height)))).child(bar.clone()))
+                        };
                         let grid_h = self.grid.read(cx).grid_height();
                         self.grid.clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(grid_h))).into_any_element()
                     }
@@ -728,9 +756,6 @@ impl Shell {
             other => (None, self.views.page(other).unwrap_or_else(|| div().into_any_element())),
         };
 
-        // playhead + notas soando agora (overlay sem cache, irmão da grade)
-        let ph = if self.on_grid() { self.playhead(cx) } else { None };
-        let (flashes, play_pos) = if self.on_grid() { self.playing_cells(cx) } else { (Vec::new(), None) };
         let overlay = canvas(
             |_, _, _| {},
             move |vb, _, window, _| {
@@ -786,7 +811,7 @@ impl Shell {
             .child(scroll_area);
 
         let panel = self.chrome[2].clone().cached(gpui_kit::StyleRefinement::default().w(px(260.0)).h_full().flex_none());
-        let status = self.status_bar(&th, playing, play_pos, cx);
+        let status = self.chrome[chrome::Part::Status as usize].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(26.0)).flex_none());
 
         // ── workspace (contexto de teclas da grade) ──
         let vmode = self.grid.read(cx).vmode;
@@ -814,7 +839,8 @@ impl Shell {
         let mut root = crate::views::bind_actions(root, cx).child(workspace);
 
         // ── which-key (command hint): chord pendente, ou Ctrl+/ na raiz ──
-        if (!self.pending.is_empty() && self.pending_since.elapsed() >= Duration::from_millis(250) && self.palette.is_none()) || (self.root_hints && self.pending.is_empty() && self.palette.is_none()) {
+        if (!self.pending.is_empty() && self.pending_since.elapsed() >= Duration::from_millis(250) && self.palette.is_none()) || (self.root_hints && self.pending.is_empty() && self.palette.is_none())
+        {
             root = root.child(self.which_key(window, &th, cx));
         }
 

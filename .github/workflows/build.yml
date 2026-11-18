@@ -13,8 +13,6 @@ on:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
-  # o .cargo/config.toml manda os artefatos para spike/target
-  CARGO_TARGET_DIR: spike/target
 
 jobs:
   linux:
@@ -45,7 +43,6 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: ". -> spike/target"
           shared-key: linux-release
 
       # lints: o workspace está sem avisos do clippy; manter assim
@@ -62,11 +59,15 @@ jobs:
       - name: Empacotar
         run: tools/package.sh "${{ inputs.version }}"
 
+      - name: AppImage
+        run: tools/appimage.sh "${{ inputs.version }}"
+
       - uses: actions/upload-artifact@v4
         with:
           name: wadawko-linux-x86_64
           path: |
             dist/*.tar.gz
+            dist/*.AppImage
             dist/*.sha256
           if-no-files-found: error
           retention-days: 14

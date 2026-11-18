@@ -145,10 +145,7 @@ impl<'a> SvgCanvas<'a> {
         self.close_groups();
         let (w, h) = (num(self.width), num(self.height));
         let mut out = String::with_capacity(self.body.len() + self.defs.len() + 256);
-        let _ = writeln!(
-            out,
-            "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\">"
-        );
+        let _ = writeln!(out, "<svg xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" width=\"{w}\" height=\"{h}\" viewBox=\"0 0 {w} {h}\">");
         if !self.defs.is_empty() {
             out.push_str("<defs>\n");
             out.push_str(&self.defs);
@@ -177,13 +174,7 @@ impl<'a> SvgCanvas<'a> {
         if path.is_empty() {
             return;
         }
-        let _ = writeln!(
-            self.body,
-            "<path d=\"{}\"{}{}/>",
-            path.to_svg_data(),
-            paint,
-            self.transform_attr()
-        );
+        let _ = writeln!(self.body, "<path d=\"{}\"{}{}/>", path.to_svg_data(), paint, self.transform_attr());
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -218,25 +209,13 @@ fn transform_attr(t: &Transform) -> String {
     } else if t.is_translation() {
         format!(" transform=\"translate({} {})\"", num(t.e), num(t.f))
     } else {
-        format!(
-            " transform=\"matrix({} {} {} {} {} {})\"",
-            num6(t.a),
-            num6(t.b),
-            num6(t.c),
-            num6(t.d),
-            num(t.e),
-            num(t.f)
-        )
+        format!(" transform=\"matrix({} {} {} {} {} {})\"", num6(t.a), num6(t.b), num6(t.c), num6(t.d), num(t.e), num(t.f))
     }
 }
 
 /// ` fill="#rrggbb"` (+ `fill-opacity` quando há alfa); `attr` é `fill` ou `stroke`.
 fn paint_attr(attr: &str, c: Color) -> String {
-    if c.is_opaque() {
-        format!(" {attr}=\"{}\"", c.hex_rgb())
-    } else {
-        format!(" {attr}=\"{}\" {attr}-opacity=\"{}\"", c.hex_rgb(), num(c.a.clamp(0.0, 1.0)))
-    }
+    if c.is_opaque() { format!(" {attr}=\"{}\"", c.hex_rgb()) } else { format!(" {attr}=\"{}\" {attr}-opacity=\"{}\"", c.hex_rgb(), num(c.a.clamp(0.0, 1.0))) }
 }
 
 fn stroke_attrs(stroke: &Stroke, color: Color) -> String {
@@ -300,14 +279,7 @@ impl Canvas2D for SvgCanvas<'_> {
             None => (q.rect, q.radius),
         };
         let mut s = String::new();
-        let _ = write!(
-            s,
-            "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"",
-            num(r.x),
-            num(r.y),
-            num(r.w),
-            num(r.h)
-        );
+        let _ = write!(s, "<rect x=\"{}\" y=\"{}\" width=\"{}\" height=\"{}\"", num(r.x), num(r.y), num(r.w), num(r.h));
         if radius > 0.0 {
             let _ = write!(s, " rx=\"{}\"", num(radius.min(r.w * 0.5).min(r.h * 0.5)));
         }
@@ -334,16 +306,7 @@ impl Canvas2D for SvgCanvas<'_> {
     }
 
     fn line(&mut self, from: Point, to: Point, stroke: &Stroke, color: Color) {
-        let _ = writeln!(
-            self.body,
-            "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"{}{}/>",
-            num(from.x),
-            num(from.y),
-            num(to.x),
-            num(to.y),
-            stroke_attrs(stroke, color),
-            self.transform_attr()
-        );
+        let _ = writeln!(self.body, "<line x1=\"{}\" y1=\"{}\" x2=\"{}\" y2=\"{}\"{}{}/>", num(from.x), num(from.y), num(to.x), num(to.y), stroke_attrs(stroke, color), self.transform_attr());
     }
 
     fn text(&mut self, text: &str, origin: Point, style: &TextStyle, color: Color) {
@@ -351,40 +314,33 @@ impl Canvas2D for SvgCanvas<'_> {
             return;
         }
         if self.opts.text_as_paths
-            && let Some(path) = self.fonts.and_then(|f| f.text_outline(text, style, origin)) {
-                self.push_path(&path, &paint_attr("fill", color));
-                return;
-            }
+            && let Some(path) = self.fonts.and_then(|f| f.text_outline(text, style, origin))
+        {
+            self.push_path(&path, &paint_attr("fill", color));
+            return;
+        }
         self.push_text(text, origin, &style.family, style.size, style.weight.0, style.italic, style.align, color);
     }
 
     fn glyph(&mut self, font: FontId, codepoint: char, origin: Point, size: f32, color: Color) {
         let fonts = self.fonts;
         if self.opts.glyphs_as_paths
-            && let Some(upem) = fonts.and_then(|f| f.info(font)).map(|i| i.units_per_em as f32) {
-                let id = format!("g{}_{:X}", font.0, codepoint as u32);
-                if !self.glyph_defs.contains(&(font, codepoint)) {
-                    // contorno em unidades da fonte (y já invertido); o <use> aplica a escala
-                    let Some(outline) = fonts.and_then(|f| f.glyph_outline(font, codepoint, upem)) else {
-                        return; // a fonte não tem o glifo
-                    };
-                    let _ = writeln!(self.defs, "<path id=\"{id}\" d=\"{}\"/>", outline.to_svg_data());
-                    self.glyph_defs.insert((font, codepoint));
-                }
-                let k = size / upem;
-                let t = self
-                    .cur
-                    .transform
-                    .pre_concat(&Transform::translate(origin.x, origin.y))
-                    .pre_concat(&Transform::scale(k, k));
-                let _ = writeln!(
-                    self.body,
-                    "<use xlink:href=\"#{id}\"{}{}/>",
-                    paint_attr("fill", color),
-                    transform_attr(&t)
-                );
-                return;
+            && let Some(upem) = fonts.and_then(|f| f.info(font)).map(|i| i.units_per_em as f32)
+        {
+            let id = format!("g{}_{:X}", font.0, codepoint as u32);
+            if !self.glyph_defs.contains(&(font, codepoint)) {
+                // contorno em unidades da fonte (y já invertido); o <use> aplica a escala
+                let Some(outline) = fonts.and_then(|f| f.glyph_outline(font, codepoint, upem)) else {
+                    return; // a fonte não tem o glifo
+                };
+                let _ = writeln!(self.defs, "<path id=\"{id}\" d=\"{}\"/>", outline.to_svg_data());
+                self.glyph_defs.insert((font, codepoint));
             }
+            let k = size / upem;
+            let t = self.cur.transform.pre_concat(&Transform::translate(origin.x, origin.y)).pre_concat(&Transform::scale(k, k));
+            let _ = writeln!(self.body, "<use xlink:href=\"#{id}\"{}{}/>", paint_attr("fill", color), transform_attr(&t));
+            return;
+        }
         let (family, weight, italic) = match fonts.and_then(|f| f.info(font)) {
             Some(i) => (i.family.clone(), i.weight.0, i.italic),
             None => (format!("font{}", font.0), 400, false),

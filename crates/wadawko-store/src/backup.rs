@@ -143,10 +143,12 @@ pub fn import_backup(db: &Db, json: &str, options: BackupOptions) -> Result<Back
         if ws.projects.iter().any(|p| &p.id == id) {
             continue;
         }
-        let meta = backup_ws
-            .as_ref()
-            .and_then(|b| b.projects.iter().find(|p| &p.id == id).cloned())
-            .unwrap_or_else(|| ProjectMeta { id: id.clone(), title: title.clone(), updated_at: now(), ..Default::default() });
+        let meta = backup_ws.as_ref().and_then(|b| b.projects.iter().find(|p| &p.id == id).cloned()).unwrap_or_else(|| ProjectMeta {
+            id: id.clone(),
+            title: title.clone(),
+            updated_at: now(),
+            ..Default::default()
+        });
         ws.projects.push(meta);
         ws_changed = true;
     }

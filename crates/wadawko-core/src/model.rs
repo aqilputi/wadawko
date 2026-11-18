@@ -29,11 +29,7 @@ pub type CellRows = BTreeMap<String, Vec<Option<String>>>;
 /// fracionária (`100`, não `100.0`); NaN/∞ viram `null`.
 pub(crate) fn js_num<S: Serializer>(v: &f64, s: S) -> Result<S::Ok, S::Error> {
     const SAFE: f64 = 9_007_199_254_740_992.0; // 2^53
-    if v.is_finite() && v.fract() == 0.0 && v.abs() < SAFE {
-        s.serialize_i64(*v as i64)
-    } else {
-        s.serialize_f64(*v)
-    }
+    if v.is_finite() && v.fract() == 0.0 && v.abs() < SAFE { s.serialize_i64(*v as i64) } else { s.serialize_f64(*v) }
 }
 
 pub(crate) fn js_num_opt<S: Serializer>(v: &Option<f64>, s: S) -> Result<S::Ok, S::Error> {
@@ -45,11 +41,7 @@ pub(crate) fn js_num_opt<S: Serializer>(v: &Option<f64>, s: S) -> Result<S::Ok, 
 
 fn version_one<'de, D: Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
     let v = Value::deserialize(d)?;
-    if v.as_f64() == Some(1.0) {
-        Ok(1)
-    } else {
-        Err(serde::de::Error::custom(format!("versão de música não suportada: {v} (esperado 1)")))
-    }
+    if v.as_f64() == Some(1.0) { Ok(1) } else { Err(serde::de::Error::custom(format!("versão de música não suportada: {v} (esperado 1)"))) }
 }
 
 // ───────────────────────────── instrumentos ─────────────────────────────
@@ -71,16 +63,8 @@ pub enum InstrumentId {
 
 impl InstrumentId {
     /// Os 8 instrumentos base, na ordem do TS (`Object.keys(INSTRUMENTS)`).
-    pub const ALL: [InstrumentId; 8] = [
-        InstrumentId::Shime,
-        InstrumentId::Chu,
-        InstrumentId::Hira,
-        InstrumentId::Nagado,
-        InstrumentId::Onagado,
-        InstrumentId::Okedo,
-        InstrumentId::Odaiko,
-        InstrumentId::Kane,
-    ];
+    pub const ALL: [InstrumentId; 8] =
+        [InstrumentId::Shime, InstrumentId::Chu, InstrumentId::Hira, InstrumentId::Nagado, InstrumentId::Onagado, InstrumentId::Okedo, InstrumentId::Odaiko, InstrumentId::Kane];
 
     /// id textual (o mesmo do JSON e dos nomes de sample): `"shime"`, `"chu"`, …
     pub fn as_str(self) -> &'static str {
@@ -221,10 +205,8 @@ fn zone(pitch: Option<f64>, gain: Option<f64>, tone: Option<(ToneType, f64, f64)
 /// Defs padrão sempre disponíveis: as 8 base (id = id do sample) + 5 presets.
 /// Equivale a `BUILTIN_INSTRUMENTS` do TS (mesma ordem).
 pub static BUILTIN_INSTRUMENTS: LazyLock<Vec<InstrumentDef>> = LazyLock::new(|| {
-    let mut v: Vec<InstrumentDef> = InstrumentId::ALL
-        .into_iter()
-        .map(|base| InstrumentDef { id: base.as_str().into(), name: base.label().into(), base, builtin: Some(true), ..Default::default() })
-        .collect();
+    let mut v: Vec<InstrumentDef> =
+        InstrumentId::ALL.into_iter().map(|base| InstrumentDef { id: base.as_str().into(), name: base.label().into(), base, builtin: Some(true), ..Default::default() }).collect();
     let preset = |id: &str, name: &str, base, head, rim| InstrumentDef { id: id.into(), name: name.into(), base, builtin: Some(true), head, rim, extra: Extra::new() };
     v.push(preset(
         "preset-shime-agudo",
@@ -233,13 +215,7 @@ pub static BUILTIN_INSTRUMENTS: LazyLock<Vec<InstrumentDef>> = LazyLock::new(|| 
         zone(Some(7.0), None, Some((ToneType::Highpass, 900.0, 1.0)), None, Some(0.4)),
         zone(Some(7.0), Some(-2.0), None, None, None),
     ));
-    v.push(preset(
-        "preset-chu-grave",
-        "Chū grave",
-        InstrumentId::Chu,
-        zone(Some(-5.0), Some(1.0), None, None, Some(0.7)),
-        zone(Some(-3.0), None, None, None, None),
-    ));
+    v.push(preset("preset-chu-grave", "Chū grave", InstrumentId::Chu, zone(Some(-5.0), Some(1.0), None, None, Some(0.7)), zone(Some(-3.0), None, None, None, None)));
     v.push(preset(
         "preset-odaiko-profundo",
         "Ōdaiko profundo",

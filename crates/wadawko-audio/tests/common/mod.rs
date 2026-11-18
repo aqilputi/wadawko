@@ -15,10 +15,7 @@ const BACKUP: &str = include_str!("../../../wadawko-core/tests/fixtures/backup-l
 /// as 2 músicas do backup do localStorage (fixtures do wadawko-core), por (chave, música)
 pub fn fixtures() -> Vec<(String, Song)> {
     let map: serde_json::Map<String, serde_json::Value> = serde_json::from_str(BACKUP).unwrap();
-    map.iter()
-        .filter(|(k, _)| k.starts_with(PROJECT_KEY_PREFIX))
-        .map(|(k, v)| (k.clone(), Song::from_json(v.as_str().unwrap()).unwrap()))
-        .collect()
+    map.iter().filter(|(k, _)| k.starts_with(PROJECT_KEY_PREFIX)).map(|(k, v)| (k.clone(), Song::from_json(v.as_str().unwrap()).unwrap())).collect()
 }
 
 /// a música grande do backup (131 compassos, 180 BPM, ritornellos, dinâmicas, hairpins, kit custom)

@@ -22,6 +22,10 @@ pub enum Part {
     Top,
     Nav,
     Panel,
+    /// barra de contexto do editor (altura variável: medida quando a chave muda)
+    Context,
+    /// status bar (desenhada de `Shell::status` — um modelo só de texto)
+    Status,
 }
 
 pub struct Chrome {
@@ -50,6 +54,8 @@ impl Render for Chrome {
                 }
                 Part::Nav => sh.nav_rail(&th).into_any_element(),
                 Part::Panel => sh.right_panel(&th, cx).into_any_element(),
+                Part::Context => sh.context_toolbar(&th, cx).into_any_element(),
+                Part::Status => sh.status_bar(&th, &sh.status.clone()).into_any_element(),
             }
         })
     }

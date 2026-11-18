@@ -11,8 +11,7 @@
 use crate::model::{KyaiVoice, Measure, Song, Track};
 
 /// Kakegoe prontos (palavras separadas por espaço = gritos separados).
-pub const KYAI_PRESETS: [&str; 11] =
-    ["sa!", "sei!", "seiya!", "ha!", "hai!", "sore!", "soriya!", "hyia!", "soryia!", "soresoresoresore!", "soresoresoresore! soryia!"];
+pub const KYAI_PRESETS: [&str; 11] = ["sa!", "sei!", "seiya!", "ha!", "hai!", "sore!", "soriya!", "hyia!", "soryia!", "soresoresoresore!", "soresoresoresore! soryia!"];
 
 fn is_v(c: Option<u8>) -> bool {
     matches!(c, Some(b'a' | b'e' | b'i' | b'o' | b'u'))
@@ -78,11 +77,8 @@ pub fn split_kyai(text: &str) -> Option<Vec<String>> {
                 let prev = *s.last().expect("sílaba tem ao menos a vogal");
                 let next = at(i + 1);
                 let next_is_vowel = is_v(next) || next == Some(b'y');
-                let take = c == b'-'
-                    || (c == prev && is_v(Some(c)))
-                    || (c == b'i' && b"aeou".contains(&prev) && !is_v(next))
-                    || (c == b'u' && prev == b'o' && !is_v(next))
-                    || (c == b'n' && !next_is_vowel);
+                let take =
+                    c == b'-' || (c == prev && is_v(Some(c))) || (c == b'i' && b"aeou".contains(&prev) && !is_v(next)) || (c == b'u' && prev == b'o' && !is_v(next)) || (c == b'n' && !next_is_vowel);
                 if !take {
                     break;
                 }
@@ -145,25 +141,14 @@ pub const KYAI_DEFAULT_GAIN: f64 = 0.0;
 
 /// `track.kyai` com os defaults aplicados: (pitch, vary, gain).
 pub fn kyai_voice_or_default(voice: Option<&KyaiVoice>) -> (f64, f64, f64) {
-    (
-        voice.and_then(|v| v.pitch).unwrap_or(KYAI_DEFAULT_PITCH),
-        voice.and_then(|v| v.vary).unwrap_or(KYAI_DEFAULT_VARY),
-        voice.and_then(|v| v.gain).unwrap_or(KYAI_DEFAULT_GAIN),
-    )
+    (voice.and_then(|v| v.pitch).unwrap_or(KYAI_DEFAULT_PITCH), voice.and_then(|v| v.vary).unwrap_or(KYAI_DEFAULT_VARY), voice.and_then(|v| v.gain).unwrap_or(KYAI_DEFAULT_GAIN))
 }
 
 /// Voz de um jogador (seed = id da pessoa; sem pessoa, id da linha — ver `kyai_seed`).
 pub fn kyai_profile(seed_id: &str, track: &Track) -> KyaiProfile {
     let h = hash(seed_id);
     let (pitch, vary, _) = kyai_voice_or_default(track.kyai.as_ref());
-    KyaiProfile {
-        pitch: -4.0 + rnd(h, 1.0) * 9.0 + pitch,
-        speed: 0.85 + rnd(h, 2.0) * 0.35,
-        vary,
-        grit: rnd(h, 3.0) * 0.012,
-        breath: 0.5 + rnd(h, 4.0) * 0.6,
-        range: 0.75 + rnd(h, 5.0) * 0.5,
-    }
+    KyaiProfile { pitch: -4.0 + rnd(h, 1.0) * 9.0 + pitch, speed: 0.85 + rnd(h, 2.0) * 0.35, vary, grit: rnd(h, 3.0) * 0.012, breath: 0.5 + rnd(h, 4.0) * 0.6, range: 0.75 + rnd(h, 5.0) * 0.5 }
 }
 
 // ───────────────────────────── entonação ─────────────────────────────

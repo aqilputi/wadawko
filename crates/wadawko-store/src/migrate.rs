@@ -47,8 +47,7 @@ pub fn migrate_db_if_missing(source: impl AsRef<Path>, dest: impl AsRef<Path>) -
     let _ = std::fs::remove_file(&tmp);
 
     let result = (|| -> Result<usize> {
-        let src = Connection::open_with_flags(source, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)
-            .with_context(|| format!("abrir {} (somente leitura)", source.display()))?;
+        let src = Connection::open_with_flags(source, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX).with_context(|| format!("abrir {} (somente leitura)", source.display()))?;
         src.busy_timeout(std::time::Duration::from_secs(5))?;
         let expected = count_keys(&src).with_context(|| format!("ler {}", source.display()))?;
         let tmp_str = tmp.to_str().context("caminho de destino não é UTF-8")?;

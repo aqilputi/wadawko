@@ -93,14 +93,8 @@ fn glyph_table_agrees_with_font_and_metadata() {
     let sp = 250.0; // upem 1000
     for g in glyphs::ALL {
         let bb = f.bravura.metadata.bbox(g.name).unwrap_or_else(|| panic!("{} sem bbox no metadata", g.name));
-        let [x0, y0, x1, y1] = f
-            .book
-            .glyph_bbox_units(f.bravura.font, g.codepoint)
-            .unwrap_or_else(|| panic!("{} (U+{:X}) ausente na fonte", g.name, g.codepoint as u32));
-        let ok = (x0 - bb.sw.x * sp).abs() <= 3.0
-            && (y0 - bb.sw.y * sp).abs() <= 3.0
-            && (x1 - bb.ne.x * sp).abs() <= 3.0
-            && (y1 - bb.ne.y * sp).abs() <= 3.0;
+        let [x0, y0, x1, y1] = f.book.glyph_bbox_units(f.bravura.font, g.codepoint).unwrap_or_else(|| panic!("{} (U+{:X}) ausente na fonte", g.name, g.codepoint as u32));
+        let ok = (x0 - bb.sw.x * sp).abs() <= 3.0 && (y0 - bb.sw.y * sp).abs() <= 3.0 && (x1 - bb.ne.x * sp).abs() <= 3.0 && (y1 - bb.ne.y * sp).abs() <= 3.0;
         assert!(ok, "{} U+{:X}: fonte [{x0} {y0} {x1} {y1}] vs metadata {bb:?}", g.name, g.codepoint as u32);
     }
     assert_eq!(glyphs::by_name("noteheadXBlack"), Some(glyphs::NOTEHEAD_X_BLACK));

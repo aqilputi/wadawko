@@ -64,6 +64,26 @@ impl Shell {
         .detach();
     }
 
+    /// Diálogo: importar as músicas de outro banco (`.db`) ou de um backup JSON.
+    pub fn import_library(&mut self, cx: &mut Context<Self>) {
+        let rx = cx.prompt_for_paths(gpui_kit::PathPromptOptions { files: true, directories: false, multiple: false, prompt: Some("Importar músicas (banco .db ou backup .json)".into()) });
+        let state = self.state.clone();
+        cx.spawn(async move |this, cx| {
+            let path = match rx.await {
+                Ok(Ok(Some(p))) => p.into_iter().next(),
+                Ok(Ok(None)) => return,
+                _ => {
+                    let _ = this.update(cx, |this, cx| this.flash("diálogo de arquivos indisponível (xdg-desktop-portal?)", cx));
+                    return;
+                }
+            };
+            if let Some(path) = path {
+                state.update(cx, |s, cx| s.import_library(&path, cx));
+            }
+        })
+        .detach();
+    }
+
     /// Importa um arquivo de música como música nova e abre.
     pub fn import_path(&mut self, path: PathBuf, cx: &mut Context<Self>) {
         match read_song_file(&path) {

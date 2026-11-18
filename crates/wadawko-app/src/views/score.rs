@@ -19,7 +19,10 @@ use std::rc::Rc;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
-use gpui_kit::{Bounds, ContentMask, Context, Entity, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Render, ScrollEvent, SharedString, Window, canvas, div, fill, point, prelude::*, px, size};
+use gpui_kit::{
+    Bounds, ContentMask, Context, Entity, FontWeight, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, Render, ScrollEvent, SharedString, Window, canvas, div, fill, point,
+    prelude::*, px, size,
+};
 use wadawko_core::Song;
 use wadawko_draw::smufl::{FAMILY_BRAVURA, FAMILY_SHIPPORI_MINCHO, FAMILY_ZEN_KAKU};
 use wadawko_draw::{Canvas2D, FontBook, SmuflFont, StandardFonts, Transform, pt, rect};
@@ -87,10 +90,7 @@ pub fn score_theme(th: &Theme) -> wadawko_notation::Theme {
 /// `at` já inclui a latência; o brilho dura `flash_ms` (≈ 1 colcheia, como no web).
 pub fn lit_keys(hits: &[HitFlash], track_ids: &[String], now: Instant, flash_ms: f32, color: wadawko_draw::Color) -> Vec<Lit> {
     let dur = Duration::from_secs_f32(flash_ms.max(0.0) / 1000.0);
-    hits.iter()
-        .filter(|h| now >= h.at && now < h.at + dur)
-        .filter_map(|h| Some((HitKey::new(track_ids.get(h.track)?.clone(), h.cell, h.hit), color)))
-        .collect()
+    hits.iter().filter(|h| now >= h.at && now < h.at + dur).filter_map(|h| Some((HitKey::new(track_ids.get(h.track)?.clone(), h.cell, h.hit), color))).collect()
 }
 
 /// Rolagem que deixa o playhead (`x`, coordenadas da página) a 40 % da área de
@@ -465,31 +465,25 @@ impl Render for ScoreView {
             .child(ui::abtn("score-png", &th, keys::score::ExportPng).h(px(26.0)).child("PNG"))
             .child(ui::abtn("score-print", &th, keys::score::Print).h(px(26.0)).child("imprimir"));
 
-        div()
-            .w_full()
-            .flex()
-            .flex_col()
-            .gap(px(8.0))
-            .child(div().flex().items_center().justify_between().gap(px(12.0)).child(legend).child(tools))
-            .child(
-                div()
-                    .id("score-view")
-                    .relative()
-                    .w_full()
-                    .h(px(h + 2.0 * PAD_Y))
-                    .rounded(px(10.0))
-                    .border_1()
-                    .border_color(th.line)
-                    .bg(th.paper)
-                    .overflow_hidden()
-                    .cursor_grab()
-                    .on_scroll(cx.listener(Self::on_wheel))
-                    .on_mouse_down(MouseButton::Left, cx.listener(Self::on_down))
-                    .on_mouse_move(cx.listener(Self::on_move))
-                    .on_mouse_up(MouseButton::Left, cx.listener(Self::on_up))
-                    .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, _| this.drag = None))
-                    .child(staves),
-            )
+        div().w_full().flex().flex_col().gap(px(8.0)).child(div().flex().items_center().justify_between().gap(px(12.0)).child(legend).child(tools)).child(
+            div()
+                .id("score-view")
+                .relative()
+                .w_full()
+                .h(px(h + 2.0 * PAD_Y))
+                .rounded(px(10.0))
+                .border_1()
+                .border_color(th.line)
+                .bg(th.paper)
+                .overflow_hidden()
+                .cursor_grab()
+                .on_scroll(cx.listener(Self::on_wheel))
+                .on_mouse_down(MouseButton::Left, cx.listener(Self::on_down))
+                .on_mouse_move(cx.listener(Self::on_move))
+                .on_mouse_up(MouseButton::Left, cx.listener(Self::on_up))
+                .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, _| this.drag = None))
+                .child(staves),
+        )
     }
 }
 

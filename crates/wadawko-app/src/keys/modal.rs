@@ -48,7 +48,9 @@ pub enum PromptKind {
     Register,
     SetMark,
     GotoMark,
-    Search { back: bool },
+    Search {
+        back: bool,
+    },
     Command,
     /// texto livre com destino (renomear, BPM, treino)
     Input(InputTarget),

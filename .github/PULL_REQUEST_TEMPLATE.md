@@ -4,7 +4,7 @@
 
 ## Como foi testado
 
-- [ ] `cargo test --workspace` e `cargo clippy --workspace --all-targets` sem avisos
+- [ ] `cargo fmt --all`, `cargo test --workspace` e `cargo clippy --workspace --all-targets` sem avisos
 - [ ] mudou interação: `wadawko --demo probe --db <cópia do banco>` (com um passo novo para o caso)
 - [ ] mudou teclas ou títulos de comandos: `python3 tools/gen-atalhos.py`
 - [ ] mexeu em `docs/`: `python3 tools/okf-check.py docs`

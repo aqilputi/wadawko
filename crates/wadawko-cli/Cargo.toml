@@ -4,6 +4,8 @@ description = "WaDAWko — utilitário de linha de comando (list/export/render/i
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [[bin]]
 name = "wadawko-cli"

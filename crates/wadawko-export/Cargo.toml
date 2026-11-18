@@ -4,6 +4,8 @@ description = "WaDAWko — export de áudio (WAV 16/24-bit, MP3 192 kbps via ffm
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 wadawko-core = { path = "../wadawko-core" }

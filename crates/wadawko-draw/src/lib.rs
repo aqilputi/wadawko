@@ -28,10 +28,7 @@ mod svg;
 
 pub use canvas::{Canvas2D, StateStack};
 pub use error::{DrawError, Result};
-pub use font::{
-    FontBook, FontId, FontInfo, FontMetrics, GlyphMetrics, PlacedGlyph, SYNTHETIC_ITALIC_SKEW,
-    TextLayout, TextMetrics,
-};
+pub use font::{FontBook, FontId, FontInfo, FontMetrics, GlyphMetrics, PlacedGlyph, SYNTHETIC_ITALIC_SKEW, TextLayout, TextMetrics};
 pub use geom::{Color, Point, Rect, Transform, pt, rect};
 pub use path::{Path, PathBuilder, PathEl};
 pub use recording::{DrawCmd, Recording};

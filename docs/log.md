@@ -1,5 +1,13 @@
 # Histórico da documentação
 
+## 2026-11-17
+
+**Atualização**: licença (MIT OR Apache-2.0) em créditos; repositório sem app web e sem
+`spike/` (visão geral, instalar e compilar, desempenho, arquitetura); importar músicas de outro
+banco ou backup pela Config (dados e arquivos, instalar e compilar); AppImage, Flatpak e ícone
+(instalar e compilar); `cargo fmt`/clippy no fluxo de contribuição; quadro do
+[plano do repositório](/planejamento/repo.md) atualizado.
+
 ## 2026-11-16
 
 **Atualização**: fixtures de teste reduzidas a duas músicas — "yagyo" e "Sample music" —, e

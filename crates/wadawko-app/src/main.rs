@@ -98,6 +98,9 @@ fn parse_args(args: &[String]) -> Result<Args, String> {
     Ok(out)
 }
 
+/// ID do app (reverse-DNS): nome do .desktop, do ícone, do metainfo e do Flatpak.
+const APP_ID: &str = "io.github.aqilputi.WaDAWko";
+
 fn open_store(args: &Args) -> anyhow::Result<(ProjectStore, String)> {
     let path = match &args.db {
         Some(p) => p.clone(),
@@ -149,6 +152,8 @@ fn main() {
         print!("{HELP}");
         return;
     }
+    // primeira execução: ainda não há banco no caminho padrão (o app cria um com a música de exemplo)
+    let first_run = args.db.is_none() && args.migrate_from.is_none() && wadawko_store::default_db_path().is_ok_and(|p| !p.exists());
     let (store, db_label) = match open_store(&args) {
         Ok(x) => x,
         Err(e) => {
@@ -170,6 +175,9 @@ fn main() {
         cx.text_system().add_fonts(fonts).expect("registrar fontes");
 
         let state = cx.new(|_| AppState::new(store, theme, args.mute, db_label));
+        if first_run {
+            state.update(cx, |s, _| s.flash("bem-vindo! para trazer músicas do app web ou de outro PC: Config → importar músicas (ou Ctrl+K “importar”)"));
+        }
 
         // samples: decodificar bloqueia (~1 s) → thread de fundo; o áudio abre quando chegar
         let samples_dir = args.samples_dir.clone();
@@ -195,7 +203,13 @@ fn main() {
         let bench = args.bench;
         let st = state.clone();
         let win = gpui_kit::open_window(
-            WindowOptions { window_bounds: Some(WindowBounds::Windowed(bounds)), titlebar: Some(gpui_kit::TitlebarOptions { title: Some("WaDAWko".into()), ..Default::default() }), ..Default::default() },
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                titlebar: Some(gpui_kit::TitlebarOptions { title: Some("WaDAWko".into()), ..Default::default() }),
+                // liga a janela ao .desktop e ao ícone (Wayland: app_id; X11: WM_CLASS)
+                app_id: Some(APP_ID.into()),
+                ..Default::default()
+            },
             cx,
             move |window, cx| cx.new(|cx| Shell::new(window, cx, st.clone(), bench)),
         )
@@ -322,7 +336,12 @@ fn selftest(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App)
         state.update(cx, |s, _| {
             let dirty_before = s.store.has_unsaved_changes();
             let r = s.flush();
-            println!("TESTE gravação: pendente antes do flush={dirty_before} · flush={:?} · pendente depois={} · erro={:?}", r.map_err(|e| format!("{e:#}")), s.store.has_unsaved_changes(), s.store.autosave_error());
+            println!(
+                "TESTE gravação: pendente antes do flush={dirty_before} · flush={:?} · pendente depois={} · erro={:?}",
+                r.map_err(|e| format!("{e:#}")),
+                s.store.has_unsaved_changes(),
+                s.store.autosave_error()
+            );
         });
         cx.update(|cx| cx.quit());
     })
@@ -334,7 +353,7 @@ fn selftest(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App)
 const PPQ_PROBE: f64 = 960.0;
 
 fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App) {
-    use gpui_kit::{Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PlatformInput, Pixels, Point};
+    use gpui_kit::{Modifiers, MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, Pixels, PlatformInput, Point};
     fn wait(cx: &mut AsyncApp, ms: u64) -> impl std::future::Future<Output = ()> {
         cx.background_executor().timer(Duration::from_millis(ms))
     }
@@ -342,6 +361,17 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
     let none = Modifiers::default();
     cx.spawn(async move |cx: &mut AsyncApp| {
         wait(cx, 1500).await;
+        // verificações: cada uma imprime OK/FALHOU; com alguma falha o processo sai com 1
+        let fails = std::rc::Rc::new(std::cell::Cell::new(0usize));
+        let check = {
+            let fails = fails.clone();
+            move |name: &str, ok: bool| {
+                println!("PROBE {} {name}", if ok { "OK" } else { "FALHOU" });
+                if !ok {
+                    fails.set(fails.get() + 1);
+                }
+            }
+        };
         let report = |label: &str, cx: &mut AsyncApp| {
             let _ = w.update(cx, |_, window, cx| {
                 let sh = shell.read(cx);
@@ -367,9 +397,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 println!("PROBE tecla {k}: tratada={handled}");
             });
         };
-        let cell = |m: usize, t: usize, k: usize, cx: &mut AsyncApp| -> Option<Point<Pixels>> {
-            cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m, t, k }).map(|b| b.center()))
-        };
+        let cell = |m: usize, t: usize, k: usize, cx: &mut AsyncApp| -> Option<Point<Pixels>> { cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m, t, k }).map(|b| b.center())) };
         let mouse = |ev: PlatformInput, cx: &mut AsyncApp| {
             let _ = w.update(cx, |_, window, cx| {
                 window.dispatch_event(ev, cx);
@@ -387,10 +415,12 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             return;
         };
         let row = |cx: &mut AsyncApp| cx.update(|cx| (0..4).map(|k| state.read(cx).song().cell(2, 0, k).map(str::to_string).unwrap_or("·".into())).collect::<Vec<_>>().join(" "));
-        let drag_state = |cx: &mut AsyncApp| cx.update(|cx| {
-            let g = shell.read(cx).grid.read(cx);
-            (g.move_drag.map(|m| (m.started, m.clone, m.dt, m.dg)), g.ghost.len())
-        });
+        let drag_state = |cx: &mut AsyncApp| {
+            cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.move_drag.map(|m| (m.started, m.clone, m.dt, m.dg)), g.ghost.len())
+            })
+        };
         // arrasto com passos intermediários (como a mão), sem soltar
         let sweep = |from: gpui_kit::Point<Pixels>, to: gpui_kit::Point<Pixels>, m: Modifiers, cx: &mut AsyncApp| {
             for i in 1..=6 {
@@ -398,7 +428,8 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 mouse(mv(gpui_kit::point(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t), m), cx);
             }
         };
-        println!("PROBE linha 2, compasso 0 no início: {}", row(cx));
+        let row0 = row(cx);
+        println!("PROBE linha 2, compasso 0 no início: {row0}");
         // 1) clique (sem arrastar) numa NOTA: só põe o cursor, sem seleção; Ctrl+C copia a célula
         mouse(down(a, none), cx);
         mouse(up(a, none), cx);
@@ -425,6 +456,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         mouse(up(e2, alt), cx);
         wait(cx, 150).await;
         println!("PROBE após alt+arrasto da nota 'do' para a célula 2: {} · arrasto={:?}", row(cx), drag_state(cx));
+        check("alt+arrasto copia a nota", row(cx) != row0 && drag_state(cx).0.is_none());
         key("ctrl-z", cx);
         wait(cx, 100).await;
         // 4) arrastar (sem Alt) uma nota = mover
@@ -442,6 +474,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         mouse(up(e3, none), cx);
         wait(cx, 150).await;
         println!("PROBE Esc no meio do arrasto: {} · arrasto={:?}", row(cx), drag_state(cx));
+        check("Esc no meio do arrasto não muda nada", row(cx) == row0 && drag_state(cx).0.is_none());
         // 6) soltar FORA da grade (no painel da direita) também larga o bloco
         let outside = gpui_kit::point(gpui_kit::px(900.0), gpui_kit::px(500.0));
         mouse(down(b, none), cx);
@@ -455,6 +488,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         key("ctrl-z", cx);
         wait(cx, 100).await;
         println!("PROBE linha 2 no fim (deve ser igual ao início): {}", row(cx));
+        check("arrastos + Ctrl+Z voltam a linha ao início", row(cx) == row0);
         // 5) barra da seção: clicar no texto "1×" (não é botão) (des)seleciona;
         //    clicar no botão "+" das repetições NÃO
         let hint = |id: &str| keys::HINTS.with(|h| h.borrow().targets.get(id).map(|t| t.bounds));
@@ -468,55 +502,60 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             let over: Vec<&str> = ids.iter().copied().filter(|id| hint(id).is_some_and(|b| b.right() > cl.left())).collect();
             let grid_w = cx.update(|cx| f32::from(shell.read(cx).grid.read(cx).geom.borrow().root.size.width));
             println!("PROBE barra da seção (grade {grid_w:.0} px): botões por baixo do clonar = {over:?} · clonar {:.0} px de largura", f32::from(cl.size.width));
+            check("nenhum botão por baixo do clonar", over.is_empty());
         }
-        if let (Some(rm), Some(rp)) = (hint("s0-rep-"), hint("s0-rep+")) {
-            let txt = gpui_kit::point((rm.right() + rp.left()) / 2.0, rm.center().y);
-            let sel0 = cx.update(|cx| state.read(cx).tp.selected.len());
-            mouse(down(txt, none), cx);
+        // posição do texto "N×" entre − e + da seção `s`, recalculada a cada uso (a barra
+        // muda de layout ao (des)selecionar)
+        let txt_of = |s: usize| {
+            let (rm, rp) = (hint(&format!("s{s}-rep-"))?, hint(&format!("s{s}-rep+"))?);
+            Some(gpui_kit::point((rm.right() + rp.left()) / 2.0, rm.center().y))
+        };
+        let click = async |p: Point<Pixels>, m: Modifiers, cx: &mut AsyncApp| {
+            mouse(down(p, m), cx);
             wait(cx, 60).await;
-            mouse(up(txt, none), cx);
+            mouse(up(p, m), cx);
             wait(cx, 150).await;
-            let sel1 = cx.update(|cx| state.read(cx).tp.selected.len());
+        };
+        let sel_ids = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).tp.selected.clone());
+        if let Some(txt) = txt_of(0) {
+            let sel0 = sel_ids(cx).len();
+            click(txt, none, cx).await;
+            let sel1 = sel_ids(cx).len();
             println!("PROBE clique no texto 1× da barra: selecionadas {sel0} → {sel1}");
+            check("clique no texto N× seleciona a seção", sel0 == 0 && sel1 == 1);
             // outra seção: clique simples troca (só ela); Ctrl+clique junta
             let ctrl = Modifiers { control: true, ..Default::default() };
-            if let (Some(rm1), Some(rp1)) = (hint("s1-rep-"), hint("s1-rep+")) {
-                let txt1 = gpui_kit::point((rm1.right() + rp1.left()) / 2.0, rm1.center().y);
-                let sel_ids = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).tp.selected.clone());
-                mouse(down(txt1, none), cx);
-                wait(cx, 60).await;
-                mouse(up(txt1, none), cx);
-                wait(cx, 150).await;
+            if let Some(txt1) = txt_of(1) {
+                click(txt1, none, cx).await;
                 let a1 = sel_ids(cx);
-                mouse(down(txt, ctrl), cx);
-                wait(cx, 60).await;
-                mouse(up(txt, ctrl), cx);
-                wait(cx, 150).await;
+                if let Some(t) = txt_of(0) {
+                    click(t, ctrl, cx).await;
+                }
                 let a2 = sel_ids(cx);
-                mouse(down(txt, none), cx);
-                wait(cx, 60).await;
-                mouse(up(txt, none), cx);
-                wait(cx, 150).await;
+                if let Some(t) = txt_of(0) {
+                    click(t, none, cx).await;
+                }
                 let a3 = sel_ids(cx);
                 println!("PROBE seções: clique na 2ª → {} selecionada(s) · Ctrl+clique na 1ª → {} · clique simples na 1ª → {}", a1.len(), a2.len(), a3.len());
+                check("seleção de seções: clique troca, Ctrl+clique junta", a1.len() == 1 && a2.len() == 2 && a3.len() == 1);
             }
             // limpa: clique na única selecionada
-            mouse(down(txt, none), cx);
-            wait(cx, 60).await;
-            mouse(up(txt, none), cx);
-            wait(cx, 150).await;
-            println!("PROBE clique na única selecionada limpa: {} selecionada(s)", cx.update(|cx| state.read(cx).tp.selected.len()));
+            if let Some(t) = txt_of(0) {
+                click(t, none, cx).await;
+            }
+            let left = sel_ids(cx).len();
+            println!("PROBE clique na única selecionada limpa: {left} selecionada(s)");
+            check("clique na única seção selecionada limpa a seleção", left == 0);
             let rep = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().sections.as_ref().and_then(|v| v.first()).and_then(|s| s.repeat));
-            let (r0, s0) = (rep(cx), cx.update(|cx| state.read(cx).tp.selected.len()));
-            let p = rp.center();
-            mouse(down(p, none), cx);
-            wait(cx, 60).await;
-            mouse(up(p, none), cx);
-            wait(cx, 150).await;
-            let (r1, s1) = (rep(cx), cx.update(|cx| state.read(cx).tp.selected.len()));
-            println!("PROBE clique no + (repetições): repeat {r0:?} → {r1:?} · selecionadas {s0} → {s1}");
-            key("ctrl-z", cx);
-            wait(cx, 100).await;
+            if let Some(rp) = hint("s0-rep+") {
+                let (r0, s0) = (rep(cx), sel_ids(cx).len());
+                click(rp.center(), none, cx).await;
+                let (r1, s1) = (rep(cx), sel_ids(cx).len());
+                println!("PROBE clique no + (repetições): repeat {r0:?} → {r1:?} · selecionadas {s0} → {s1}");
+                check("+ das repetições aumenta o ritornello sem selecionar", r1.unwrap_or(1) == r0.unwrap_or(1) + 1 && s1 == s0);
+                key("ctrl-z", cx);
+                wait(cx, 100).await;
+            }
         }
         // moldura em cache: botão "loop" da barra de cima liga/desliga e a barra redesenha
         if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("loop").map(|t| t.bounds.center())) {
@@ -529,6 +568,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             let l1 = cx.update(|cx| state.read(cx).tp.looping);
             let k1 = cx.update(|cx| shell.read(cx).chrome[0].read(cx).key);
             println!("PROBE barra de cima (cache): loop {l0} → {l1} · chave mudou: {}", k0 != k1);
+            check("botão loop da barra de cima liga e a barra redesenha", l1 != l0 && k0 != k1);
             key("ctrl-z", cx); // não desfaz loop (não é edição) — só por garantia de estado
             mouse(down(p, none), cx);
             wait(cx, 60).await;
@@ -540,6 +580,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         wait(cx, 200).await;
         let found = keys::HINTS.with(|h| ["hamb", "loop", "title"].iter().map(|id| h.borrow().targets.contains_key(*id)).collect::<Vec<_>>());
         println!("PROBE Ctrl+Space acha alvos da barra de cima (hamb, loop, title): {found:?}");
+        check("Ctrl+Space acha os alvos da barra de cima", found.iter().all(|f| *f));
         key("escape", cx);
         wait(cx, 100).await;
         // fórmula de compasso: "+" da barra (4/4 → 5/4 no compasso do cursor), Ctrl+Z volta
@@ -563,6 +604,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             wait(cx, 100).await;
             let (_, b2, _) = beats(cx);
             println!("PROBE ctrl-z na fórmula: volta a {b2}/4");
+            check("+ da fórmula de compasso acrescenta um tempo e Ctrl+Z volta", (b1 == b0 + 1 || b0 == 16) && n1 >= n0 && b2 == b0);
         }
         // andamento: rallentando pela ação da paleta no compasso do cursor → a música fica
         // mais longa; Ctrl+Z volta
@@ -583,6 +625,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             wait(cx, 100).await;
             let (_, t2, s2) = secs(cx);
             println!("PROBE ctrl-z no andamento: {t2:?} · {s2:.2} s (igual ao início: {})", (s2 - s0).abs() < 1e-6);
+            check("rallentando alonga a música e Ctrl+Z volta", t1.is_some() && s1 > s0 && t2 == t0 && (s2 - s0).abs() < 1e-6);
         }
         // calibração: botão do cabeçalho fixo (+ seção) com clique sintético
         if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("addsec").map(|t| t.bounds.center())) {
@@ -593,6 +636,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             wait(cx, 150).await;
             let n1 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));
             println!("PROBE calibração + seção: seções {n0} → {n1}");
+            check("+ seção acrescenta uma seção", n1 == n0 + 1);
             key("ctrl-z", cx);
             wait(cx, 100).await;
         }
@@ -601,13 +645,20 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         let (bar0, grid0) = (hint_y("addsec"), cell(0, 2, 0, cx).map(|p| f32::from(p.y)));
         if let Some(p) = cell(0, 2, 0, cx) {
             mouse(
-                PlatformInput::Scroll(gpui_kit::ScrollEvent { position: p, delta: gpui_kit::ScrollDelta::Pixels(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(-600.0))), modifiers: none, touch_phase: gpui_kit::TouchPhase::Moved, source: Default::default() }),
+                PlatformInput::Scroll(gpui_kit::ScrollEvent {
+                    position: p,
+                    delta: gpui_kit::ScrollDelta::Pixels(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(-600.0))),
+                    modifiers: none,
+                    touch_phase: gpui_kit::TouchPhase::Moved,
+                    source: Default::default(),
+                }),
                 cx,
             );
         }
         wait(cx, 400).await;
         let (bar1, grid1) = (hint_y("addsec"), cell(0, 2, 0, cx).map(|p| f32::from(p.y)));
         println!("PROBE rolagem: barra y {bar0:?} → {bar1:?} · grade y {grid0:?} → {grid1:?}");
+        check("rolar o editor move a grade e a barra de contexto fica no lugar", bar0.is_some() && bar0 == bar1 && grid0 != grid1);
         // (no fim: o Tab move o cursor e a grade rola para o lado, o que mudaria as
         // posições usadas pelos passos acima)
         // Tab: digitar "do" + Tab grava e vai para a próxima célula; Tab sozinho avança
@@ -647,9 +698,18 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         wait(cx, 100).await;
         let s1 = sel(cx);
         println!("PROBE Tab na paleta desce a seleção: {s0:?} → {s1:?}");
+        check("Ctrl+K abre a paleta e Tab desce a seleção", pal && s1.is_some() && s1 != s0);
         key("escape", cx);
         wait(cx, 100).await;
-        cx.update(|cx| cx.quit());
+        let n = fails.get();
+        if n == 0 {
+            println!("PROBE tudo OK");
+            cx.update(|cx| cx.quit());
+        } else {
+            println!("PROBE {n} verificação(ões) FALHARAM");
+            cx.update(|cx| state.update(cx, |s, _| s.flush().ok()));
+            std::process::exit(1);
+        }
     })
     .detach();
 }

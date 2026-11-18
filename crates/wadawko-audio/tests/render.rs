@@ -6,7 +6,7 @@ mod common;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use common::{bank, hash, yagyo, peak, rms};
+use common::{bank, hash, peak, rms, yagyo};
 use wadawko_audio::{Cancelled, MasterMode, Region, RenderOptions, Rendered, SampleSet, render, render_with};
 use wadawko_core::demo::demo_song;
 use wadawko_core::model::Person;

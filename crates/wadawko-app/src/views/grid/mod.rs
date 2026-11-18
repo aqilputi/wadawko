@@ -122,7 +122,7 @@ pub struct Cur {
 }
 
 /// Modo do modelo "simples" (vim desligado): editar ou selecionar com o mouse.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Mode {
     Edit,
     Select,
@@ -136,7 +136,7 @@ pub enum Lane {
 }
 
 /// Modo de teclado da grade.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum VMode {
     Normal,
     Insert,
@@ -831,11 +831,7 @@ impl GridView {
         self.lane = Lane::Cells;
         self.edit.clear();
         self.edit(cx, |s| {
-            let r = if p.per_cell {
-                ops::cells::fill_sequential(s, &tid, c.m, c.k, &words, pen.as_deref())
-            } else {
-                ops::cells::fill_phrase_beats(s, &tid, c.m, c.k, &words, pen.as_deref())
-            };
+            let r = if p.per_cell { ops::cells::fill_sequential(s, &tid, c.m, c.k, &words, pen.as_deref()) } else { ops::cells::fill_phrase_beats(s, &tid, c.m, c.k, &words, pen.as_deref()) };
             next = r.next;
         });
         if let Some(n) = next {

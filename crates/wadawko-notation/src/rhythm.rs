@@ -147,9 +147,7 @@ pub fn measure_rhythm(meas: &Measure, track_id: &str) -> TrackRhythm {
     }
 
     // resolve as células: None = vazia
-    let resolved: Vec<Option<_>> = (0..n_cells)
-        .map(|ci| meas.cell(track_id, ci).filter(|v| !v.is_empty()).and_then(resolve_cell).filter(|r| !r.hits.is_empty()))
-        .collect();
+    let resolved: Vec<Option<_>> = (0..n_cells).map(|ci| meas.cell(track_id, ci).filter(|v| !v.is_empty()).and_then(resolve_cell).filter(|r| !r.hits.is_empty())).collect();
     let is_su = |ci: usize| meas.cell(track_id, ci) == Some("su");
 
     if resolved.iter().all(Option::is_none) && !(0..n_cells).any(is_su) {
@@ -177,14 +175,7 @@ pub fn measure_rhythm(meas: &Measure, track_id: &str) -> TrackRhythm {
             match &resolved[ci] {
                 None => {
                     // `su`: pausa marcada, com a sílaba
-                    out.events.push(Event {
-                        cell: ci,
-                        pos: ci as f32,
-                        beat,
-                        flags: cell_flags,
-                        kind: EventKind::Rest { whole: false },
-                        label: Some("su".into()),
-                    });
+                    out.events.push(Event { cell: ci, pos: ci as f32, beat, flags: cell_flags, kind: EventKind::Rest { whole: false }, label: Some("su".into()) });
                 }
                 Some(res) => {
                     let value = meas.cell(track_id, ci).unwrap_or_default();
@@ -282,16 +273,20 @@ fn cell_events(out: &mut TrackRhythm, res: &CellResolution, word: &str, ci: usiz
                 beat,
                 // semínima com três traços (rulo não medido): sem bandeirola nem beam
                 flags: 0,
-                kind: EventKind::Note {
-                    hits: vec![NoteHit { index: 0, rim: first.zone == Zone::Rim, left: first.hand == Hand::L, accent: first.accent, sfz: first.sfz }],
-                    roll: all.len(),
-                },
+                kind: EventKind::Note { hits: vec![NoteHit { index: 0, rim: first.zone == Zone::Rim, left: first.hand == Hand::L, accent: first.accent, sfz: first.sfz }], roll: all.len() },
                 label: Some(word.to_string()),
             });
         }
         // grade irregular (alongamentos): notas na posição exata, figura pela contagem
         None => {
-            let flags = cell_flags + if k == 1 { 0 } else if k <= 3 { 1 } else { 2 };
+            let flags = cell_flags
+                + if k == 1 {
+                    0
+                } else if k <= 3 {
+                    1
+                } else {
+                    2
+                };
             for (o, idx) in &onsets {
                 out.events.push(note(idx, ci as f32 + *o as f32, flags));
             }
@@ -321,10 +316,7 @@ mod tests {
         // DON _ | _ _ | don don | su _
         let r = measure_rhythm(&meas(2, &["DON", "", "", "", "don", "don", "su", ""]), "t");
         let shape: Vec<(bool, u8, f32)> = r.events.iter().map(|e| (e.is_note(), e.flags, e.pos)).collect();
-        assert_eq!(
-            shape,
-            vec![(true, 1, 0.0), (false, 1, 1.0), (false, 0, 2.0), (true, 1, 4.0), (true, 1, 5.0), (false, 1, 6.0), (false, 1, 7.0)]
-        );
+        assert_eq!(shape, vec![(true, 1, 0.0), (false, 1, 1.0), (false, 0, 2.0), (true, 1, 4.0), (true, 1, 5.0), (false, 1, 6.0), (false, 1, 7.0)]);
         assert_eq!(r.events[5].label.as_deref(), Some("su"));
         assert_eq!(r.beams, vec![BeamGroup { first: 3, last: 4 }]);
     }

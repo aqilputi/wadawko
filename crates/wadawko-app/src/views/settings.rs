@@ -27,13 +27,7 @@ impl Shell {
             if b.context != last_ctx {
                 last_ctx = b.context.clone();
                 table = table.child(
-                    div()
-                        .mt(px(10.0))
-                        .mb(px(2.0))
-                        .text_size(px(11.0))
-                        .font_weight(FontWeight::BOLD)
-                        .text_color(th.accent2)
-                        .child(SharedString::from(format!("[{}] · {}", b.context, b.origin))),
+                    div().mt(px(10.0)).mb(px(2.0)).text_size(px(11.0)).font_weight(FontWeight::BOLD).text_color(th.accent2).child(SharedString::from(format!("[{}] · {}", b.context, b.origin))),
                 );
             }
             let title = keys::title_for(&b.action).unwrap_or("");
@@ -137,6 +131,14 @@ impl Shell {
                         st.store.projects().len(),
                         keys::settings_path().display()
                     ))))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(8.0))
+                            .child(ui::abtn("implib", th, keys::project::ImportLibrary).child("importar músicas de outro banco ou backup…"))
+                            .child(div().text_size(px(11.0)).text_color(th.ink_faint).child("um wadawko.db (app web ou outra instalação) ou um backup .json; nada é sobrescrito")),
+                    )
                     .child(div().text_size(px(11.0)).text_color(th.ink_faint).child(SharedString::from(wadawko_samples::CREDITS.lines().filter(|l| !l.trim().is_empty()).take(6).collect::<Vec<_>>().join(" · "))))
             })
             .child(

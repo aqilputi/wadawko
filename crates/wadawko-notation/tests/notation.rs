@@ -17,8 +17,7 @@ static FONTS: LazyLock<StandardFonts> = LazyLock::new(|| StandardFonts::load(dev
 
 fn fixture_songs() -> Vec<Song> {
     let backup: serde_json::Map<String, serde_json::Value> = serde_json::from_str(BACKUP).unwrap();
-    let songs: Vec<Song> =
-        backup.iter().filter(|(k, _)| k.starts_with(PROJECT_KEY_PREFIX)).map(|(_, raw)| Song::from_json(raw.as_str().unwrap()).unwrap()).collect();
+    let songs: Vec<Song> = backup.iter().filter(|(k, _)| k.starts_with(PROJECT_KEY_PREFIX)).map(|(_, raw)| Song::from_json(raw.as_str().unwrap()).unwrap()).collect();
     assert_eq!(songs.len(), 2);
     songs
 }
@@ -206,9 +205,7 @@ fn beams_agrupam_por_tempo() {
 
 #[test]
 fn pausas_acento_sfz_e_repeticao_aparecem() {
-    let has = |score: &Score, g: wadawko_draw::SmuflGlyph| {
-        score.measures.iter().flat_map(|m| &m.cmds).filter(|c| matches!(c, DrawCmd::Glyph { codepoint, .. } if *codepoint == g.codepoint)).count()
-    };
+    let has = |score: &Score, g: wadawko_draw::SmuflGlyph| score.measures.iter().flat_map(|m| &m.cmds).filter(|c| matches!(c, DrawCmd::Glyph { codepoint, .. } if *codepoint == g.codepoint)).count();
     let demo = demo::demo_song();
     let score = engrave(&demo, &EngraveOptions::default(), &FONTS);
     assert!(has(&score, glyphs::REST_8TH) > 0 && has(&score, glyphs::REST_QUARTER) > 0);
@@ -218,8 +215,7 @@ fn pausas_acento_sfz_e_repeticao_aparecem() {
     let score = engrave(&big, &EngraveOptions::default(), &FONTS);
     assert_eq!(has(&score, glyphs::DYNAMIC_SFZ), 9, "9 DON! na música grande");
     assert!(has(&score, glyphs::DYNAMIC_FF) > 0 && has(&score, glyphs::DYNAMIC_MP) > 0);
-    let texts: Vec<&str> =
-        score.measures.iter().flat_map(|m| &m.cmds).filter_map(|c| if let DrawCmd::Text { text, .. } = c { Some(text.as_str()) } else { None }).collect();
+    let texts: Vec<&str> = score.measures.iter().flat_map(|m| &m.cmds).filter_map(|c| if let DrawCmd::Text { text, .. } = c { Some(text.as_str()) } else { None }).collect();
     assert_eq!(texts.iter().filter(|t| **t == "×2").count(), 2, "duas seções com ritornello");
     assert!(texts.contains(&"solo1") && texts.contains(&"Seção 18"));
 }
@@ -317,9 +313,7 @@ fn mudanca_de_andamento_aparece_no_cabecalho() {
     wadawko_core::ops::measures::set_tempo_mark(&mut song, 1, Some(wadawko_core::TempoMark { target: bpm - 20.0, span: 2 }));
     wadawko_core::ops::measures::set_tempo_mark(&mut song, 3, Some(wadawko_core::TempoMark { target: bpm, span: 0 }));
     let score = engrave(&song, &EngraveOptions::default(), &FONTS);
-    let texts = |mi: usize| -> Vec<String> {
-        score.measures[mi].cmds.iter().filter_map(|c| if let DrawCmd::Text { text, .. } = c { Some(text.clone()) } else { None }).collect()
-    };
+    let texts = |mi: usize| -> Vec<String> { score.measures[mi].cmds.iter().filter_map(|c| if let DrawCmd::Text { text, .. } = c { Some(text.clone()) } else { None }).collect() };
     assert!(texts(1).contains(&format!("rall. → {:.0}", song.tempo - 20.0)), "{:?}", texts(1));
     assert!(texts(3).contains(&format!("♩ = {:.0}", song.tempo)), "{:?}", texts(3));
     assert!(!texts(0).iter().any(|t| t.contains("rall") || t.contains("♩")));

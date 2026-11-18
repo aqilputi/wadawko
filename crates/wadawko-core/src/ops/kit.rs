@@ -18,9 +18,7 @@ pub fn instrument_by_id<'a>(song: &'a Song, id: Option<&str>) -> Option<&'a Inst
 /// Def efetiva de uma linha: por `instrumentId`; fallback = builtin do
 /// instrumento base (nunca falha).
 pub fn resolve_instrument<'a>(song: &'a Song, track: &Track) -> &'a InstrumentDef {
-    instrument_by_id(song, track.instrument_id.as_deref())
-        .or_else(|| BUILTIN_INSTRUMENTS.iter().find(|d| d.base == track.instrument))
-        .unwrap_or(&BUILTIN_INSTRUMENTS[0])
+    instrument_by_id(song, track.instrument_id.as_deref()).or_else(|| BUILTIN_INSTRUMENTS.iter().find(|d| d.base == track.instrument)).unwrap_or(&BUILTIN_INSTRUMENTS[0])
 }
 
 /// Nome a mostrar nos rótulos da linha.

@@ -48,11 +48,7 @@ pub static VOCABULARY: &[Syllable] = &[
     Syllable { name: "KON", hits: &[h(0.0, Head, 1.0, L)], hint: "batida forte no centro (esq.)" },
     Syllable { name: "kon", hits: &[h(0.0, Head, 0.7, L)], hint: "batida no centro (esq.)" },
     Syllable { name: "doko", hits: &[h(0.0, Head, 0.7, R), h(0.5, Head, 0.6, L)], hint: "duas batidas rápidas (dir.-esq.)" },
-    Syllable {
-        name: "doron",
-        hits: &[h(0.0, Head, 1.0, R), h(0.0, Head, 1.0, L)],
-        hint: "batida com as duas mãos ao mesmo tempo (uníssono forte)",
-    },
+    Syllable { name: "doron", hits: &[h(0.0, Head, 1.0, R), h(0.0, Head, 1.0, L)], hint: "batida com as duas mãos ao mesmo tempo (uníssono forte)" },
     Syllable { name: "do", hits: &[h(0.0, Head, 0.55, R)], hint: "batida curta (dir.)" },
     Syllable { name: "ko", hits: &[h(0.0, Head, 0.5, L)], hint: "batida curta (esq.)" },
     Syllable { name: "tsu", hits: &[h(0.0, Head, 0.05, R)], hint: "ghost note, quase silêncio (dir.)" },
@@ -62,11 +58,7 @@ pub static VOCABULARY: &[Syllable] = &[
     Syllable { name: "ka", hits: &[h(0.0, Rim, 0.7, R)], hint: "borda, fuchi (dir.)" },
     Syllable { name: "ra", hits: &[h(0.0, Rim, 0.7, L)], hint: "borda, fuchi (esq.)" },
     Syllable { name: "kara", hits: &[h(0.0, Rim, 0.65, R), h(0.5, Rim, 0.55, L)], hint: "duas na borda (dir.-esq.)" },
-    Syllable {
-        name: "karan",
-        hits: &[h(0.0, Rim, 1.0, R), h(0.0, Rim, 1.0, L)],
-        hint: "borda com as duas mãos ao mesmo tempo (uníssono forte)",
-    },
+    Syllable { name: "karan", hits: &[h(0.0, Rim, 1.0, R), h(0.0, Rim, 1.0, L)], hint: "borda com as duas mãos ao mesmo tempo (uníssono forte)" },
     Syllable { name: "ten", hits: &[h(0.0, Head, 0.7, R)], hint: "shime, batida (dir.)" },
     Syllable { name: "teke", hits: &[h(0.0, Head, 0.6, R), h(0.5, Head, 0.5, L)], hint: "shime, duas rápidas (dir.-esq.)" },
     Syllable { name: "su", hits: &[], hint: "pausa marcada" },
@@ -104,38 +96,13 @@ pub struct KnownPhrase {
 }
 
 pub static PHRASES: &[KnownPhrase] = &[
-    KnownPhrase {
-        name: "cavalinho",
-        phrase: "don doko don doko don doko don doko",
-        hint: "galope: don no tempo, doko no contratempo (1 compasso)",
-        per_cell: true,
-    },
+    KnownPhrase { name: "cavalinho", phrase: "don doko don doko don doko don doko", hint: "galope: don no tempo, doko no contratempo (1 compasso)", per_cell: true },
     KnownPhrase { name: "dondoko", phrase: "don doko don don", hint: "padrão dondoko clássico (1 compasso)", per_cell: false },
-    KnownPhrase {
-        name: "jiuchi dontsuku",
-        phrase: "DON tsuku DON tsuku",
-        hint: "jiuchi de festival, matsuri-jiuchi (1 compasso)",
-        per_cell: false,
-    },
-    KnownPhrase {
-        name: "tontsuton",
-        phrase: "don su tsu kon su ku don su tsu kon su ku don su don su",
-        hint: "jiuchi tontsuton (2 compassos, meio-tempo por palavra)",
-        per_cell: true,
-    },
-    KnownPhrase {
-        name: "matsuri",
-        phrase: "DON su KON su DON KARA KA RA don KON su kon DON KARA KA RA",
-        hint: "tema do Matsuri (2 compassos, meio-tempo por palavra)",
-        per_cell: true,
-    },
+    KnownPhrase { name: "jiuchi dontsuku", phrase: "DON tsuku DON tsuku", hint: "jiuchi de festival, matsuri-jiuchi (1 compasso)", per_cell: false },
+    KnownPhrase { name: "tontsuton", phrase: "don su tsu kon su ku don su tsu kon su ku don su don su", hint: "jiuchi tontsuton (2 compassos, meio-tempo por palavra)", per_cell: true },
+    KnownPhrase { name: "matsuri", phrase: "DON su KON su DON KARA KA RA don KON su kon DON KARA KA RA", hint: "tema do Matsuri (2 compassos, meio-tempo por palavra)", per_cell: true },
     KnownPhrase { name: "jiuchi shime", phrase: "ten teke ten teke", hint: "jiuchi básico do shime (1 compasso)", per_cell: false },
-    KnownPhrase {
-        name: "rulo dokodoko",
-        phrase: "dokodoko dokodoko dokodoko dokodoko",
-        hint: "rulo contínuo (1 compasso, 4 golpes por tempo)",
-        per_cell: false,
-    },
+    KnownPhrase { name: "rulo dokodoko", phrase: "dokodoko dokodoko dokodoko dokodoko", hint: "rulo contínuo (1 compasso, 4 golpes por tempo)", per_cell: false },
 ];
 
 /// Texto a mostrar na célula: a pausa `su` vira `·`.

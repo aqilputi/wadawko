@@ -17,9 +17,7 @@ impl Shell {
         let bpm = song.tempo;
         let sounding = st.sounding_bpm;
         let title: SharedString = wadawko_store::display_title(&song).into();
-        let chip = |id: &'static str, text: String, a: Box<dyn Action>| {
-            abtn_boxed(id, th, a).h(px(26.0)).px(px(8.0)).text_size(px(12.0)).child(SharedString::from(text))
-        };
+        let chip = |id: &'static str, text: String, a: Box<dyn Action>| abtn_boxed(id, th, a).h(px(26.0)).px(px(8.0)).text_size(px(12.0)).child(SharedString::from(text));
         div()
             .h(px(57.0))
             .flex_none()
@@ -67,46 +65,34 @@ impl Shell {
             .child(div().text_size(px(12.0)).text_color(th.ink_soft).child("BPM"))
             .child(
                 // roda do mouse = ±1; clique = digitar
-                abtn("bpm", th, keys::transport::SetBpm)
-                    .w(px(64.0))
-                    .h(px(30.0))
-                    .px(px(8.0))
-                    .justify_start()
-                    .bg(th.paper_raise)
-                    .child(SharedString::from(format!("{bpm:.0}")))
-                    .on_scroll(cx.listener(|this, ev: &ScrollEvent, _, cx| {
+                abtn("bpm", th, keys::transport::SetBpm).w(px(64.0)).h(px(30.0)).px(px(8.0)).justify_start().bg(th.paper_raise).child(SharedString::from(format!("{bpm:.0}"))).on_scroll(cx.listener(
+                    |this, ev: &ScrollEvent, _, cx| {
                         let d = f32::from(ev.delta.pixel_delta(px(20.0)).y);
                         let b = this.song(cx).tempo + if d > 0.0 { 1.0 } else { -1.0 };
                         this.state.update(cx, |s, cx| s.set_bpm(b, cx));
                         cx.stop_propagation();
                         cx.notify();
-                    })),
+                    },
+                )),
             )
             .when(playing && (sounding as f64 - bpm).abs() > 0.5, |d| d.child(div().text_size(px(12.0)).text_color(th.accent).child(SharedString::from(format!("♪ {sounding:.0}")))))
-            .child(segmented(
-                "swing",
-                th,
-                vec![("reto", Box::new(keys::transport::Straight)), ("swing", Box::new(keys::transport::SwingOn))],
-                (song.swing() > 0.0) as usize,
-                true,
-            ))
+            .child(segmented("swing", th, vec![("reto", Box::new(keys::transport::Straight)), ("swing", Box::new(keys::transport::SwingOn))], (song.swing() > 0.0) as usize, true))
             .child(atoggle("loop", th, tp.looping, keys::transport::ToggleLoop).child("↺ loop"))
             .child(atoggle("metro", th, tp.metronome, keys::transport::ToggleMetronome).w(px(38.0)).px(px(0.0)).child("🎵"))
             .child(atoggle("countin", th, tp.count_in, keys::transport::ToggleCountIn).w(px(38.0)).px(px(0.0)).child("⏱"))
             .child(atoggle("trainer", th, tp.trainer, keys::transport::ToggleTrainer).w(px(38.0)).px(px(0.0)).child("🏃"))
             .when(tp.trainer, |d| {
-                d.child(chip("tr-pct", format!("de {:.0}%", tp.trainer_pct * 100.0), Box::new(keys::transport::TrainerPct)))
-                    .child(chip("tr-step", format!("+{:.0}%/volta", tp.trainer_step * 100.0), Box::new(keys::transport::TrainerStep)))
+                d.child(chip("tr-pct", format!("de {:.0}%", tp.trainer_pct * 100.0), Box::new(keys::transport::TrainerPct))).child(chip(
+                    "tr-step",
+                    format!("+{:.0}%/volta", tp.trainer_step * 100.0),
+                    Box::new(keys::transport::TrainerStep),
+                ))
             })
-            .child(
-                abtn("play", th, keys::transport::TogglePlay)
-                    .w(px(96.0))
-                    .bg(th.accent)
-                    .border_color(th.accent)
-                    .text_color(th.on_accent)
-                    .font_weight(FontWeight::BOLD)
-                    .child(if playing { "■ parar" } else { "▶ tocar" }),
-            )
+            .child(abtn("play", th, keys::transport::TogglePlay).w(px(96.0)).bg(th.accent).border_color(th.accent).text_color(th.on_accent).font_weight(FontWeight::BOLD).child(if playing {
+                "■ parar"
+            } else {
+                "▶ tocar"
+            }))
             .child(abtn("theme", th, keys::view::ToggleTheme).w(px(36.0)).px(px(0.0)).child(if th.dark { "☀" } else { "☾" }))
     }
 
@@ -130,5 +116,9 @@ impl Shell {
 /// `abtn` para uma ação já "boxed".
 fn abtn_boxed(id: &'static str, th: &Theme, a: Box<dyn Action>) -> gpui_kit::Stateful<gpui_kit::Div> {
     let a2 = a.boxed_clone();
-    keys::hintable(crate::ui::btn(id, th).on_click(move |_, w, cx| w.dispatch_action(a.boxed_clone(), cx)), id, std::rc::Rc::new(move |w: &mut gpui_kit::Window, cx: &mut gpui_kit::App| w.dispatch_action(a2.boxed_clone(), cx)))
+    keys::hintable(
+        crate::ui::btn(id, th).on_click(move |_, w, cx| w.dispatch_action(a.boxed_clone(), cx)),
+        id,
+        std::rc::Rc::new(move |w: &mut gpui_kit::Window, cx: &mut gpui_kit::App| w.dispatch_action(a2.boxed_clone(), cx)),
+    )
 }

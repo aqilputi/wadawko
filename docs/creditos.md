@@ -7,19 +7,19 @@ status: stable
 generated:
   by: claude-code/claude-opus-5-5
   at: 2026-11-16T13:10:00Z
-fontes: [public/samples/CREDITS.md, assets/fonts/]
+fontes: [assets/samples/CREDITS.md, assets/fonts/]
 ---
 
 # Créditos e licenças de terceiros
 
 O binário do app **embute** os samples e as fontes abaixo. As licenças deles valem para esses
-arquivos — não para o código do WaDAWko (cuja licença ainda será escolhida, decisão D1 do
-[plano do repositório](/planejamento/repo.md)). O app mostra os créditos em **Config → Banco e
+arquivos — não para o código do WaDAWko, que é **MIT OR Apache-2.0** (`LICENSE-MIT`,
+`LICENSE-APACHE` e o resumo em `NOTICE`, na raiz do repositório). O app mostra os créditos em **Config → Banco e
 créditos**.
 
-# Samples (`public/samples/`)
+# Samples (`assets/samples/`)
 
-Texto completo e o mapeamento arquivo a arquivo: `public/samples/CREDITS.md` (é esse arquivo
+Texto completo e o mapeamento arquivo a arquivo: `assets/samples/CREDITS.md` (é esse arquivo
 que o app embute e exibe).
 
 | Origem | Autor | Licença | Usado em |

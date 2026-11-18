@@ -1,0 +1,49 @@
+# Flatpak do WaDAWko. Build local (precisa de rede para o cargo baixar os crates):
+#
+#   flatpak install --user flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08 \
+#       org.freedesktop.Sdk.Extension.rust-stable//24.08
+#   flatpak-builder --user --install --force-clean --build-args=--share=network \
+#       build-flatpak assets/linux/flatpak/io.github.aqilputi.WaDAWko.yml
+#   flatpak run io.github.aqilputi.WaDAWko
+#
+# Para o Flathub (sem rede no build) seria preciso gerar cargo-sources.json com o
+# flatpak-cargo-generator e trocar o `cargo --offline fetch` por ele.
+id: io.github.aqilputi.WaDAWko
+runtime: org.freedesktop.Platform
+runtime-version: '24.08'
+sdk: org.freedesktop.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: wadawko
+finish-args:
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --share=ipc
+  - --device=dri
+  # áudio: cpal usa ALSA; no Flatpak o ALSA sai pelo plugin do PulseAudio/PipeWire
+  - --socket=pulseaudio
+  # exportar/importar usam o portal de arquivos; Downloads como destino padrão sem portal
+  - --filesystem=xdg-download
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+  env:
+    CARGO_HOME: /run/build/wadawko/cargo
+modules:
+  - name: wadawko
+    buildsystem: simple
+    build-commands:
+      - cargo build --release --locked -p wadawko-app -p wadawko-cli
+      - install -Dm755 target/release/wadawko -t /app/bin/
+      - install -Dm755 target/release/wadawko-cli -t /app/bin/
+      - install -Dm644 assets/linux/io.github.aqilputi.WaDAWko.desktop -t /app/share/applications/
+      - install -Dm644 assets/linux/io.github.aqilputi.WaDAWko.metainfo.xml -t /app/share/metainfo/
+      - cp -r assets/linux/icons/hicolor /app/share/icons/
+      - install -Dm644 -t /app/share/licenses/io.github.aqilputi.WaDAWko/ LICENSE-MIT LICENSE-APACHE NOTICE assets/samples/CREDITS.md
+    sources:
+      - type: dir
+        path: ../../..
+        skip:
+          - target
+          - dist
+          - build-flatpak
+          - .flatpak-builder

@@ -1,11 +1,17 @@
-# dependências e builds
-node_modules/
-target/
-spike/target/
-dist/
-
-# banco vivo (a cópia de uso fica em ~/.local/share/wadawko/); o backup JSON entra
-data/*.db
-data/*.db-wal
-data/*.db-shm
+# builds
+/target/
+/dist/
+# protótipo e app web antigos (saíram do repositório; em checkouts antigos o
+# spike/target e o node_modules podem continuar no disco)
+/spike/
+/node_modules/
+# checkout temporário da tag web-final (regerar o golden do core)
+/.web/
+# bancos SQLite soltos
+*.db
+*.db-wal
+*.db-shm
 *.db-journal
+/tools/.cache/
+/build-flatpak/
+/.flatpak-builder/

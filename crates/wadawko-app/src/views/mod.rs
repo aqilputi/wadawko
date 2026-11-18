@@ -11,8 +11,8 @@
 //! barra de contexto e as Configurações são `impl Shell` nos arquivos irmãos.
 
 pub mod context_toolbar;
-pub mod grid;
 pub mod drag_ghost;
+pub mod grid;
 pub mod kit;
 pub mod lane;
 pub mod mixer;

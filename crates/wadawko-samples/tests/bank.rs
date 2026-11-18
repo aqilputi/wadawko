@@ -6,7 +6,7 @@ use wadawko_samples::*;
 
 fn bank() -> &'static SampleBank {
     static BANK: std::sync::OnceLock<SampleBank> = std::sync::OnceLock::new();
-    BANK.get_or_init(|| SampleBank::load_dir(repo_samples_dir()).expect("carregar public/samples"))
+    BANK.get_or_init(|| SampleBank::load_dir(repo_samples_dir()).expect("carregar assets/samples"))
 }
 
 fn manifest_names() -> BTreeSet<&'static str> {
@@ -38,11 +38,8 @@ fn file_list_matches_manifest_and_disk() {
     assert_eq!(SAMPLE_NAMES.iter().copied().collect::<BTreeSet<_>>(), all);
 
     // o diretório não tem .ogg sobrando nem faltando
-    let on_disk: BTreeSet<String> = std::fs::read_dir(repo_samples_dir())
-        .unwrap()
-        .map(|e| e.unwrap().file_name().into_string().unwrap())
-        .filter_map(|f| f.strip_suffix(".ogg").map(str::to_string))
-        .collect();
+    let on_disk: BTreeSet<String> =
+        std::fs::read_dir(repo_samples_dir()).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).filter_map(|f| f.strip_suffix(".ogg").map(str::to_string)).collect();
     assert_eq!(on_disk, all.iter().map(|s| s.to_string()).collect());
 
     // convenção de nomes: <instrumento>-<zona>-<camada>-<rr>

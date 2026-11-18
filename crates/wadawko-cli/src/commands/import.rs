@@ -24,12 +24,6 @@ fn run(ctx: &Context, mut args: Args) -> Result<()> {
     let song = read_song_file(&file)?;
     let db = ctx.open_read_write()?;
     let id = add_song(&db, &song, open)?;
-    println!(
-        "importada: {} ({id}) — {} linha(s), {} compasso(s) → {}",
-        display_title(&song),
-        song.tracks.len(),
-        song.measures.len(),
-        ctx.db_path().display()
-    );
+    println!("importada: {} ({id}) — {} linha(s), {} compasso(s) → {}", display_title(&song), song.tracks.len(), song.measures.len(), ctx.db_path().display());
     Ok(())
 }

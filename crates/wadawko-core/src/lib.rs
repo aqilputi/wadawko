@@ -26,10 +26,7 @@ pub mod phrase;
 pub mod timeline;
 pub mod vocab;
 
-pub use model::{
-    Dynamic, DynamicMark, Hairpin, InstrumentDef, InstrumentId, InstrumentTone, KyaiVoice, Measure, Person, Section, Song, SongError, TempoMark,
-    ToneType, Track, Zone, ZoneParams,
-};
+pub use model::{Dynamic, DynamicMark, Hairpin, InstrumentDef, InstrumentId, InstrumentTone, KyaiVoice, Measure, Person, Section, Song, SongError, TempoMark, ToneType, Track, Zone, ZoneParams};
 pub use ops::CellPos;
 
 /// `\s` do JavaScript (≈ `char::is_whitespace`, com U+FEFF e sem U+0085).

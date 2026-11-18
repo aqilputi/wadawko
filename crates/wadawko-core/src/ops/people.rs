@@ -154,9 +154,5 @@ pub struct Rail<'a> {
 /// linhas ela toca. Suporta sobreposição e não-contiguidade. Pessoas sem
 /// nenhuma linha ficam de fora.
 pub fn rails_for_tracks(song: &Song) -> Vec<Rail<'_>> {
-    song.people()
-        .iter()
-        .map(|person| Rail { person, rows: song.tracks.iter().map(|t| t.person_ids().contains(&person.id)).collect() })
-        .filter(|r| r.rows.iter().any(|&b| b))
-        .collect()
+    song.people().iter().map(|person| Rail { person, rows: song.tracks.iter().map(|t| t.person_ids().contains(&person.id)).collect() }).filter(|r| r.rows.iter().any(|&b| b)).collect()
 }

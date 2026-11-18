@@ -50,19 +50,7 @@ fn line(window: &mut Window, a: (f32, f32), b: (f32, f32), color: Hsla) {
 
 /// "chip" de dinâmica + botões de hairpin + a cunha desenhada, numa faixa de altura `h`.
 #[allow(clippy::too_many_arguments)]
-fn paint_dyn(
-    window: &mut Window,
-    cx: &mut App,
-    text: &mut PaintText<'_>,
-    th: &Theme,
-    mx: f32,
-    y: f32,
-    mw: f32,
-    h: f32,
-    dynamic: Option<&'static str>,
-    hairpin: Option<Hairpin>,
-    wedge_from: f32,
-) {
+fn paint_dyn(window: &mut Window, cx: &mut App, text: &mut PaintText<'_>, th: &Theme, mx: f32, y: f32, mw: f32, h: f32, dynamic: Option<&'static str>, hairpin: Option<Hairpin>, wedge_from: f32) {
     let label: SharedString = dynamic.unwrap_or("·").into();
     window.paint_quad(rounded(rect(mx + 2.0, y + 2.0, 56.0, h - 4.0), 5.0, if dynamic.is_some() { th.accent2_wash } else { th.paper_raise }));
     text(window, cx, &label, 12, if dynamic.is_some() { th.ink } else { th.ink_faint }, if dynamic.is_some() { 0 } else { 1 }, mx + 10.0, y + (h - 16.0) * 0.5, None);

@@ -1,3 +1,5 @@
+<img src="assets/linux/icons/hicolor/128x128/apps/io.github.aqilputi.WaDAWko.png" width="96" align="right" alt="">
+
 # WaDAWko
 
 Editor de partituras e "DAW" para grupos de **taiko**, escrito em **kuchi shōga** — as sílabas
@@ -5,7 +7,7 @@ faladas dos tambores (`don`, `doko`, `ka`, `tsuku`…). Escreva numa grade por i
 com samples reais, veja a partitura e ensaie com a esteira de notas.
 
 App desktop nativo em **Rust + [GPUI](https://www.gpui.rs/)** para Linux. O app web original
-(Svelte) está no branch `web-legacy`.
+(Svelte) está na tag `web-final`.
 
 ![A grade: seções, linhas por instrumento e as sílabas de cada célula](docs/imagens/grade.png)
 
@@ -27,7 +29,8 @@ App desktop nativo em **Rust + [GPUI](https://www.gpui.rs/)** para Linux. O app 
 
 ## Baixar
 
-Pacote para Linux x86_64 em **[Releases](https://github.com/aqilputi/wadawko/releases)**:
+Para Linux x86_64 em **[Releases](https://github.com/aqilputi/wadawko/releases)**: um **AppImage**
+(`chmod +x` e rode) ou o pacote que instala em `~/.local` com atalho no menu:
 
 ```sh
 tar xzf wadawko-*-linux-x86_64.tar.gz
@@ -36,13 +39,14 @@ wadawko
 ```
 
 Requer GPU com Vulkan (Mesa serve), PipeWire/ALSA e glibc ≥ 2.39; `ffmpeg` só para MP3.
-Vindo do app web? Na primeira vez: `wadawko --migrate-from <repo-antigo>/data/wadawko.db`.
+Vindo do app web ou de outro PC? **Config → importar músicas** e escolha o `wadawko.db` antigo
+(ou um backup `.json`).
 
 ## Compilar
 
 ```sh
 git clone https://github.com/aqilputi/wadawko.git && cd wadawko
-cargo build --release -p wadawko-app          # binário em spike/target/release/wadawko
+cargo build --release -p wadawko-app          # binário em target/release/wadawko
 ```
 
 Dependências de sistema e detalhes: [instalar e compilar](docs/guias/instalar-e-compilar.md).
@@ -66,4 +70,11 @@ frontmatter, legível por pessoas e agentes):
 
 Samples de taiko: SCC Taiko Drums (CC BY-SA 4.0), freesound (CC BY 3.0 / CC0), animalese.js
 (CC BY 4.0). Fontes: Zen Kaku Gothic New, Shippori Mincho e Bravura (SIL OFL). Detalhes em
-[créditos](docs/creditos.md). A licença do código ainda será definida.
+[créditos](docs/creditos.md) e no [`NOTICE`](NOTICE).
+
+## Licença
+
+O código é licenciado sob **MIT** ou **Apache-2.0**, à sua escolha
+([`LICENSE-MIT`](LICENSE-MIT), [`LICENSE-APACHE`](LICENSE-APACHE)). Os samples e as fontes
+embutidos mantêm as licenças deles (acima). Contribuições enviadas a este repositório são
+licenciadas nos mesmos termos, salvo aviso em contrário.

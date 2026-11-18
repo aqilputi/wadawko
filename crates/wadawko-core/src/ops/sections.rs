@@ -52,13 +52,7 @@ pub fn section_ranges(song: &Song) -> Vec<SectionRange> {
     secs.sort_by_key(|s| s.start);
     secs.iter()
         .enumerate()
-        .map(|(i, s)| SectionRange {
-            id: s.id.clone(),
-            name: s.name.clone(),
-            start: s.start,
-            repeat: s.repeat,
-            end_excl: secs.get(i + 1).map_or(song.measures.len(), |n| n.start),
-        })
+        .map(|(i, s)| SectionRange { id: s.id.clone(), name: s.name.clone(), start: s.start, repeat: s.repeat, end_excl: secs.get(i + 1).map_or(song.measures.len(), |n| n.start) })
         .collect()
 }
 
@@ -131,10 +125,7 @@ pub fn clone_section(song: &mut Song, id: &str) -> Option<String> {
     }
     let new_id = new_section_id();
     let idx = sections.iter().position(|s| s.id == id)?;
-    sections.insert(
-        idx + 1,
-        Section { id: new_id.clone(), name: format!("{} (cópia)", r.name), start: at, repeat: r.repeat.filter(|&x| x != 0), ..Default::default() },
-    );
+    sections.insert(idx + 1, Section { id: new_id.clone(), name: format!("{} (cópia)", r.name), start: at, repeat: r.repeat.filter(|&x| x != 0), ..Default::default() });
     Some(new_id)
 }
 

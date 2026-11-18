@@ -303,11 +303,7 @@ impl AppState {
     /// Tocando? Logo após um comando vale a INTENÇÃO (o thread de áudio só
     /// confirma no próximo callback); depois, o estado real do relógio.
     pub fn playing(&self) -> bool {
-        if self.play_cmd_at.elapsed() < Duration::from_millis(300) {
-            self.want_play
-        } else {
-            self.audio.as_ref().is_some_and(|a| a.clock().snapshot().playing)
-        }
+        if self.play_cmd_at.elapsed() < Duration::from_millis(300) { self.want_play } else { self.audio.as_ref().is_some_and(|a| a.clock().snapshot().playing) }
     }
 
     /// Começa a tocar da célula-fonte global `start_cell` (com região, do início dela).
@@ -499,6 +495,30 @@ impl AppState {
         let r = self.store.add_project(song);
         if self.report("não criei a música", r).is_some() {
             self.after_project_change(cx);
+        }
+        cx.notify();
+    }
+
+    /// Traz as músicas de outro banco (`.db`) ou de um backup JSON (a fusão não
+    /// sobrescreve nada; a música aberta continua aberta).
+    pub fn import_library(&mut self, path: &std::path::Path, cx: &mut Context<Self>) {
+        let r = self.store.import_library(path);
+        if let Some(rep) = self.report("não importei", r) {
+            let name = path.file_name().map(|f| f.to_string_lossy().to_string()).unwrap_or_default();
+            let mut msg = match rep.added.len() {
+                0 => format!("nada novo em {name}"),
+                1 => format!("1 música importada de {name}: {}", rep.added[0].1),
+                n => format!("{n} músicas importadas de {name}"),
+            };
+            let kept = rep.unchanged.len() + rep.kept_existing.len();
+            if kept > 0 {
+                msg.push_str(&format!(" · {kept} já estava(m) aqui"));
+            }
+            if !rep.invalid.is_empty() {
+                msg.push_str(&format!(" · {} entrada(s) ilegível(is)", rep.invalid.len()));
+            }
+            self.flash(msg);
+            self.revision += 1;
         }
         cx.notify();
     }

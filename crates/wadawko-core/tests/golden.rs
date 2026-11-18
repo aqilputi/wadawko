@@ -1,5 +1,5 @@
 //! Confere o porte contra o TypeScript ORIGINAL: `fixtures/golden.json` é gerado
-//! por `tests/golden/gen.mjs` rodando `src/lib/*.ts` no node (frases, kiai,
+//! por `tests/golden/gen.mjs` rodando `src/lib/*.ts` do app web (tag `web-final`) no node (frases, kiai,
 //! constantes e ~90 roteiros de operações do store, incluindo 60 aleatórios).
 //! Aqui as mesmas entradas passam pelo Rust e o resultado tem que bater.
 
@@ -15,8 +15,7 @@ use wadawko_core::vocab::{self, Hand};
 use wadawko_core::{demo, ids, kyai};
 
 static GOLDEN: LazyLock<Value> = LazyLock::new(|| serde_json::from_str(include_str!("fixtures/golden.json")).expect("golden.json"));
-static BACKUP: LazyLock<Value> =
-    LazyLock::new(|| serde_json::from_str(include_str!("fixtures/backup-localstorage-2026-10-02.json")).expect("backup"));
+static BACKUP: LazyLock<Value> = LazyLock::new(|| serde_json::from_str(include_str!("fixtures/backup-localstorage-2026-10-02.json")).expect("backup"));
 
 fn base_song(name: &str) -> Song {
     let project = |id: &str| Song::from_json(BACKUP[format!("wadawko:project:{id}")].as_str().unwrap()).unwrap();
@@ -120,12 +119,7 @@ fn exec(song: &mut Song, ui: &mut Ui, op: &Value) -> Value {
     let resolved: Vec<Option<String>> = raw.iter().map(|a| res(song, a)).collect();
     let selected_arg: Vec<String> = if name == "setSelected" { raw[0].as_array().unwrap().iter().map(|x| res(song, x).unwrap()).collect() } else { Vec::new() };
     let owner_cells: Vec<(String, CellPos)> = if name == "setCellsOwner" {
-        raw[0]
-            .as_array()
-            .unwrap()
-            .iter()
-            .map(|c| (res(song, &c[0]).unwrap(), CellPos::new(c[1].as_u64().unwrap() as usize, c[2].as_u64().unwrap() as usize)))
-            .collect()
+        raw[0].as_array().unwrap().iter().map(|c| (res(song, &c[0]).unwrap(), CellPos::new(c[1].as_u64().unwrap() as usize, c[2].as_u64().unwrap() as usize))).collect()
     } else {
         Vec::new()
     };
@@ -319,12 +313,7 @@ fn operacoes_do_store_batem_com_o_ts() {
 #[test]
 fn vocabulario_e_constantes_batem_com_o_ts() {
     let g = &*GOLDEN;
-    let ours: Vec<Value> = vocab::VOCABULARY
-        .iter()
-        .map(|s| {
-            json!([s.name, s.hits.iter().map(|h| json!([h.offset, zone(h.zone), h.vel, hand(h.hand)])).collect::<Vec<_>>(), s.hint])
-        })
-        .collect();
+    let ours: Vec<Value> = vocab::VOCABULARY.iter().map(|s| json!([s.name, s.hits.iter().map(|h| json!([h.offset, zone(h.zone), h.vel, hand(h.hand)])).collect::<Vec<_>>(), s.hint])).collect();
     approx_eq(&json!(ours), &g["vocabulary"], "vocabulary").unwrap();
 
     let palette: Vec<Value> = vocab::PALETTE_GROUPS.iter().map(|p| json!({"label": p.label, "syls": p.syls})).collect();

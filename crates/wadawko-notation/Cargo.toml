@@ -4,6 +4,8 @@ description = "WaDAWko — engraving da partitura de taiko (subconjunto SMuFL/Br
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [dependencies]
 wadawko-core = { path = "../wadawko-core" }

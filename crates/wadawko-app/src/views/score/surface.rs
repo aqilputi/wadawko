@@ -4,7 +4,9 @@
 
 use std::collections::HashMap;
 
-use gpui_kit::{App, BorderStyle, Bounds, ContentMask, FillOptions, FillRule, Hsla, PathBuilder, PathStyle, Pixels, Rgba, ShapedLine, SharedString, TextAlign as GTextAlign, TextRun, Window, point, px, quad, size};
+use gpui_kit::{
+    App, BorderStyle, Bounds, ContentMask, FillOptions, FillRule, Hsla, PathBuilder, PathStyle, Pixels, Rgba, ShapedLine, SharedString, TextAlign as GTextAlign, TextRun, Window, point, px, quad, size,
+};
 use wadawko_draw::{Color, FontBook, FontId, Path, PathEl, Point, Rect, TextAlign, TextStyle};
 
 use super::canvas::Surface;

@@ -227,6 +227,7 @@ impl Shell {
         }));
         let d = on!(d, cx, project::ExportJson, |this, w, cx| this.export_json(cx));
         let d = on!(d, cx, project::ImportJson, |this, w, cx| this.import_json(cx));
+        let d = on!(d, cx, project::ImportLibrary, |this, w, cx| this.import_library(cx));
         let d = on!(d, cx, project::ExportMp3, |this, w, cx| this.export_audio("mp3", cx));
         let d = on!(d, cx, project::ExportWav, |this, w, cx| this.export_audio("wav", cx));
         let d = on!(d, cx, project::CancelExport, |this, w, cx| this.state.update(cx, |s, _| s.cancel_export()));
@@ -439,15 +440,27 @@ impl Shell {
         let d = on!(d, cx, ga::DeleteToMeasureEnd, |this, w, cx| this.change(K::DeleteToMeasureEnd, cx));
         let d = on!(d, cx, ga::DeleteSectionRow, |this, w, cx| this.change(K::DeleteSectionRow, cx));
         let d = on!(d, cx, ga::YankMeasureRow, |this, w, cx| {
-            this.g(cx, |g, cx, n| if let Some(r) = g.r_measures(n, false) { g.yank(r, true, cx) });
+            this.g(cx, |g, cx, n| {
+                if let Some(r) = g.r_measures(n, false) {
+                    g.yank(r, true, cx)
+                }
+            });
             this.flash("compasso copiado", cx)
         });
         let d = on!(d, cx, ga::YankBeat, |this, w, cx| {
-            this.g(cx, |g, cx, n| if let Some(r) = g.r_beats(n) { g.yank(r, false, cx) });
+            this.g(cx, |g, cx, n| {
+                if let Some(r) = g.r_beats(n) {
+                    g.yank(r, false, cx)
+                }
+            });
             this.flash("tempo copiado", cx)
         });
         let d = on!(d, cx, ga::YankSectionRow, |this, w, cx| {
-            this.g(cx, |g, cx, _| if let Some(r) = g.r_section() { g.yank(r, false, cx) });
+            this.g(cx, |g, cx, _| {
+                if let Some(r) = g.r_section() {
+                    g.yank(r, false, cx)
+                }
+            });
             this.flash("seção (linha) copiada", cx)
         });
         let d = on!(d, cx, ga::PasteAfter, |this, w, cx| this.change(K::PasteAfter, cx));

@@ -88,13 +88,11 @@ impl Db {
         if !path.is_file() {
             bail!("banco não encontrado: {}", path.display());
         }
-        let conn = Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX)
-            .with_context(|| format!("abrir o banco {} (somente leitura)", path.display()))?;
+        let conn =
+            Connection::open_with_flags(path, OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_NO_MUTEX).with_context(|| format!("abrir o banco {} (somente leitura)", path.display()))?;
         conn.busy_timeout(Duration::from_secs(5))?;
-        let has_table: bool = conn
-            .query_row("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'kv'", [], |r| r.get::<_, i64>(0))
-            .with_context(|| format!("ler o banco {}", path.display()))?
-            > 0;
+        let has_table: bool =
+            conn.query_row("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'kv'", [], |r| r.get::<_, i64>(0)).with_context(|| format!("ler o banco {}", path.display()))? > 0;
         Ok(Db { inner: Arc::new(Inner { conn: Mutex::new(conn), path: Some(path.to_path_buf()), read_only: true, no_table: !has_table }) })
     }
 
@@ -147,11 +145,7 @@ impl Db {
             return Ok(None);
         }
         let conn = self.conn();
-        let e = conn
-            .query_row("SELECT key, value, updated_at FROM kv WHERE key = ?1", [key], |r| {
-                Ok(KvEntry { key: r.get(0)?, value: r.get(1)?, updated_at: r.get(2)? })
-            })
-            .optional()?;
+        let e = conn.query_row("SELECT key, value, updated_at FROM kv WHERE key = ?1", [key], |r| Ok(KvEntry { key: r.get(0)?, value: r.get(1)?, updated_at: r.get(2)? })).optional()?;
         Ok(e)
     }
 
@@ -265,17 +259,13 @@ impl Drop for Inner {
 /// (função pura, para teste). `XDG_DATA_HOME` vazio ou relativo é ignorado,
 /// como manda a especificação XDG.
 pub fn data_dir_from(xdg_data_home: Option<&OsStr>, home: Option<&OsStr>) -> Option<PathBuf> {
-    let base = xdg_data_home
-        .map(PathBuf::from)
-        .filter(|p| p.is_absolute())
-        .or_else(|| home.filter(|h| !h.is_empty()).map(|h| PathBuf::from(h).join(".local").join("share")))?;
+    let base = xdg_data_home.map(PathBuf::from).filter(|p| p.is_absolute()).or_else(|| home.filter(|h| !h.is_empty()).map(|h| PathBuf::from(h).join(".local").join("share")))?;
     Some(base.join(APP_DIR))
 }
 
 /// `$XDG_DATA_HOME/wadawko` (ou `~/.local/share/wadawko`).
 pub fn default_data_dir() -> Result<PathBuf> {
-    data_dir_from(std::env::var_os("XDG_DATA_HOME").as_deref(), std::env::var_os("HOME").as_deref())
-        .context("não foi possível determinar a pasta de dados (defina XDG_DATA_HOME ou HOME)")
+    data_dir_from(std::env::var_os("XDG_DATA_HOME").as_deref(), std::env::var_os("HOME").as_deref()).context("não foi possível determinar a pasta de dados (defina XDG_DATA_HOME ou HOME)")
 }
 
 /// Caminho padrão do banco: `$XDG_DATA_HOME/wadawko/wadawko.db`.

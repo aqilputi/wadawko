@@ -41,12 +41,7 @@ impl<'a> SkiaCanvas<'a> {
         let pw = (width as f32 * scale).ceil() as u32;
         let ph = (height as f32 * scale).ceil() as u32;
         let pixmap = ts::Pixmap::new(pw, ph).ok_or(DrawError::InvalidSize { width: pw, height: ph })?;
-        Ok(SkiaCanvas {
-            pixmap,
-            fonts,
-            cur: SkState { transform: Transform::scale(scale, scale), mask: None },
-            stack: Vec::new(),
-        })
+        Ok(SkiaCanvas { pixmap, fonts, cur: SkState { transform: Transform::scale(scale, scale), mask: None }, stack: Vec::new() })
     }
 
     /// Preenche o bitmap inteiro (ignora recorte e transformação).
@@ -86,13 +81,7 @@ impl<'a> SkiaCanvas<'a> {
     fn fill_ts(&mut self, path: &Path, color: Color) {
         let Some(p) = to_ts_path(path) else { return };
         let paint = paint_for(color);
-        self.pixmap.fill_path(
-            &p,
-            &paint,
-            ts::FillRule::Winding,
-            to_ts_transform(&self.cur.transform),
-            self.cur.mask.as_deref(),
-        );
+        self.pixmap.fill_path(&p, &paint, ts::FillRule::Winding, to_ts_transform(&self.cur.transform), self.cur.mask.as_deref());
     }
 
     fn stroke_ts(&mut self, path: &Path, stroke: &Stroke, color: Color) {
@@ -115,13 +104,7 @@ impl<'a> SkiaCanvas<'a> {
             },
             ..ts::Stroke::default()
         };
-        self.pixmap.stroke_path(
-            &p,
-            &paint,
-            &st,
-            to_ts_transform(&self.cur.transform),
-            self.cur.mask.as_deref(),
-        );
+        self.pixmap.stroke_path(&p, &paint, &st, to_ts_transform(&self.cur.transform), self.cur.mask.as_deref());
     }
 }
 

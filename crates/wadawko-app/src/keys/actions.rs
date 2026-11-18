@@ -10,9 +10,28 @@
 pub mod transport {
     use gpui_kit::actions;
     actions!(
-    transport,
-    [TogglePlay, PlayHere, PlayFromStart, Stop, ToggleLoop, ToggleMetronome, ToggleCountIn, ToggleTrainer, ToggleSwing, Straight, SwingOn, BpmUp, BpmDown, SetBpm, TrainerPct, TrainerStep, ClearRegion, PlayFue]
-);
+        transport,
+        [
+            TogglePlay,
+            PlayHere,
+            PlayFromStart,
+            Stop,
+            ToggleLoop,
+            ToggleMetronome,
+            ToggleCountIn,
+            ToggleTrainer,
+            ToggleSwing,
+            Straight,
+            SwingOn,
+            BpmUp,
+            BpmDown,
+            SetBpm,
+            TrainerPct,
+            TrainerStep,
+            ClearRegion,
+            PlayFue
+        ]
+    );
 }
 pub mod view {
     use gpui_kit::actions;
@@ -32,7 +51,7 @@ pub mod hints {
 }
 pub mod project {
     use gpui_kit::actions;
-    actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ExportMp3, ExportWav, CancelExport]);
+    actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ImportLibrary, ExportMp3, ExportWav, CancelExport]);
 }
 pub mod section {
     use gpui_kit::actions;
@@ -57,27 +76,106 @@ pub mod measure {
 pub mod grid {
     use gpui_kit::actions;
     actions!(
-    grid,
-    [
-        Left, Right, Up, Down, ExtendLeft, ExtendRight, ExtendUp, ExtendDown, NextBeat, PrevBeat, EndOfBeat, NextMeasure,
-        PrevMeasure, MeasureStart, MeasureEnd, FirstFilled, SongStart, SongEnd, NextSection, PrevSection, FirstTrack,
-        LastTrack, HalfRight, HalfLeft, DeleteCell, DeleteCellBack, DeleteMeasureRow, DeleteBeat, DeleteToMeasureEnd,
-        DeleteMeasureAll, DeleteSectionRow, YankMeasureRow, YankBeat, YankSectionRow, PasteAfter, PasteBefore, Copy, Cut,
-        Paste, DeleteSelection, ToggleSfz, Accent, Unaccent, ToggleSelectMode, ModeEdit, ModeSelect, MoveSelLeft, MoveSelRight,
-        MoveSelUp, MoveSelDown, CloneSelLeft, CloneSelRight, CloneSelUp, CloneSelDown, AssignToPen, NextPen, ToggleKyaiLane,
-        NextCell, PrevCell
-    ]
-);
+        grid,
+        [
+            Left,
+            Right,
+            Up,
+            Down,
+            ExtendLeft,
+            ExtendRight,
+            ExtendUp,
+            ExtendDown,
+            NextBeat,
+            PrevBeat,
+            EndOfBeat,
+            NextMeasure,
+            PrevMeasure,
+            MeasureStart,
+            MeasureEnd,
+            FirstFilled,
+            SongStart,
+            SongEnd,
+            NextSection,
+            PrevSection,
+            FirstTrack,
+            LastTrack,
+            HalfRight,
+            HalfLeft,
+            DeleteCell,
+            DeleteCellBack,
+            DeleteMeasureRow,
+            DeleteBeat,
+            DeleteToMeasureEnd,
+            DeleteMeasureAll,
+            DeleteSectionRow,
+            YankMeasureRow,
+            YankBeat,
+            YankSectionRow,
+            PasteAfter,
+            PasteBefore,
+            Copy,
+            Cut,
+            Paste,
+            DeleteSelection,
+            ToggleSfz,
+            Accent,
+            Unaccent,
+            ToggleSelectMode,
+            ModeEdit,
+            ModeSelect,
+            MoveSelLeft,
+            MoveSelRight,
+            MoveSelUp,
+            MoveSelDown,
+            CloneSelLeft,
+            CloneSelRight,
+            CloneSelUp,
+            CloneSelDown,
+            AssignToPen,
+            NextPen,
+            ToggleKyaiLane,
+            NextCell,
+            PrevCell
+        ]
+    );
 }
 pub mod vim {
     use gpui_kit::actions;
     actions!(
-    vim,
-    [
-        Insert, Append, InsertMeasureStart, AppendMeasureEnd, Substitute, Visual, VisualMeasure, Normal, ChangeMeasureRow,
-        ChangeBeat, ChangeSelection, SwapAnchor, Repeat, PushRegister, SetMark, GotoMark, Search, SearchBack,
-        SearchNext, SearchPrev, CommandLine, Digit0, Digit1, Digit2, Digit3, Digit4, Digit5, Digit6, Digit7, Digit8,
-        Digit9
-    ]
-);
+        vim,
+        [
+            Insert,
+            Append,
+            InsertMeasureStart,
+            AppendMeasureEnd,
+            Substitute,
+            Visual,
+            VisualMeasure,
+            Normal,
+            ChangeMeasureRow,
+            ChangeBeat,
+            ChangeSelection,
+            SwapAnchor,
+            Repeat,
+            PushRegister,
+            SetMark,
+            GotoMark,
+            Search,
+            SearchBack,
+            SearchNext,
+            SearchPrev,
+            CommandLine,
+            Digit0,
+            Digit1,
+            Digit2,
+            Digit3,
+            Digit4,
+            Digit5,
+            Digit6,
+            Digit7,
+            Digit8,
+            Digit9
+        ]
+    );
 }

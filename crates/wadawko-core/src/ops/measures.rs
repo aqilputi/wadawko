@@ -17,9 +17,7 @@ pub fn make_measure(song: &Song, beats: usize, subdivision: usize) -> Measure {
 /// `add_measure(song, target_section(song, &sel).as_ref().map(|r| r.id.as_str()))`.
 pub fn add_measure(song: &mut Song, section_id: Option<&str>) {
     let target = section_id.and_then(|id| section_ranges(song).into_iter().find(|r| r.id == id));
-    let reference = |song: &Song, i: Option<usize>| {
-        i.and_then(|i| song.measures.get(i)).or(song.measures.last()).map_or((4, 2), |m| (m.beats, m.subdivision))
-    };
+    let reference = |song: &Song, i: Option<usize>| i.and_then(|i| song.measures.get(i)).or(song.measures.last()).map_or((4, 2), |m| (m.beats, m.subdivision));
     match target {
         Some(t) => {
             let (beats, sub) = reference(song, t.end_excl.checked_sub(1));
