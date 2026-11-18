@@ -32,6 +32,7 @@ impl Shell {
             "transport::ToggleLoop" => st.tp.looping,
             "transport::ToggleMetronome" => st.tp.metronome,
             "transport::ToggleCountIn" => st.tp.count_in,
+            "transport::ToggleCountInLoop" => st.tp.count_in_loop,
             "transport::ToggleTrainer" => st.tp.trainer,
             "transport::ToggleSwing" => st.song().swing() > 0.0,
             "keys::ToggleVim" => self.vim_on,

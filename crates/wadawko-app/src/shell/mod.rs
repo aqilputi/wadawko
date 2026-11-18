@@ -119,6 +119,8 @@ pub struct Shell {
     pub hints: Option<HintSession>,
     pub pending: Vec<Keystroke>,
     pub pending_since: Instant,
+    /// instantes das últimas batidas do tap tempo (F8)
+    pub taps: Vec<Instant>,
     pub prompt: Option<keys::modal::Prompt>,
     pub last_change: Option<keys::modal::Change>,
     pub recording: bool,
@@ -143,7 +145,11 @@ impl Shell {
         }
         let settings = keys::load_settings();
         let vim_on = settings.vim;
-        state.update(cx, |s, _| s.av_offset_ms = settings.av_offset_ms);
+        state.update(cx, |s, _| {
+            s.av_offset_ms = settings.av_offset_ms;
+            s.tp.metro = settings.metro;
+            s.tp.count_in_loop = settings.count_in_loop;
+        });
 
         let stats = Rc::new(RefCell::new(Stats::default()));
         let grid = cx.new(|cx| GridView::new(state.clone(), stats.clone(), vim_on, cx));
@@ -233,6 +239,7 @@ impl Shell {
             hints: None,
             pending: Vec::new(),
             pending_since: Instant::now(),
+            taps: Vec::new(),
             prompt: None,
             last_change: None,
             recording: false,
@@ -339,7 +346,8 @@ impl Shell {
     }
 
     pub fn save_settings(&self, cx: &App) {
-        let _ = keys::save_settings(keys::Settings { vim: self.vim_on, av_offset_ms: self.state.read(cx).av_offset_ms });
+        let st = self.state.read(cx);
+        let _ = keys::save_settings(keys::Settings { vim: self.vim_on, av_offset_ms: st.av_offset_ms, metro: st.tp.metro, count_in_loop: st.tp.count_in_loop });
     }
 
     // ───────── transporte / projeto ─────────

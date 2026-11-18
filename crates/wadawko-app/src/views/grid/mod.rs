@@ -230,6 +230,10 @@ pub enum InputTarget {
     Bpm,
     TrainerPct,
     TrainerStep,
+    /// padrão de acentos do metrônomo (`ABBB`, `A.B.`, `auto`)
+    MetroPattern,
+    /// volume do metrônomo, em %
+    MetroVolume,
 }
 
 pub enum GridEvent {

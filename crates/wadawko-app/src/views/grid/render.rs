@@ -853,7 +853,16 @@ impl Render for GridView {
                     .flex_1()
                     .min_w_0()
                     .h(px(rows.body_h()))
-                    .on_mouse_down(MouseButton::Left, cx.listener(move |this, ev: &MouseDownEvent, _, cx| this.mouse_down(s, ev, cx)))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(move |this, ev: &MouseDownEvent, w, cx| {
+                            // clicar na grade solta o slider do inspector (as setas voltam a mover o cursor)
+                            if crate::views::widgets::clear_focus() {
+                                w.refresh();
+                            }
+                            this.mouse_down(s, ev, cx)
+                        }),
+                    )
                     .on_mouse_down(MouseButton::Right, cx.listener(move |this, ev: &MouseDownEvent, _, cx| this.mouse_down(s, ev, cx)))
                     .on_mouse_move(cx.listener(move |this, ev: &MouseMoveEvent, _, cx| this.mouse_move(s, ev, cx)))
                     .on_mouse_up(MouseButton::Left, cx.listener(|this, _: &MouseUpEvent, _, cx| this.mouse_up(cx)))

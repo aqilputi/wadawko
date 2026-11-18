@@ -103,9 +103,14 @@ pub enum EventKind {
     Hit(HitEv),
     Grain(GrainEv),
     Noise(NoiseEv),
-    /// clique do metrônomo (só soa com o metrônomo ligado no engine)
+    /// clique do metrônomo (só soa com o metrônomo ligado no engine, que
+    /// decide o nível pelo padrão de acentos e pela subdivisão — `metronome.rs`)
     Click {
-        accent: bool,
+        /// tempo dentro do compasso (0 = tempo 1)
+        beat: u8,
+        /// posição dentro do tempo, em doze avos (0 = o próprio tempo; 3/6/9 =
+        /// semicolcheias e colcheia; 4/8 = tercinas)
+        sub: u8,
     },
 }
 
@@ -684,9 +689,12 @@ impl Compiler {
                     }
                 }
             }
-            // metrônomo: um clique por tempo, acento no tempo 1
+            // metrônomo: um clique por tempo e por posição de subdivisão (o engine filtra)
             for b in 0..meas.beats {
-                events.push(Event { tick: time.bar_tick(u) + b as f64 * PPQ, kind: EventKind::Click { accent: b == 0 } });
+                for &sub in &crate::metronome::SUB_TWELFTHS {
+                    let tick = time.bar_tick(u) + (b as f64 + sub as f64 / 12.0) * PPQ;
+                    events.push(Event { tick, kind: EventKind::Click { beat: b.min(255) as u8, sub } });
+                }
             }
         }
 

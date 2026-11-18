@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::{Context, EventEmitter};
-use wadawko_audio::{Audio, AudioConfig, CompileOptions, EngineEvent, PPQ, PlayOptions, Schedule, TrainerOptions};
+use wadawko_audio::{Audio, AudioConfig, CompileOptions, EngineEvent, Metronome, PPQ, PlayOptions, Schedule, TrainerOptions};
 use wadawko_core::Song;
 use wadawko_core::ops::sections::selected_region;
 use wadawko_core::timeline::Region;
@@ -35,7 +35,11 @@ pub enum StateEvent {
 pub struct Transport {
     pub looping: bool,
     pub metronome: bool,
+    /// padrão de acentos, subdivisão e volume do metrônomo (F7; salvo no settings.json)
+    pub metro: Metronome,
     pub count_in: bool,
+    /// count-in a cada volta do loop (F7c; salvo no settings.json)
+    pub count_in_loop: bool,
     pub trainer: bool,
     /// treino: fração do andamento na 1ª volta (0.2..=1.0)
     pub trainer_pct: f64,
@@ -50,7 +54,18 @@ pub struct Transport {
 
 impl Default for Transport {
     fn default() -> Self {
-        Transport { looping: true, metronome: false, count_in: false, trainer: false, trainer_pct: 0.7, trainer_step: 0.05, selected: Vec::new(), range: None }
+        Transport {
+            looping: true,
+            metronome: false,
+            metro: Metronome::default(),
+            count_in: false,
+            count_in_loop: false,
+            trainer: false,
+            trainer_pct: 0.7,
+            trainer_step: 0.05,
+            selected: Vec::new(),
+            range: None,
+        }
     }
 }
 
@@ -415,6 +430,7 @@ impl AppState {
         self.schedule = audio.set_song(&song, &CompileOptions { region, ..CompileOptions::default() });
         audio.apply_mix(&song);
         audio.set_metronome(self.tp.metronome);
+        audio.set_metronome_config(self.tp.metro);
         audio.collect_garbage();
         if !self.playing() {
             self.playback_bpm = song.tempo as f32;
@@ -433,10 +449,11 @@ impl AppState {
             self.sync_audio();
         }
         let trainer = self.tp.trainer.then_some(TrainerOptions { start_pct: self.tp.trainer_pct, step: self.tp.trainer_step });
-        let opts = PlayOptions { start_cell, looping: self.tp.looping, count_in: self.tp.count_in, trainer };
+        let opts = PlayOptions { start_cell, looping: self.tp.looping, count_in: self.tp.count_in, count_in_loop: self.tp.count_in_loop, trainer };
         match self.audio.as_mut() {
             Some(audio) => {
                 audio.set_metronome(self.tp.metronome);
+                audio.set_metronome_config(self.tp.metro);
                 self.playback_bpm = audio.play(opts);
                 self.want_play = true;
                 self.play_cmd_at = Instant::now();
@@ -526,6 +543,24 @@ impl AppState {
         self.tp.metronome = on;
         if let Some(a) = self.audio.as_mut() {
             a.set_metronome(on);
+        }
+        cx.notify();
+    }
+
+    /// Padrão de acentos / subdivisão / volume do metrônomo (vale na hora, tocando ou não).
+    pub fn set_metronome_config(&mut self, m: Metronome, cx: &mut Context<Self>) {
+        self.tp.metro = m;
+        if let Some(a) = self.audio.as_mut() {
+            a.set_metronome_config(m);
+        }
+        cx.notify();
+    }
+
+    /// Count-in a cada volta do loop (vale já na próxima volta).
+    pub fn set_count_in_loop(&mut self, on: bool, cx: &mut Context<Self>) {
+        self.tp.count_in_loop = on;
+        if let Some(a) = self.audio.as_mut() {
+            a.set_count_in_loop(on);
         }
         cx.notify();
     }

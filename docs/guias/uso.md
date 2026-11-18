@@ -20,11 +20,15 @@ comando também roda pela **paleta** (`Ctrl+K`): digite parte do nome e Enter.
 - **Barra de cima**: à esquerda o título da música (clique para renomear); no centro o
   **transporte** — ⏮ ir ao início, ▶/■, ↺ loop, o mostrador de posição (`c12 · 3.2`: compasso ·
   tempo.subdivisão do cursor; tocando, do playhead) e o BPM (roda do mouse ±1, clique para
-  digitar), reto/swing; à direita metrônomo, count-in, treino e o tema.
+  digitar) com o **TAP** (bata no ritmo para marcar o BPM), reto/swing; à direita metrônomo
+  (ligado, mostra o padrão de acentos e a subdivisão), count-in, count-in a cada volta (com
+  loop), treino e o tema. Parar o mouse sobre um botão mostra o nome do comando e o atalho.
 - **Painel da direita**: o **inspector** (propriedades da seção, do compasso, da linha e da
   célula do cursor — edite ali mesmo: ritornello, compassos, fórmula, dinâmica, andamento,
   M/S/★, volume, pan, pessoas, sfz/acento) e as músicas do banco (`+ nova`, trocar, renomear,
-  duplicar, excluir) com exportar/importar.
+  duplicar, excluir) com exportar/importar. Num slider do inspector, clique (ou salte com
+  `Ctrl+Space`) e use as setas para ajustar de passo em passo; `Esc` ou um clique na grade
+  devolve as setas ao cursor.
 - **Barra de status**: modo (SIMPLES ou modos do vim), posição do cursor, BPM, estado do
   playback, trecho de loop (`↺ c2–c3`) e avisos.
 
@@ -116,6 +120,16 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   playhead; as células acendem quando a nota soa.
 - **Loop**, **metrônomo**, **count-in** e **reto/swing** na barra de cima.
 - **Treino** (🏃): começa numa % do BPM e acelera a cada volta (% inicial e passo editáveis).
+- **Metrônomo com acentos**: com o 🎵 ligado aparecem dois chips. O do **padrão** (`auto`,
+  `ABBB`…) abre um campo: `A` = forte, `B` = fraco, `.` = mudo, um caractere por tempo (até 16,
+  repete se o compasso for maior; vazio = automático, forte no 1). Ex.: `A.B.` para marcar só
+  o 1 e o 3; `.B.B` para ouvir só o 2 e o 4. O chip **÷** troca a subdivisão: só os tempos →
+  colcheias → tercinas → semicolcheias. Volume pela paleta ("Metrônomo: volume…"). Tudo vale
+  na hora, tocando, e fica salvo nas configurações.
+- **Count-in a cada volta** (⏱↺, aparece com o loop ligado): antes de cada repetição toca um
+  compasso de contagem, para o grupo respirar entre as voltas. Combina com o treino.
+- **Tap tempo**: bata no **TAP** (ou `Alt+T`; no vim `Space t .`) no ritmo — da 2ª batida em
+  diante o BPM segue a média das últimas 8; parar 2 s recomeça. Um `Ctrl+Z` desfaz o tap inteiro.
 - **Loop por trecho** ("esses dois compassos de novo"): **arraste na faixa de cima da régua**
   do primeiro ao último compasso — o trecho fica azul, o loop liga e a música só toca ali
   (pode atravessar seções). Puxe as alças das pontas para ajustar; clique dentro do trecho

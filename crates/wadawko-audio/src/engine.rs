@@ -19,6 +19,7 @@ use wadawko_samples::SampleBank;
 
 use crate::dsp::{Biquad, BiquadState, Compressor, CompressorParams, FilterChain, MAX_BANDS, Rng, soft_clip};
 use crate::fue::Fue;
+use crate::metronome::{ClickTone, Metronome};
 use crate::schedule::{Event, EventKind, GrainEv, HitEv, MAX_BUSES, MAX_CHANNELS, MAX_STRIPS, NoiseEv, PPQ, PREVIEW_KYAI_SLOT, PREVIEW_SLOT, Schedule};
 
 /// Pool fixo de vozes (golpes, grãos de kiai, cliques); estourou, rouba a mais antiga.
@@ -78,8 +79,10 @@ pub struct PlayCmd {
     pub from_tick: f64,
     pub bpm: f32,
     pub looping: bool,
-    /// 1 compasso (4 tempos) de cliques antes de começar
+    /// 1 compasso de cliques antes de começar
     pub count_in: bool,
+    /// count-in também a cada volta do loop (F7c: o grupo respira entre as repetições)
+    pub count_in_loop: bool,
     pub trainer: Option<Trainer>,
 }
 
@@ -106,6 +109,10 @@ pub enum Command {
     SetBpm(f32),
     SetLoop(bool),
     SetMetronome(bool),
+    /// padrão de acentos, subdivisão e volume do metrônomo (F7)
+    SetMetronomeConfig(Metronome),
+    /// count-in a cada volta do loop (F7c)
+    SetCountInLoop(bool),
     SetTrainer(Option<Trainer>),
     /// mix de um canal: volume linear, pan −1..1, mudo (mudo/solo já resolvidos)
     SetChannelMix {
@@ -535,6 +542,8 @@ pub struct Engine {
     bpm: f32,
     preroll: u64,
     metronome: bool,
+    metro: Metronome,
+    count_in_loop: bool,
     trainer: Option<Trainer>,
     wraps: u32,
     // sequência de preview
@@ -602,6 +611,8 @@ impl Engine {
             bpm: 100.0,
             preroll: 0,
             metronome: cfg.metronome,
+            metro: Metronome::default(),
+            count_in_loop: false,
             trainer: None,
             wraps: 0,
             seq: None,
@@ -761,6 +772,7 @@ impl Engine {
                 self.bpm = p.bpm.clamp(10.0, 999.0);
                 self.looping = p.looping;
                 self.trainer = p.trainer;
+                self.count_in_loop = p.count_in_loop;
                 self.wraps = 0;
                 self.pos = p.from_tick.clamp(0.0, self.schedule.len_ticks.max(0.0));
                 self.reposition();
@@ -773,13 +785,7 @@ impl Engine {
                 }
                 self.playing = true;
                 if p.count_in {
-                    // 1 compasso (4 tempos) de cliques antes de começar
-                    // no andamento do ponto de partida (mapa de andamento incluído)
-                    let spb = 60.0 / (self.bpm as f64 * self.schedule.curve.factor_at(self.pos)) * self.sr;
-                    for i in 0..4 {
-                        self.trigger_click(i == 0, self.lead + (i as f64 * spb) as u32);
-                    }
-                    self.preroll = (4.0 * spb) as u64;
+                    self.count_in(0);
                 }
             }
             Command::Stop => {
@@ -803,6 +809,8 @@ impl Engine {
             Command::SetBpm(b) => self.bpm = b.clamp(10.0, 999.0),
             Command::SetLoop(l) => self.looping = l,
             Command::SetMetronome(m) => self.metronome = m,
+            Command::SetMetronomeConfig(m) => self.metro = m,
+            Command::SetCountInLoop(on) => self.count_in_loop = on,
             Command::SetTrainer(t) => self.trainer = t,
             Command::SetChannelMix { slot, gain, pan, mute } => {
                 if let Some(ch) = self.chans.get_mut(slot as usize) {
@@ -904,9 +912,11 @@ impl Engine {
             }
             EventKind::Grain(g) => self.trigger_grain(&g, at),
             EventKind::Noise(n) => self.trigger_noise(&n, at),
-            EventKind::Click { accent } => {
-                if self.metronome || !from_transport {
-                    self.trigger_click(accent, at);
+            EventKind::Click { beat, sub } => {
+                if (self.metronome || !from_transport)
+                    && let Some(t) = self.metro.tone(beat as usize, sub)
+                {
+                    self.trigger_click(t, at);
                 }
             }
         }
@@ -992,14 +1002,32 @@ impl Engine {
         v.rel_start = v.att;
     }
 
-    fn trigger_click(&mut self, accent: bool, at: u32) {
+    /// Um compasso de cliques antes de tocar (ou de recomeçar o loop), no
+    /// andamento e na fórmula do compasso de onde o transport vai seguir;
+    /// `offset` = frames já consumidos neste bloco.
+    fn count_in(&mut self, offset: usize) {
+        let spb = 60.0 / (self.bpm as f64 * self.schedule.curve.factor_at(self.pos)) * self.sr;
+        let time = &self.schedule.time;
+        let beats = match time.bar_at(self.pos) {
+            Some(u) => ((time.bar_tick(u + 1) - time.bar_tick(u)) / PPQ).round() as usize,
+            None => 4,
+        }
+        .clamp(1, 16);
+        for i in 0..beats {
+            let t = self.metro.count_in_tone(i);
+            self.trigger_click(t, self.lead + offset as u32 + (i as f64 * spb) as u32);
+        }
+        self.preroll = (beats as f64 * spb) as u64;
+    }
+
+    fn trigger_click(&mut self, t: ClickTone, at: u32) {
         let i = self.alloc();
         let v = &mut self.voices[i];
         v.kind = VKind::Click;
         v.delay = at;
-        // C6 no acento, G5 nos demais; velocity 1 / 0.6; volume −8 dB
-        v.freq = if accent { 1_046.502_3 } else { 783.990_9 };
-        v.gain = if accent { 1.0 } else { 0.6 };
+        // C6 no acento, G5 nos demais (`metronome.rs`); volume −8 dB no render
+        v.freq = t.freq;
+        v.gain = t.gain;
         v.env = 0.0;
         v.dur = self.click_end;
     }
@@ -1064,6 +1092,10 @@ impl Engine {
                         self.bpm = next;
                         self.emit(EngineEvent::BpmChanged { bpm: next });
                     }
+                }
+                // count-in a cada volta: um compasso de cliques e o transport espera
+                if self.count_in_loop {
+                    self.count_in(n);
                 }
             } else {
                 self.playing = false;

@@ -98,7 +98,7 @@ pub fn render_with(song: &Song, bank: &SampleBank, samples: &Arc<SampleSet>, opt
     let mut out = vec![0f32; total * 2];
     let mut eng = Engine::new(EngineConfig { sample_rate: sr, seed: opts.seed, master: opts.master, metronome: opts.metronome }, samples.clone());
     eng.handle(Command::SetSchedule(schedule));
-    eng.handle(Command::Play(PlayCmd { from_tick: 0.0, bpm: bpm as f32, looping: false, count_in: false, trainer: None }));
+    eng.handle(Command::Play(PlayCmd { from_tick: 0.0, bpm: bpm as f32, looping: false, count_in: false, count_in_loop: false, trainer: None }));
     // o engine já dispara tudo com 6 ms de antecedência; o resto do lead é silêncio
     let mut done = (((opts.lead_secs - HUMANIZE_LEAD).max(0.0)) * sr as f64).round() as usize;
     let mut block = 0usize;

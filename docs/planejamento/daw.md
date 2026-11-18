@@ -9,7 +9,7 @@ estado: "implementado (2026-11-17): E0–E7 e F1–F4 no branch design-daw; back
 
 # WaDAWko — design estilo DAW e features de DAW
 
-Data: 2026-11-17 · Status: **implementado** (E0–E7, F1–F4; as decisões tomadas estão
+Data: 2026-11-17 · Status: **implementado** (E0–E7, F1–F4; parte 3 em 2026-11-18: F7, F7c, F8, F14; as decisões tomadas estão
 anotadas em cada etapa da parte 4) · Pedido: *"features para uma verdadeira DAW, e uma
 estilização com menos curvas, com design parecendo o Bitwig Studio: pesquisa de UX de DAW e
 de features que faltam; planejar e implementar."*
@@ -780,9 +780,19 @@ Strips e grupos conforme 2.4 (planos, cap retangular, escala de dB); cartões co
 | 10 | E7 fechamento | 0:45 | capturas, changelog, docs | feito |
 | (11) | F4 inspector | 2:00 | painel contextual | feito (`1c78244`) |
 
-Ficam para depois (parte 3): F7 metrônomo com acentos, F7b lista de trechos de ensaio (o
-trecho de loop já existe — falta dar nome e guardar), F7c count-in por volta, F8 tap tempo,
-F9 templates, F10 MIDI, F14 tooltips com atalho, F16 altura de linha ajustável.
+### Parte 3 — ensaio (2026-11-18, branch `daw-ensaio`)
+
+| Feature | Status | Como ficou |
+|---|---|---|
+| F7 metrônomo com acentos | feito | `wadawko-audio/src/metronome.rs`: padrão `A`/`B`/`.` por tempo (cíclico, até 16; `auto` = forte no 1), subdivisão 1–4 e volume. O schedule emite `Click { beat, sub }` em doze avos do tempo (0, 3, 4, 6, 8, 9) e o **engine** decide o nível — trocar o padrão não recompila. Count-in segue os acentos (nunca mudo) e usa a fórmula do compasso de partida. UI: chips `ABBB` e `÷2` ao lado do 🎵; salvo no `settings.json`. O som continua o bipe (C6/G5); timbre de shime/kane fica para depois |
+| F7c count-in a cada volta | feito | `PlayCmd.count_in_loop` + `Command::SetCountInLoop`: na volta do loop o engine dispara um compasso de cliques e segura o transport (`preroll`); toggle `⏱↺` (só aparece com loop) |
+| F8 tap tempo | feito | botão TAP no display, `Alt+T` / `Space t .`; média das últimas 8 batidas, reinicia após 2 s; `edit_coalesced` faz o tap inteiro ser um passo de desfazer |
+| F14 tooltips com atalho | feito | `ui::with_tip` em `abtn`/`atoggle`/`icon_btn`/abas/segmentos/chips da barra de cima: título do registro + atalho de maior precedência lido do keymap na hora |
+| Inspector com setas | feito | `widgets::page_prefix(Editor) = "ins-"`; clicar na grade solta o slider |
+| F7b lista de trechos de ensaio | pendente | — |
+
+Ficam para depois: F7b lista de trechos de ensaio (o trecho de loop já existe — falta dar nome
+e guardar), F9 templates, F10 MIDI, F16 altura de linha ajustável.
 
 Total sem o inspector: ~12 h 45. Se o tempo apertar, a ordem garante que cada parada deixa o app
 coerente: depois de 5 (E4) já é "o novo visual"; 6–8 são as features; 9–10 fecham.

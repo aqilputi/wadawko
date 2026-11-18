@@ -1,5 +1,12 @@
 # Histórico da documentação
 
+## 2026-11-18
+
+**Atualização**: parte 3 do [plano DAW](/planejamento/daw.md) (ensaio): metrônomo com acentos e
+subdivisão, count-in a cada volta, tap tempo, tooltips com atalho e setas no inspector —
+[guia de uso](/guias/uso.md), [dados e arquivos](/referencia/dados-e-arquivos.md) (campos novos
+do `settings.json`) e [atalhos](/referencia/atalhos.md) (gerada).
+
 ## 2026-11-17
 
 **Atualização**: features de DAW do [plano](/planejamento/daw.md) implementadas (cor por

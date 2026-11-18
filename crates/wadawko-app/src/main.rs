@@ -672,6 +672,51 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             println!("PROBE inspector: chip ins-dyn-f não encontrado");
             check("inspector: chip de dinâmica edita o compasso e Ctrl+Z volta", false);
         }
+        // inspector: clicar no slider de volume e usar as setas; clicar na grade solta o slider
+        if let Some(p) = hint("ins-vol").map(|b| b.center()) {
+            let vol = |cx: &mut AsyncApp| {
+                cx.update(|cx| {
+                    let song = state.read(cx).song().clone();
+                    let t = shell.read(cx).grid.read(cx).cursor.map_or(0, |c| c.t);
+                    song.tracks.get(t).map_or(0.0, |t| t.volume.unwrap_or(wadawko_core::Track::DEFAULT_VOLUME_DB))
+                })
+            };
+            let v0 = vol(cx);
+            click(p, none, cx).await;
+            let v1 = vol(cx);
+            key("right", cx);
+            wait(cx, 80).await;
+            let v2 = vol(cx);
+            // o passo da rolagem deixou a grade fora da vista: volta ao topo
+            cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            let _ = w.update(cx, |_, window, _| window.refresh());
+            wait(cx, 150).await;
+            let c = cell(0, 2, 0, cx).unwrap_or_default();
+            let hover = |p| PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: None, modifiers: none });
+            mouse(hover(c), cx);
+            wait(cx, 50).await;
+            mouse(down(c, none), cx);
+            wait(cx, 60).await;
+            mouse(up(c, none), cx);
+            wait(cx, 120).await;
+            println!("PROBE inspector: célula (0,2,0) em {c:?} · slider em {p:?}");
+            report("inspector: depois do clique na grade", cx);
+            let k0 = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| c.k));
+            key("right", cx);
+            wait(cx, 80).await;
+            let v3 = vol(cx);
+            let k1 = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| c.k));
+            for _ in 0..3 {
+                if vol(cx) == v0 {
+                    break;
+                }
+                key("ctrl-z", cx);
+                wait(cx, 80).await;
+            }
+            let v4 = vol(cx);
+            println!("PROBE inspector setas: vol {v0} → clique {v1} → → {v2} · grade → {v3} (cursor {k0:?} → {k1:?}) · desfeito {v4}");
+            check("inspector: → ajusta o slider em foco; depois de clicar na grade, → move o cursor", v2 == (v1 + 1.0).min(views::mixer::VOL_MAX) && v3 == v2 && k1 != k0 && v4 == v0);
+        }
         // calibração: botão do cabeçalho fixo (+ seção) com clique sintético
         if let Some(p) = keys::HINTS.with(|h| h.borrow().targets.get("addsec").map(|t| t.bounds.center())) {
             let n0 = cx.update(|cx| state.read(cx).song().sections.as_ref().map_or(0, Vec::len));
@@ -750,6 +795,8 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                     mouse(up(p2, none), cx);
                     wait(cx, 150).await;
                     let (r1, l1) = (range(cx), looping(cx));
+                    // com o trecho criado a geometria muda: recalcula o ponto da faixa
+                    let p1 = lane(1, cx).unwrap_or(p1);
                     click(p1, alt, cx).await;
                     let r2 = range(cx);
                     println!("PROBE faixa de loop: arrasto c2→c3 = {r1:?} (loop ligado: {l1}) · Alt+clique = {r2:?}");
@@ -838,6 +885,53 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             let ctx = window.context_stack().iter().map(|c| format!("{c:?}")).collect::<Vec<_>>().join(" > ");
             println!("PROBE contexto de teclas: {ctx}");
         });
+        // metrônomo (F7): ligar mostra os chips; ÷ dá a volta 1 → 2 → 3 → 4 → 1 (o settings.json fica como estava)
+        let hint_at = |id: &str| keys::HINTS.with(|h| h.borrow().targets.get(id).map(|t| t.bounds.center()));
+        if let Some(p) = hint_at("metro") {
+            let click = |p, cx: &mut AsyncApp| {
+                mouse(down(p, none), cx);
+                mouse(up(p, none), cx);
+            };
+            let m0 = cx.update(|cx| state.read(cx).tp.metronome);
+            if !m0 {
+                click(p, cx);
+                wait(cx, 200).await;
+            }
+            let sub = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).tp.metro.subdiv);
+            let d0 = sub(cx);
+            let mut seen = vec![d0];
+            if let Some(q) = hint_at("m-sub") {
+                for _ in 0..4 {
+                    click(q, cx);
+                    wait(cx, 120).await;
+                    seen.push(sub(cx));
+                }
+            }
+            println!("PROBE metrônomo: chips {:?} · subdivisões {seen:?}", (hint_at("m-pat").is_some(), hint_at("m-sub").is_some()));
+            check("metrônomo: chips de acento e subdivisão; ÷ dá a volta", hint_at("m-pat").is_some() && seen.len() == 5 && seen[4] == d0 && seen[1] == d0 % 4 + 1);
+            // os chips empurram o 🎵 para a esquerda: posição nova
+            if !m0 && let Some(p) = hint_at("metro") {
+                click(p, cx);
+                wait(cx, 150).await;
+            }
+            let (m1, d1) = cx.update(|cx| (state.read(cx).tp.metronome, state.read(cx).tp.metro.subdiv));
+            check("metrônomo volta ao estado inicial (desligado/subdivisão)", m1 == m0 && d1 == d0);
+        }
+        // tap tempo (F8): 4 batidas a 500 ms ≈ 120 BPM; um Ctrl+Z volta o andamento
+        {
+            let tempo = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().tempo);
+            let t0 = tempo(cx);
+            for _ in 0..4 {
+                key("alt-t", cx);
+                wait(cx, 500).await;
+            }
+            let t1 = tempo(cx);
+            key("ctrl-z", cx);
+            wait(cx, 120).await;
+            let t2 = tempo(cx);
+            println!("PROBE tap tempo: {t0} → {t1} → Ctrl+Z {t2}");
+            check("tap tempo marca ~120 BPM e um Ctrl+Z volta", (110.0..=130.0).contains(&t1) && t2 == t0);
+        }
         key("ctrl-k", cx);
         wait(cx, 100).await;
         let pal = cx.update(|cx| shell.read(cx).palette.is_some());

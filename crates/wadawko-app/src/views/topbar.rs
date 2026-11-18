@@ -1,6 +1,7 @@
 //! Barra de cima (h 44, `chrome`): marca + título à esquerda, o TRANSPORTE no
 //! centro (⏮ · ▶/■ · ↺ · display com posição e BPM · reto/swing) e
-//! metrônomo, count-in, treino e tema à direita (docs/planejamento/daw.md
+//! metrônomo (+ padrão de acentos e subdivisão), count-in (no início e a cada
+//! volta), treino e tema à direita (docs/planejamento/daw.md
 //! §2.4 e §2.6). O display é a única "tela" da UI: campo `display` com
 //! números em `accent2`.
 
@@ -133,6 +134,19 @@ impl Shell {
                         cx.notify();
                     })),
             )
+            .child(
+                // tap tempo (F8): bata no ritmo; Alt+T no teclado
+                abtn_bare("tap", th, keys::transport::TapTempo)
+                    .h(px(18.0))
+                    .px(px(4.0))
+                    .bg(transparent_black())
+                    .border_color(th.line_strong)
+                    .text_size(px(9.0))
+                    .font_weight(FontWeight::BOLD)
+                    .text_color(th.ink_soft)
+                    .hover(move |s| s.bg(Theme::alpha(acc2, 0.15)))
+                    .child("TAP"),
+            )
             .when(playing && (sounding as f64 - bpm).abs() > 0.5, |d| {
                 d.child(div().text_size(px(11.0)).font_weight(FontWeight::BOLD).text_color(th.accent).child(SharedString::from(format!("♪ {sounding:.0}"))))
             });
@@ -156,7 +170,17 @@ impl Shell {
             .justify_end()
             .gap(px(6.0))
             .child(atoggle("metro", th, tp.metronome, keys::transport::ToggleMetronome).w(px(30.0)).px(px(0.0)).child("🎵"))
+            .when(tp.metronome, |d| {
+                // padrão de acentos (clique = editar) e subdivisão (clique = 1 → 2 → 3 → 4)
+                d.child(chip("m-pat", tp.metro.pattern_text(), Box::new(keys::transport::MetroPattern))).child(chip(
+                    "m-sub",
+                    format!("÷{}", tp.metro.subdiv.clamp(1, 4)),
+                    Box::new(keys::transport::MetroSubdiv),
+                ))
+            })
             .child(atoggle("countin", th, tp.count_in, keys::transport::ToggleCountIn).w(px(30.0)).px(px(0.0)).child("⏱"))
+            // count-in a cada volta: só faz sentido com loop (economiza espaço em janela estreita)
+            .when(tp.looping || tp.count_in_loop, |d| d.child(atoggle("countin-loop", th, tp.count_in_loop, keys::transport::ToggleCountInLoop).w(px(30.0)).px(px(0.0)).child("⏱↺")))
             .child(atoggle("trainer", th, tp.trainer, keys::transport::ToggleTrainer).w(px(30.0)).px(px(0.0)).child("🏃"))
             .when(tp.trainer, |d| {
                 d.child(chip("tr-pct", format!("de {:.0}%", tp.trainer_pct * 100.0), Box::new(keys::transport::TrainerPct))).child(chip(
@@ -188,7 +212,7 @@ impl Shell {
 fn abtn_boxed(id: &'static str, th: &Theme, a: Box<dyn Action>) -> gpui_kit::Stateful<gpui_kit::Div> {
     let a2 = a.boxed_clone();
     keys::hintable(
-        crate::ui::btn(id, th).on_click(move |_, w, cx| w.dispatch_action(a.boxed_clone(), cx)),
+        crate::ui::with_tip(crate::ui::btn(id, th), th, a.boxed_clone()).on_click(move |_, w, cx| w.dispatch_action(a.boxed_clone(), cx)),
         id,
         std::rc::Rc::new(move |w: &mut gpui_kit::Window, cx: &mut gpui_kit::App| w.dispatch_action(a2.boxed_clone(), cx)),
     )

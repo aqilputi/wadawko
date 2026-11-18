@@ -15,7 +15,7 @@ fontes: [crates/wadawko-store/src/db.rs, crates/wadawko-app/src/keys/settings.rs
 | O quê | Onde | Formato |
 |---|---|---|
 | Banco de músicas | `$XDG_DATA_HOME/wadawko/wadawko.db` (normalmente `~/.local/share/wadawko/wadawko.db`) | SQLite, tabela `kv` (o mesmo esquema do app web) |
-| Configurações | `~/.config/wadawko/settings.json` | JSON: `vim` (bool), `av_offset_ms` (número) |
+| Configurações | `~/.config/wadawko/settings.json` | JSON: `vim`, `av_offset_ms`, metrônomo e count-in a cada volta |
 | Keymap do usuário | `~/.config/wadawko/keymap.json` | JSON no formato do Zed, somado ao padrão |
 | Exports | diálogo do sistema (portal); sem portal, `$XDG_DOWNLOAD_DIR` ou `~/Downloads` | `.taiko.json`, `.wav`, `.mp3`, `.svg`, `.png` |
 
@@ -33,12 +33,25 @@ fontes: [crates/wadawko-store/src/db.rs, crates/wadawko-app/src/keys/settings.rs
 # settings.json
 
 ```json
-{ "vim": false, "av_offset_ms": 0 }
+{
+  "vim": false,
+  "av_offset_ms": 0,
+  "metro_pattern": "auto",
+  "metro_subdiv": 1,
+  "metro_gain": 1.0,
+  "count_in_loop": false
+}
 ```
 
 - `vim` — liga o modo vim na grade. **Sem o arquivo, o padrão é `true`.**
 - `av_offset_ms` — atraso extra do visual em relação ao som (positivo = luz mais tarde).
   Ajustável em Config → Sincronia.
+- `metro_pattern` — acentos do metrônomo, um caractere por tempo: `A` forte, `B` fraco, `.`
+  mudo (até 16; repete ciclicamente). `auto` = forte no tempo 1 e fraco nos demais.
+- `metro_subdiv` — cliques por tempo: 1, 2 (colcheias), 3 (tercinas) ou 4 (semicolcheias).
+- `metro_gain` — volume do metrônomo (0 a 2; 1 = padrão).
+- `count_in_loop` — um compasso de contagem antes de cada volta do loop.
+- Campos ausentes ficam no padrão; o app reescreve o arquivo inteiro ao mudar qualquer um.
 
 # keymap.json
 
