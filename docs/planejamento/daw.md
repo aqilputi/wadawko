@@ -9,7 +9,7 @@ estado: "implementado (2026-11-17): E0–E7 e F1–F4 no branch design-daw; back
 
 # WaDAWko — design estilo DAW e features de DAW
 
-Data: 2026-11-17 · Status: **implementado** (E0–E7, F1–F4; parte 3 em 2026-11-18: F7, F7c, F8, F14; as decisões tomadas estão
+Data: 2026-11-17 · Status: **implementado** (E0–E7, F1–F4; partes 3 e 4 em 2026-11-18: F7, F7b, F7c, F7d, F8, F9, F10, F14, F16; as decisões tomadas estão
 anotadas em cada etapa da parte 4) · Pedido: *"features para uma verdadeira DAW, e uma
 estilização com menos curvas, com design parecendo o Bitwig Studio: pesquisa de UX de DAW e
 de features que faltam; planejar e implementar."*
@@ -789,10 +789,22 @@ Strips e grupos conforme 2.4 (planos, cap retangular, escala de dB); cartões co
 | F8 tap tempo | feito | botão TAP no display, `Alt+T` / `Space t .`; média das últimas 8 batidas, reinicia após 2 s; `edit_coalesced` faz o tap inteiro ser um passo de desfazer |
 | F14 tooltips com atalho | feito | `ui::with_tip` em `abtn`/`atoggle`/`icon_btn`/abas/segmentos/chips da barra de cima: título do registro + atalho de maior precedência lido do keymap na hora |
 | Inspector com setas | feito | `widgets::page_prefix(Editor) = "ins-"`; clicar na grade solta o slider |
-| F7b lista de trechos de ensaio | pendente | — |
+| F7b lista de trechos de ensaio | feito (parte 4) | `Song.practice` com pontas ancoradas em (seção, compasso dentro dela) — acompanha mover/clonar seções; painel TRECHOS, `Ctrl+Shift+L`, paleta |
 
-Ficam para depois: F7b lista de trechos de ensaio (o trecho de loop já existe — falta dar nome
-e guardar), F9 templates, F10 MIDI, F16 altura de linha ajustável.
+### Parte 4 — backlog (2026-11-18, branch `ensaio-2`; issues #9–#15)
+
+| Feature | Status | Como ficou |
+|---|---|---|
+| F7b trechos de ensaio | feito | ver acima (#10) |
+| Grade em cache por seção | feito | `SectionView` por seção com chave própria; a `GridView` saiu do `cached()` do Shell porque no gpui um cache que re-renderiza redesenha o subárvore inteiro. Hover: 2,67 → 0,24 ms (#9) |
+| F9 modelos | feito | `wadawko-core::templates`, paleta "Nova música: …" (#11) |
+| F10 MIDI | feito | `wadawko-export::midi`, SMF tipo 1 do mesmo schedule; paleta e `wadawko-cli midi` (#12) |
+| F16 altura de linha | feito | `Rows::cell_h` (24–60), `Ctrl+Alt+↑/↓`, `row_h` no settings (#13) |
+| Som do metrônomo | feito | bipe / shime (madeira) / kane (metal) sintetizados (#14) |
+| F7d modo projeção | feito | `views/director.rs`, `F10` (#15) |
+
+Ficam para depois (issues abertas, milestone v1.0): stems, humanização ajustável, EQ, mapa da
+música, arranger, dinâmica por célula, MIDI in, reverb, histórico de desfazer visual, bonecos.
 
 Total sem o inspector: ~12 h 45. Se o tempo apertar, a ordem garante que cada parada deixa o app
 coerente: depois de 5 (E4) já é "o novo visual"; 6–8 são as features; 9–10 fecham.

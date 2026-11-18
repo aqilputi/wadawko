@@ -2,6 +2,14 @@
 
 ## 2026-11-18
 
+**Atualização**: parte 4 do [plano DAW](/planejamento/daw.md): trechos de ensaio, modelos, export
+MIDI, altura de linha, som do metrônomo, modo projeção e grade em cache por seção —
+[guia de uso](/guias/uso.md), [formato da música](/referencia/formato-da-musica.md) (`practice`),
+[dados e arquivos](/referencia/dados-e-arquivos.md) (`metro_sound`, `row_h`),
+[linha de comando](/referencia/linha-de-comando.md) (`midi`), [arquitetura do app](/arquitetura/app.md)
+(cache por seção e a regra do cache aninhado do gpui) e [testes](/desenvolvimento/testes-e-depuracao.md)
+(`tools/headless.sh`, banco das fixtures).
+
 **Atualização**: parte 3 do [plano DAW](/planejamento/daw.md) (ensaio): metrônomo com acentos e
 subdivisão, count-in a cada volta, tap tempo, tooltips com atalho e setas no inspector —
 [guia de uso](/guias/uso.md), [dados e arquivos](/referencia/dados-e-arquivos.md) (campos novos
