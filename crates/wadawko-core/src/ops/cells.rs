@@ -83,6 +83,43 @@ pub fn set_kyai(song: &mut Song, track_id: &str, mi: usize, ci: usize, syl: Opti
     }
 }
 
+// ───────────────────────────── efeitos por célula (`crate::fx`) ─────────────────────────────
+
+pub fn get_fx<'a>(song: &'a Song, track_id: &str, mi: usize, ci: usize) -> Option<&'a str> {
+    song.measures.get(mi)?.fx_at(track_id, ci)
+}
+
+/// Grava (normalizado: maiúsculas, ordem `V R F D X H`) ou apaga os efeitos de
+/// UMA célula. Linha toda vazia some do JSON (e o mapa `fx`, se ficar vazio).
+/// Texto inválido não grava e devolve o erro.
+pub fn set_fx(song: &mut Song, track_id: &str, mi: usize, ci: usize, fx: Option<&str>) -> Result<(), crate::fx::FxError> {
+    let norm = match fx {
+        Some(s) => crate::fx::normalize(s)?,
+        None => None,
+    };
+    let Some(meas) = song.measures.get_mut(mi) else { return Ok(()) };
+    let n = meas.cell_count();
+    if ci >= n {
+        return Ok(());
+    }
+    let map = meas.fx.get_or_insert_default();
+    let row = map.entry(track_id.to_string()).or_insert_with(|| vec![None; n]);
+    row.resize(n, None);
+    row[ci] = norm;
+    if row.iter().all(Option::is_none) {
+        map.remove(track_id);
+    }
+    if map.is_empty() {
+        meas.fx = None;
+    }
+    Ok(())
+}
+
+/// A linha tem algum efeito em algum compasso?
+pub fn track_has_fx(song: &Song, track_id: &str) -> bool {
+    song.measures.iter().any(|m| m.fx.as_ref().and_then(|k| k.get(track_id)).is_some_and(|row| row.iter().any(Option::is_some)))
+}
+
 pub fn track_has_kyai(song: &Song, track_id: &str) -> bool {
     song.measures.iter().any(|m| m.kyai.as_ref().and_then(|k| k.get(track_id)).is_some_and(|row| row.iter().any(|x| x.as_deref().is_some_and(|s| !s.is_empty()))))
 }

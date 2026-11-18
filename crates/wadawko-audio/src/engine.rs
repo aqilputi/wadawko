@@ -916,6 +916,15 @@ impl Engine {
                 }
             }
             EventKind::Grain(g) => self.trigger_grain(&g, at),
+            EventKind::Cut { channel } => {
+                // abafar a pele: 20 ms de rampa em couro e borda do canal
+                let fade = ((0.02 * self.sr) as u32).max(1);
+                for v in self.voices.iter_mut() {
+                    if v.on && v.drum && v.strip / 2 == channel && v.frames_left() > at as u64 + fade as u64 {
+                        v.choke(at, fade);
+                    }
+                }
+            }
             EventKind::Noise(n) => self.trigger_noise(&n, at),
             EventKind::Click { beat, sub } => {
                 if (self.metronome || !from_transport)
@@ -934,7 +943,10 @@ impl Engine {
             return;
         }
         // humanização: ganho ±12 %, pitch ±1 % (~17 cents), micro-timing ±6 ms
-        let (jg, jr, jt) = if h.humanize { (self.rng.jitter(HUMANIZE_GAIN), self.rng.jitter(HUMANIZE_RATE), self.rng.bipolar() as f64 * HUMANIZE_TIME * self.sr) } else { (1.0, 1.0, 0.0) };
+        // (escala `h.humanize`: 1 = padrão; 0 = exato, sem consumir o gerador)
+        let k = h.humanize;
+        let (jg, jr, jt) =
+            if k > 0.0 { (self.rng.jitter(HUMANIZE_GAIN * k), self.rng.jitter(HUMANIZE_RATE * k), self.rng.bipolar() as f64 * HUMANIZE_TIME * k as f64 * self.sr) } else { (1.0, 1.0, 0.0) };
         // choke: couro abafa couro e borda anteriores do mesmo canal (a pele
         // parou de vibrar); borda só abafa borda
         let fade = ((h.choke as f64 * self.sr) as u32).max(1);

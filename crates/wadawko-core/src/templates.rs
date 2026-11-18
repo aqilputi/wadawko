@@ -3,7 +3,7 @@
 
 use crate::demo::demo_song;
 use crate::ids::{IdKind, new_id};
-use crate::model::{Extra, Measure, Section, Song};
+use crate::model::{Measure, Section, Song};
 use crate::ops::cells::set_cell;
 use crate::ops::tracks::add_track;
 
@@ -62,7 +62,7 @@ fn build(title: &str, tempo: f64, instruments: &[&str], sections: &[(&str, usize
     let mut start = 0;
     let mut secs = Vec::new();
     for &(name, n, rep) in sections {
-        secs.push(Section { id: new_id(IdKind::Section, "s"), name: name.into(), start, repeat: (rep > 1).then_some(rep), extra: Extra::new() });
+        secs.push(Section { id: new_id(IdKind::Section, "s"), name: name.into(), start, repeat: (rep > 1).then_some(rep), ..Default::default() });
         start += n;
     }
     song.sections = Some(secs);

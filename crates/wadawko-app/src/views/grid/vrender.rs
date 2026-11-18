@@ -154,7 +154,7 @@ impl GridView {
         for (t, tr) in song.tracks.iter().enumerate().take(cols.x.len()) {
             let hov = self.hover_col == Some(t);
             let audible = song.audible(t);
-            let tcol = track_color(tr);
+            let tcol = track_color(&song, tr);
             let is_main = ops::tracks::is_main_track(&song, &tr.id);
             let id = |n: &str| format!("h-t{t}-{n}");
             let menu_on = matches!(self.menu, Some(Menu::Row { t: mt, .. }) if mt == t);

@@ -121,7 +121,7 @@ impl Shell {
         // linhas da música, como lembrete de quem toca (listras de cor)
         let mut legend = div().flex().flex_wrap().gap(px(18.0)).text_size(px(22.0)).text_color(soft);
         for t in &song.tracks {
-            legend = legend.child(div().flex().items_center().gap(px(8.0)).child(div().w(px(18.0)).h(px(18.0)).bg(track_color(t))).child(SharedString::from(t.name.clone())));
+            legend = legend.child(div().flex().items_center().gap(px(8.0)).child(div().w(px(18.0)).h(px(18.0)).bg(track_color(&song, t))).child(SharedString::from(t.name.clone())));
         }
         root.child(legend).into_any_element()
     }
@@ -131,15 +131,15 @@ impl Shell {
 mod tests {
     use super::*;
     use wadawko_core::demo::demo_song;
-    use wadawko_core::model::{Extra, Section};
+    use wadawko_core::model::Section;
 
     #[test]
     fn info_com_repeticao_e_proxima() {
         let mut song = demo_song();
         // A = compassos 0–1 (2×), B = 2–3
         song.sections = Some(vec![
-            Section { id: "a".into(), name: "A".into(), start: 0, repeat: Some(2), extra: Extra::new() },
-            Section { id: "b".into(), name: "B".into(), start: 2, repeat: None, extra: Extra::new() },
+            Section { id: "a".into(), name: "A".into(), start: 0, repeat: Some(2), ..Default::default() },
+            Section { id: "b".into(), name: "B".into(), start: 2, repeat: None, ..Default::default() },
         ]);
         let order = wadawko_core::timeline::play_order(&song, None);
         assert_eq!(order, vec![0, 1, 0, 1, 2, 3]);

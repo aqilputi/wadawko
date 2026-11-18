@@ -32,6 +32,8 @@ fazem round-trip** (preservados intactos), então arquivos de versões futuras n
 | `people` | `Person[]`? | |
 | `instruments` | `InstrumentDef[]`? | instrumentos custom do Kit |
 | `mainTrackIds` / `mainTrackId` | texto[]? / texto? | linhas principais (★) da partitura |
+| `sectionGroups` | `SectionGroup[]`? | grupos de seções: `id`, `name`, `color`, `collapsed` (só organização; não muda a ordem tocada) |
+| `instrumentColors` | objeto? | cor dos instrumentos prontos nesta música (`id da def → #rrggbb`) |
 | `practice` | `PracticeSpot[]`? | trechos de ensaio com nome (só o app nativo usa; o web preserva) |
 
 ## Linha (`Track`)
@@ -63,17 +65,20 @@ transporte — não ficam no arquivo.
 | `trackDynamics` | mapa por linha? | dinâmica/hairpin por linha |
 | `tempo` | objeto? | mudança de andamento que começa no compasso: `{ "target": 90, "span": 2 }` = ir em linha reta do BPM atual até `target` ao fim de `span` compassos tocados (`span` 0 = na hora, ausente = 1); depois fica em `target` até a próxima marcação |
 | `kyai` | igual a `cells`? | textos de kiai por célula |
+| `fx` | igual a `cells`? | efeitos por célula, até 3: `V0–9` força, `R2–9` rulo (`<`/`>` rampa), `F`/`F1–3` flam, `D-5…D+5` atraso, `X`/`X1–9` corte, `H0–9` humanização (ex.: `"R4< D+1"`). O app web preserva e toca sem o efeito |
 
 ## Seção, pessoa e instrumento
 
-- `Section`: `id`, `name`, `start` (índice do compasso), `repeat` (ritornello, padrão 1).
+- `Section`: `id`, `name`, `start` (índice do compasso), `repeat` (ritornello, padrão 1), `color`
+  (`#rrggbb`, opcional; sem cor herda a do grupo), `group` (id do `SectionGroup`, opcional).
 - `Person`: `id`, `name`, `color` (`#rrggbb`), `muted`, `solo`, `volume`.
 - `PracticeSpot`: `id`, `name`, `start` e `end` (inclusivos), cada um `{ section, bar }` — id da
   seção e compasso contado dentro dela (`section` vazio = música sem seções, conta do início).
   Assim o trecho acompanha mover/clonar seções; se a seção some, o trecho fica "perdido".
 - `InstrumentDef`: `id`, `name`, `base` (sample), `builtin`, `head`/`rim` com `pitch`
   (semitons), `gain` (dB), `decay` (0…1, 0,5 = natural), `overtones` (0…1) e `tone`
-  (`{ type: lowpass|highpass|bandpass, cutoff, q }`).
+  (`{ type: lowpass|highpass|bandpass, cutoff, q }`) e `color` (opcional; as linhas sem cor própria
+  herdam dela).
 
 # Examples
 

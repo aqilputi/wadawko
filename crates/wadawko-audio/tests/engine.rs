@@ -361,7 +361,7 @@ fn trigger_render(hits: &[(Zone, f32, f32)], secs: f64) -> Vec<f32> {
     let mut rr = RoundRobin::new();
     for &(zone, gain_mul, delay) in hits {
         let mut ev = hit_event(bank(), def, zone, 1.0, 1.0, &mut rr, PREVIEW_SLOT * 2 + (zone == Zone::Rim) as u16);
-        ev.humanize = false;
+        ev.humanize = 0.0;
         ev.gain *= gain_mul;
         ctl.send(Command::Trigger { kind: EventKind::Hit(ev), delay });
     }

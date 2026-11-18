@@ -194,11 +194,17 @@ impl Theme {
     }
 }
 
-/// Cor da linha (F1): o campo `color` da linha, ou a cor padrão do instrumento
-/// base (`wadawko_core::model::default_track_color`). Uma cor ilegível cai na
-/// padrão do instrumento.
-pub fn track_color(track: &wadawko_core::Track) -> Hsla {
-    track.color.as_deref().and_then(parse_color).or_else(|| parse_color(wadawko_core::model::default_track_color(track.instrument))).unwrap_or_else(|| rgb(0x8d99a6).into())
+/// Cor da linha (F1 + tracker §5.1), em três níveis: a da linha, senão a do
+/// instrumento (Kit), senão a padrão do instrumento base
+/// (`wadawko_core::model::default_track_color`). Cor ilegível cai no nível seguinte.
+pub fn track_color(song: &wadawko_core::Song, track: &wadawko_core::Track) -> Hsla {
+    track
+        .color
+        .as_deref()
+        .and_then(parse_color)
+        .or_else(|| wadawko_core::ops::structure::track_color(song, track).and_then(parse_color))
+        .or_else(|| parse_color(wadawko_core::model::default_track_color(track.instrument)))
+        .unwrap_or_else(|| rgb(0x8d99a6).into())
 }
 
 /// `#rrggbb` (cor de pessoa do JSON) → Hsla.
@@ -257,11 +263,11 @@ mod tests {
     fn track_color_falls_back_to_instrument_default() {
         use wadawko_core::model::{InstrumentId, Track, default_track_color};
         let mut t = Track::new("a", "A", InstrumentId::Odaiko);
-        assert_eq!(track_color(&t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
+        assert_eq!(track_color(&wadawko_core::Song::default(), &t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
         t.color = Some("#123456".into());
-        assert_eq!(track_color(&t), parse_color("#123456").unwrap());
+        assert_eq!(track_color(&wadawko_core::Song::default(), &t), parse_color("#123456").unwrap());
         t.color = Some("roxo".into());
-        assert_eq!(track_color(&t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
+        assert_eq!(track_color(&wadawko_core::Song::default(), &t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
     }
 
     /// O texto escuro sobre qualquer cor de linha lê bem (cabeçalho do strip do mixer).

@@ -39,7 +39,7 @@ pub fn kitchen_sink() -> Song {
     m4.cells.insert("shime".into(), row(&["ten", "ten"]));
     m4.cells.insert("chu".into(), row(&["DON", ""]));
     m4.hairpin = Some(Hairpin::Dim);
-    let sec = |id: &str, name: &str, start: usize, repeat: Option<u32>| Section { id: id.into(), name: name.into(), start, repeat, extra: Default::default() };
+    let sec = |id: &str, name: &str, start: usize, repeat: Option<u32>| Section { id: id.into(), name: name.into(), start, repeat, ..Default::default() };
     Song {
         title: "Tudo junto".into(),
         tempo: 120.0,

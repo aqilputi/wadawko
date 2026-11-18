@@ -117,7 +117,7 @@ fn musica_vazia_e_degenerada_nao_quebram() {
     engrave(&no_measures, &EngraveOptions::a4_landscape(), &FONTS);
     let mut odd = one_measure(&["xyz", "dooon", "DOKODOKODOKODOKO", "!"]);
     odd.measures[0].subdivision = 3; // células a menos que beats*sub
-    odd.sections = Some(vec![Section { id: "s".into(), name: "Fora".into(), start: 9, repeat: Some(4), extra: Default::default() }]);
+    odd.sections = Some(vec![Section { id: "s".into(), name: "Fora".into(), start: 9, repeat: Some(4), ..Default::default() }]);
     let s = engrave(&odd, &EngraveOptions::default(), &FONTS);
     s.paint_page(&mut Recording::new(), 0, None);
 }

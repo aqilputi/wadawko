@@ -59,7 +59,7 @@ pub struct HitEv {
     pub strip: u16,
     pub rim: bool,
     /// aplica a humanização (ganho ±12 %, pitch ±1 %, tempo ±6 ms) ao disparar
-    pub humanize: bool,
+    pub humanize: f32,
     /// para o `HitFired`: índice da linha, célula-FONTE global e golpe dentro da célula
     pub track: u16,
     pub cell: u32,
@@ -103,6 +103,11 @@ pub enum EventKind {
     Hit(HitEv),
     Grain(GrainEv),
     Noise(NoiseEv),
+    /// corte (`X` dos efeitos por célula): abafa as vozes do canal (as duas strips)
+    Cut {
+        /// canal = strip / 2
+        channel: u16,
+    },
     /// clique do metrônomo (só soa com o metrônomo ligado no engine, que
     /// decide o nível pelo padrão de acentos e pela subdivisão — `metronome.rs`)
     Click {
@@ -473,7 +478,7 @@ pub fn hit_event(bank: &SampleBank, def: &InstrumentDef, zone: Zone, vel: f64, d
         choke: m.tail.choke,
         strip,
         rim: z.is_rim(),
-        humanize: true,
+        humanize: 1.0,
         track: 0,
         cell: 0,
         hit: 0,
@@ -667,24 +672,39 @@ impl Compiler {
                     }
                     let Some(syl) = meas.cell(&track.id, ci).filter(|s| !s.is_empty()) else { continue };
                     let Some(resolved) = resolve_cell(syl) else { continue };
+                    // efeitos por célula (`wadawko_core::fx`): texto inválido = sem efeito
+                    let fx = meas.fx_at(&track.id, ci).and_then(|s| wadawko_core::fx::parse(s).ok()).unwrap_or_default();
+                    let applied = wadawko_core::fx::apply(&resolved, &fx);
                     // instrumento compartilhado: golpe roteia pro barramento do dono da célula
                     let owner = cell_owner_of(song, track, mi, ci);
                     if opts.skip_inaudible && bus_person(track, owner).is_some_and(|p| !person_audible(song, Some(p))) {
                         continue;
                     }
                     let slot = channel(ti, owner, false);
-                    for (hi, hit) in resolved.hits.iter().enumerate() {
-                        // posição do golpe como fração do TEMPO, com warp de swing
-                        let beat_frac = swing_warp(cell_frac + hit.offset / sub as f64, swing);
-                        let tick = time.bar_tick(u) + (beat as f64 + beat_frac) * PPQ;
-                        let d0 = curves[ti].at(u, (beat as f64 + beat_frac) / meas.beats.max(1) as f64);
+                    // posição no compasso (em tempos), com warp de swing dentro do tempo; o
+                    // offset pode passar da célula (atraso/antecipação/flam dos efeitos)
+                    let at_beats = |off: f64| {
+                        let pos = beat as f64 + cell_frac + off / sub as f64;
+                        let b = pos.floor();
+                        b + swing_warp(pos - b, swing)
+                    };
+                    if let Some(c) = applied.cut {
+                        let tick = (time.bar_tick(u) + at_beats(c) * PPQ).max(0.0);
+                        events.push(Event { tick, kind: EventKind::Cut { channel: slot as u16 } });
+                    }
+                    for (hi, fh) in applied.hits.iter().enumerate() {
+                        let hit = &fh.hit;
+                        let pos = at_beats(hit.offset);
+                        let tick = (time.bar_tick(u) + pos * PPQ).max(0.0);
+                        let d0 = curves[ti].at(u, (pos / meas.beats.max(1) as f64).clamp(0.0, 1.0));
                         let dynv = (if hit.sfz { sfz_dyn(d0) } else { d0 }) * mains[ti];
                         let strip = (slot * 2 + (hit.zone == Zone::Rim) as usize) as u16;
                         let mut ev = hit_event(&self.bank, defs[ti], hit.zone, hit.vel, dynv, rr.entry(slot).or_default(), strip);
                         ev.track = ti as u16;
                         ev.cell = global as u32;
-                        ev.hit = hi as u8;
+                        ev.hit = hi.min(255) as u8;
                         ev.notify = true;
+                        ev.humanize = applied.humanize as f32;
                         events.push(Event { tick, kind: EventKind::Hit(ev) });
                     }
                 }

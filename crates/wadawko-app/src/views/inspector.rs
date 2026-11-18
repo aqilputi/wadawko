@@ -188,7 +188,7 @@ impl Shell {
                     .flex_none()
                     .size(px(14.0))
                     .rounded(px(ui::R1))
-                    .bg(track_color(track))
+                    .bg(track_color(&song, track))
                     .cursor_pointer()
                     .on_click(|_: &ClickEvent, w, cx| w.dispatch_action(Box::new(keys::track::CycleColor), cx)),
                 "ins-color",

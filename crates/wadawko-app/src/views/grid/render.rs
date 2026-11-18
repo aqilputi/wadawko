@@ -877,7 +877,7 @@ impl GridView {
                     }
                 }
                 // listra na cor da linha (F1), esmaecida quando a linha não soa
-                let tcol = track_color(tr);
+                let tcol = track_color(&song, tr);
                 let stripe = div().absolute().left_0().top_0().h(px(rows.cell_h)).w(px(4.0)).bg(if audible { tcol } else { Theme::alpha(tcol, 0.4) });
                 let mut label = div().relative().h(px(rows.row_h(t))).flex().flex_col().child(stripe).child(rail_el).child(
                     div()
