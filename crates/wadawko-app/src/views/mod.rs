@@ -22,6 +22,7 @@ pub mod nav_rail;
 pub mod people;
 pub mod right_panel;
 pub mod score;
+pub mod sections_panel;
 pub mod settings;
 pub mod status_bar;
 pub mod topbar;

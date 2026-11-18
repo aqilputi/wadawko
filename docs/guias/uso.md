@@ -123,6 +123,26 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   canal 10 (bateria GM), com andamento, fórmulas de compasso e marcadores de seção. Notas: ōdaiko
   35, ō-nagadō 41, nagadō 43, chū 45, okedō 47, hira 50, shime 38, borda 37, kane 56/80.
 
+# Painel de seções (à esquerda)
+
+- A lista de **seções** da música (`Ctrl+Shift+B` mostra/esconde): quadradinho de cor, nome,
+  ritornello (`2×`) e compassos; ▶ marca a que está tocando; ⟲, a que tem trecho de ensaio.
+- **Clique** seleciona a seção (é a região que toca) e leva o editor até ela; `Ctrl+clique`
+  junta/tira; `Shift+clique` pega o intervalo; **duplo clique** renomeia.
+- **Arraste** para reordenar (leva os compassos junto); com `Alt` arrastado, clona.
+- **Botão direito**: renomear, cor, ritornello ±, duplicar, copiar, colar depois, agrupar,
+  desfazer o grupo, tocar só esta, remover.
+- **Copiar/colar seções** (`⧉`/`⎘` no cabeçalho; vim `space s y` / `space s shift-p`): vai como texto
+  pela área de transferência, então dá para colar noutra música. Leva notas, donos, kiai,
+  dinâmicas e efeitos; as linhas casam pelo nome interno ou pela posição.
+- **Grupos** (`⊞` no cabeçalho ou "agrupar"; vim `space s g`): juntam seções seguidas sob um
+  nome (duplo clique renomeia), com cor própria herdada pelas seções sem cor, e recolhem com ▾.
+  Clicar no grupo seleciona todas as seções dele. Grupos só organizam: não mudam a ordem tocada.
+- **Cores**: clique no quadradinho da seção ou do grupo (8 cores, "sem cor" ou `#rrggbb`). A cor
+  aparece na linha do gutter do editor vertical. A cor dos **instrumentos** fica na página **Kit**
+  (cada linha herda a do instrumento, a menos que tenha cor própria no ⚙ da linha).
+- Os **trechos de ensaio** ficam embaixo, no mesmo painel.
+
 # Efeitos por célula
 
 Como os comandos de um tracker, curtos e legíveis, até 3 por célula (ex.: `R4< D+1`):

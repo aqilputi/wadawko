@@ -7,7 +7,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ### Adicionado
 - **Efeitos por célula** estilo tracker: rulo, flam, atraso, corte, força e humanização (`R4< D+1`),
   com coluna própria no editor vertical, atalhos e inspector; tocam no áudio, na esteira e no MIDI.
-- **Cores de instrumento, seção e grupo** e **grupos de seções** no formato (painel na próxima etapa).
+- **Painel de seções** à esquerda: seleção, renomear, arrastar para reordenar (Alt clona), menu de
+  contexto, copiar/colar seções entre músicas, **grupos** recolhíveis e **cores** de seção e grupo;
+  os trechos de ensaio passaram para ele. **Cor por instrumento** na página Kit.
 - **Modo projeção** (`F10`): seção, volta, compasso, tempos, próxima seção e BPM em letras grandes.
 - **Metrônomo com som de shime ou kane** (além do bipe): chip na barra de cima.
 - **Export MIDI** (`.mid`, uma faixa por linha, bateria GM; também `wadawko-cli midi`).

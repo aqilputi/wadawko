@@ -63,6 +63,14 @@ impl GridView {
         let th = st.theme;
         let song = self.song.clone();
         let h = section_body_h(&song, s, self.row_h);
+        // cor da seção (ou do grupo) na linha de 2 px do gutter
+        let sec_color = song
+            .secs()
+            .get(s)
+            .and_then(|x| x.id.as_deref())
+            .and_then(|id| song.section(id))
+            .and_then(|sec| wadawko_core::ops::structure::section_color(&song, sec))
+            .and_then(crate::theme::parse_color);
         let geom2 = self.geom.clone();
         let stats = self.stats.clone();
         let args = VPaintArgs {
@@ -81,7 +89,7 @@ impl GridView {
             range,
             looping,
             loop_preview: self.loop_drag.filter(|d| d.moved).map(|d| d.region()),
-            sec_color: None,
+            sec_color,
             shaped: self.shaped.clone(),
         };
         div()

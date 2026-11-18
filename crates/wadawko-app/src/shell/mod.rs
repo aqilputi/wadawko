@@ -112,7 +112,7 @@ pub struct Shell {
     pub palette_focus: FocusHandle,
     /// moldura em cache (barra de cima, lateral, painel de músicas, barra de contexto,
     /// status bar) — ver `chrome.rs`; índices em `chrome::Part`
-    pub chrome: [Entity<chrome::Chrome>; 5],
+    pub chrome: [Entity<chrome::Chrome>; 6],
     /// o que a status bar mostra (recalculado a cada frame; ela redesenha quando muda)
     pub status: crate::views::status_bar::StatusModel,
     /// altura medida da barra de contexto (0 = medir no próximo frame, sem cache)
@@ -146,6 +146,14 @@ pub struct Shell {
     pub director_close: bool,
     /// janela estreita: a barra de cima compacta (ver `views::topbar`)
     pub top_narrow: bool,
+    /// painel de seções à esquerda (tracker §3)
+    pub sec_panel_open: bool,
+    pub sec_drag: Option<crate::views::sections_panel::SecDrag>,
+    pub sec_menu: Option<crate::views::sections_panel::SecMenu>,
+    /// última seção clicada (âncora do Shift+clique)
+    pub sec_anchor: Option<String>,
+    /// prompt pedido de um listener sem janela; o render abre
+    pub pending_ask: Option<(InputTarget, String)>,
     pub prompt: Option<keys::modal::Prompt>,
     pub last_change: Option<keys::modal::Change>,
     pub recording: bool,
@@ -252,7 +260,7 @@ impl Shell {
             swing: Rc::new(RefCell::new(Default::default())),
             chrome: {
                 let me = cx.weak_entity();
-                [chrome::Part::Top, chrome::Part::Nav, chrome::Part::Panel, chrome::Part::Context, chrome::Part::Status].map(|p| cx.new(|_| chrome::Chrome::new(me.clone(), p)))
+                [chrome::Part::Top, chrome::Part::Nav, chrome::Part::Panel, chrome::Part::Context, chrome::Part::Status, chrome::Part::Sections].map(|p| cx.new(|_| chrome::Chrome::new(me.clone(), p)))
             },
             status: Default::default(),
             ctx_h: Rc::new(std::cell::Cell::new(0.0)),
@@ -277,6 +285,11 @@ impl Shell {
             director: None,
             director_close: false,
             top_narrow: false,
+            sec_panel_open: true,
+            sec_drag: None,
+            sec_menu: None,
+            sec_anchor: None,
+            pending_ask: None,
             prompt: None,
             last_change: None,
             recording: false,
@@ -327,6 +340,7 @@ impl Shell {
                 h(k, &(g.mode, g.zoom_pct(), g.anchor.is_some(), beats, viewport_w.round() as i32));
             }),
             chrome::key(|k| h(k, &(dark, &self.status))),
+            chrome::key(|k| self.sections_panel_key(k, cx)),
         ];
         for (i, (view, key)) in self.chrome.iter().zip(keys).enumerate() {
             view.update(cx, |c, cx| {
@@ -444,6 +458,12 @@ impl Shell {
     }
 
     /// Abre o prompt de texto para renomear/definir algo (pedido pela grade ou por uma ação).
+    /// Como [`Self::ask`], para listeners sem a janela: o próximo render abre o prompt.
+    pub fn ask_later(&mut self, target: InputTarget, initial: String, cx: &mut Context<Self>) {
+        self.pending_ask = Some((target, initial));
+        cx.notify();
+    }
+
     pub fn ask(&mut self, target: InputTarget, initial: String, window: &mut Window, cx: &mut Context<Self>) {
         self.open_prompt(keys::modal::PromptKind::Input(target), window, cx);
         if let Some(p) = self.prompt.as_mut() {
@@ -566,6 +586,8 @@ impl Shell {
     }
 
     pub fn cancel(&mut self, cx: &mut Context<Self>) {
+        self.sec_menu = None;
+        self.sec_drag = None;
         if self.director.is_some() {
             self.director_close = true;
         }
@@ -819,6 +841,9 @@ impl Shell {
 
 impl Render for Shell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if let Some((target, initial)) = self.pending_ask.take() {
+            self.ask(target, initial, window, cx);
+        }
         keys::next_frame();
         RENDERS.fetch_add(1, Ordering::Relaxed);
         let t_render = Instant::now();
@@ -1017,6 +1042,8 @@ impl Shell {
         let editor = div().flex_1().min_w_0().h_full().flex().flex_col().bg(th.bg).when_some(header, |d, h| d.child(div().flex_none().child(h))).child(scroll_area);
 
         let panel = self.chrome[2].clone().cached(gpui_kit::StyleRefinement::default().w(px(280.0)).h_full().flex_none());
+        let show_secs = self.sec_panel_open && self.page == Page::Editor;
+        let secs_panel = self.chrome[chrome::Part::Sections as usize].clone().cached(gpui_kit::StyleRefinement::default().w(px(crate::views::sections_panel::SECTIONS_W)).h_full().flex_none());
         let status = self.chrome[chrome::Part::Status as usize].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(22.0)).flex_none());
 
         // ── workspace (contexto de teclas da grade) ──
@@ -1037,7 +1064,7 @@ impl Shell {
                     .min_h_0()
                     .flex()
                     .when(self.nav_open, |d| d.child(nav))
-                    .child(div().flex_1().min_w_0().flex().flex_col().child(topbar).child(div().flex_1().min_h_0().flex().child(editor).child(panel))),
+                    .child(div().flex_1().min_w_0().flex().flex_col().child(topbar).child(div().flex_1().min_h_0().flex().when(show_secs, |d| d.child(secs_panel)).child(editor).child(panel))),
             )
             .child(status);
 
@@ -1054,6 +1081,11 @@ impl Shell {
         // ── linha de prompt (: / ? " m ' e renomear) ──
         if let Some(p) = &self.prompt {
             root = root.child(div().id("prompt").absolute().inset_0().key_context("Prompt").track_focus(&self.prompt_focus).on_key_down(cx.listener(Self::prompt_key)).child(self.prompt_bar(p, &th)));
+        }
+
+        // ── menus do painel de seções ──
+        if let Some(menu) = self.sec_menu_overlay(&th, cx) {
+            root = root.child(menu);
         }
 
         // ── modo projeção (F7d): por cima de tudo ──

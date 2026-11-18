@@ -4,7 +4,7 @@ title: "Editor vertical estilo tracker (seções, efeitos por célula, cores)"
 description: "Pesquisa de trackers (Renoise e os modernos), modelo mental do editor vertical de taiko, painel de seções com grupos e cores, efeitos por célula legíveis, evolução do sistema de design, mapa de teclas e plano de implementação em etapas."
 tags: [planejamento, tracker, editor, ux, seções, efeitos, cores, teclado]
 status: draft
-estado: "planejado (2026-11-18)"
+estado: "em implementação (2026-11-18): T0, T1, T2, T3a, T5, T6 (painel), T7 (seção/grupo/instrumento), T8 (sem T8b) feitos"
 ---
 
 # WaDAWko — editor vertical estilo tracker
@@ -1012,3 +1012,17 @@ T10 ficam para depois.
 | **Q5** | Trechos de ensaio migram para o painel esquerdo (junto das seções) ou ficam à direita? | **Esquerda**: estrutura e navegação juntas; o inspector ganha espaço à direita |
 | **Q6** | Tamanhos padrão: linha 28 px e coluna 96 px (texto 13 px)? | **Sim**, ajustáveis (20–44 / 72–144) e salvos; conferir a 1,5 m da TV do ensaio na T3 |
 | **Q7** | `Tab` passa a trocar de linha (instrumento), como no Renoise, e o avanço no tempo fica com `Enter`/`Space` + edit step? | **Sim** — é a convenção de todos os trackers e libera `Tab` do papel duplicado com `Space` |
+
+## Andamento (2026-11-18, branch `tracker`)
+
+| Etapa | Status | Notas |
+|---|---|---|
+| T0, T3a | feito | editor vertical (agente) |
+| T1 | feito | `wadawko-core::fx`, `ops::structure` (cores, grupos, copiar/colar), campos novos; a cor dos instrumentos prontos fica em `Song.instrumentColors` |
+| T2 | feito | schedule/engine (`EventKind::Cut`, `HitEv.humanize: f32`), esteira; MIDI herda do schedule |
+| T5 | feito | `views/sections_panel.rs` (`Part::Sections` em cache): clique/Ctrl/Shift, duplo clique, arrastar (Alt clona), menu de contexto, menu de cor, copiar/colar, trechos migrados |
+| T6 | parcial | grupos no painel (recolher, cor, renomear, selecionar o grupo); falta a banda de grupo no editor e arrastar para dentro/fora de grupo |
+| T7 | parcial | cor de seção/grupo (painel + gutter) e de instrumento (Kit); falta a "origem da cor" no ⚙ e no inspector |
+| T8 | feito | sub-coluna fx, ações `fx::*`, inspector; T8b (partitura) não |
+| T3b, T4, T9, T10 | pendente | follow centrado, loop no gutter, teclado completo, polimento, remover a horizontal |
+

@@ -1034,6 +1034,52 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 check("efeitos: Ctrl+Shift+R ×2 = R3 (3 golpes) e Ctrl+Z ×2 volta", f1.as_deref() == Some("R3") && n1 == 3 && f2.is_none() && n2 == n0);
             }
         }
+        // painel de seções (tracker T5/T6): clique seleciona, Ctrl+clique junta, agrupar e Ctrl+Z, copiar/colar e Ctrl+Z
+        {
+            let ids = cx.update(|cx| wadawko_core::ops::sections::section_ranges(state.read(cx).song()).into_iter().map(|r| r.id).collect::<Vec<_>>());
+            // as linhas do painel são alvos `sec-{i}` (na ordem tocada)
+            let row = |id: &str| {
+                let i = ids.iter().position(|x| x == id)?;
+                keys::HINTS.with(|h| h.borrow().targets.get(format!("sec-{i}").as_str()).map(|t| t.bounds.center()))
+            };
+            if ids.len() >= 2
+                && let (Some(p0), Some(p1)) = (row(&ids[0]), row(&ids[1]))
+            {
+                let sel = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).tp.selected.clone());
+                let groups = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().section_groups.as_ref().map_or(0, Vec::len));
+                let nsec = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().sections().len());
+                cx.update(|cx| state.update(cx, |s, _| s.tp.selected.clear()));
+                click(p0, none, cx).await;
+                let s1 = sel(cx);
+                let ctrl = Modifiers { control: true, ..Default::default() };
+                let p1 = row(&ids[1]).unwrap_or(p1);
+                click(p1, ctrl, cx).await;
+                let s2 = sel(cx);
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::section::Group), cx));
+                wait(cx, 150).await;
+                let g1 = groups(cx);
+                key("ctrl-z", cx);
+                wait(cx, 120).await;
+                let g2 = groups(cx);
+                // copiar a 1ª e colar depois dela
+                cx.update(|cx| state.update(cx, |s, cx| s.select_section(&ids[0], false, cx)));
+                let n0 = nsec(cx);
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::section::Copy), cx));
+                wait(cx, 150).await;
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::section::Paste), cx));
+                wait(cx, 200).await;
+                let n1 = nsec(cx);
+                key("ctrl-z", cx);
+                wait(cx, 150).await;
+                let n2 = nsec(cx);
+                cx.update(|cx| state.update(cx, |s, _| s.tp.selected.clear()));
+                println!("PROBE painel de seções: clique → {} sel · Ctrl+clique → {} · agrupar {g1} → Ctrl+Z {g2} · colar {n0} → {n1} → Ctrl+Z {n2}", s1.len(), s2.len());
+                check("painel de seções: seleção, agrupar/desfazer, copiar/colar/desfazer", s1 == vec![ids[0].clone()] && s2.len() == 2 && g1 == 1 && g2 == 0 && n1 == n0 + 1 && n2 == n0);
+            } else {
+                println!("PROBE painel de seções: linhas não encontradas ({} seções)", ids.len());
+                check("painel de seções: linhas visíveis", false);
+            }
+        }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
             let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());

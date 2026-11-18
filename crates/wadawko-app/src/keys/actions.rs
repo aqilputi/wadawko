@@ -45,7 +45,7 @@ pub mod transport {
 }
 pub mod view {
     use gpui_kit::actions;
-    actions!(view, [Grade, Partitura, Esteira, ToggleTheme, ZoomIn, ZoomOut, ZoomReset, RowTaller, RowShorter, RowReset, Director, ToggleNav, ToggleLayout]);
+    actions!(view, [Grade, Partitura, Esteira, ToggleTheme, ZoomIn, ZoomOut, ZoomReset, RowTaller, RowShorter, RowReset, Director, ToggleSections, ToggleNav, ToggleLayout]);
 }
 pub mod nav {
     use gpui_kit::actions;
@@ -73,7 +73,10 @@ pub mod practice {
 }
 pub mod section {
     use gpui_kit::actions;
-    actions!(section, [Add, Clone, Remove, RepeatUp, RepeatDown, MeasureAdd, MeasureRemove, ToggleCollapse, ExpandAll, CollapseAll, MoveUp, MoveDown, Rename, ToggleSelect]);
+    actions!(
+        section,
+        [Add, Clone, Remove, Copy, Cut, Paste, Group, Ungroup, RepeatUp, RepeatDown, MeasureAdd, MeasureRemove, ToggleCollapse, ExpandAll, CollapseAll, MoveUp, MoveDown, Rename, ToggleSelect]
+    );
 }
 pub mod track {
     use gpui_kit::actions;

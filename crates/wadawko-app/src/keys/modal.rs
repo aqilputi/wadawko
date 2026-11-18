@@ -350,6 +350,18 @@ impl Shell {
                 }
                 Err(e) => self.flash(format!("efeito inválido — {e}"), cx),
             },
+            InputTarget::GroupName(id) if !t.trim().is_empty() => {
+                self.edit(cx, |s| ops::structure::rename_group(s, &id, t));
+            }
+            InputTarget::Color(target) => {
+                let c = t.trim();
+                let c = if c.starts_with('#') { c.to_string() } else { format!("#{c}") };
+                if ops::structure::is_hex_color(&c) {
+                    self.apply_color(target, Some(c), cx);
+                } else {
+                    self.flash("cor: use #rrggbb (ex.: #5e9fd8)", cx);
+                }
+            }
             InputTarget::MetroVolume => match num {
                 Some(v) => {
                     let m = wadawko_audio::Metronome { gain: (v / 100.0).clamp(0.0, 2.0) as f32, ..self.state.read(cx).tp.metro };
@@ -542,6 +554,8 @@ impl Shell {
             PromptKind::Input(InputTarget::PracticeName(None)) => ("nome do trecho:", "ex.: solo do Ōdaiko · vazio = c3–c6 · Enter guarda"),
             PromptKind::Input(InputTarget::PracticeName(Some(_))) => ("trecho:", "Enter confirma · Esc cancela"),
             PromptKind::Input(InputTarget::CellFx(..)) => ("efeitos:", "V0–9 força · R2–9 rulo (< >) · F flam · D±5 atraso · X corte · H0–9 humano · vazio limpa"),
+            PromptKind::Input(InputTarget::GroupName(_)) => ("grupo:", "Enter confirma · Esc cancela"),
+            PromptKind::Input(InputTarget::Color(_)) => ("cor:", "#rrggbb · Enter confirma"),
             PromptKind::Input(InputTarget::MetroVolume) => ("metrônomo, volume %:", "0–200 · Enter confirma"),
         };
         div()

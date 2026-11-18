@@ -453,6 +453,12 @@ impl Shell {
                 ops::sections::append_section(s, None);
             });
         });
+        let d = on!(d, cx, section::Copy, |this, w, cx| this.sections_copy(false, cx));
+        let d = on!(d, cx, section::Cut, |this, w, cx| this.sections_copy(true, cx));
+        let d = on!(d, cx, section::Paste, |this, w, cx| this.sections_paste(cx));
+        let d = on!(d, cx, section::Group, |this, w, cx| this.sections_group(cx));
+        let d = on!(d, cx, section::Ungroup, |this, w, cx| this.sections_ungroup(cx));
+        let d = on!(d, cx, view::ToggleSections, |this, w, cx| this.sec_panel_open = !this.sec_panel_open);
         let d = on!(d, cx, section::Clone, |this, w, cx| this.sec_edit(cx, |s, id| {
             ops::sections::clone_section(s, id);
         }));

@@ -26,6 +26,8 @@ pub enum Part {
     Context,
     /// status bar (desenhada de `Shell::status` — um modelo só de texto)
     Status,
+    /// painel de seções à esquerda do editor (`views/sections_panel.rs`)
+    Sections,
 }
 
 pub struct Chrome {
@@ -56,6 +58,7 @@ impl Render for Chrome {
                 Part::Panel => sh.right_panel(&th, cx).into_any_element(),
                 Part::Context => sh.context_toolbar(&th, cx).into_any_element(),
                 Part::Status => sh.status_bar(&th, &sh.status.clone()).into_any_element(),
+                Part::Sections => sh.sections_panel(&th, cx).into_any_element(),
             }
         })
     }

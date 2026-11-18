@@ -94,7 +94,6 @@ impl Shell {
                 }),
             ));
         }
-        let practice = self.practice_list(th, cx);
         let foot_btn = |b: gpui_kit::Stateful<gpui_kit::Div>| b.flex_1().h(px(24.0)).px(px(4.0)).text_size(px(11.0));
         div()
             .w(px(280.0))
@@ -108,9 +107,6 @@ impl Shell {
             // ── inspector (F4): segue o cursor da grade; no máximo 45 % do painel, rola ──
             .child(panel_header("Inspector", th).child(div().text_size(px(10.0)).font_weight(FontWeight::MEDIUM).text_color(th.ink_faint).truncate().child(context)))
             .child(div().id("inspector").flex_none().max_h(gpui_kit::relative(0.45)).overflow_y_scroll().child(inspector))
-            // ── trechos de ensaio (F7b) ──
-            .child(panel_header("Trechos", th).child(abtn("tr-save", th, keys::practice::Save).h(px(18.0)).px(px(6.0)).text_size(px(10.0)).font_weight(FontWeight::BOLD).child("+ guardar")))
-            .child(div().id("practice").flex_none().max_h(px(150.0)).overflow_y_scroll().child(practice))
             // ── músicas ──
             .child(
                 panel_header("Músicas", th).child(
@@ -174,7 +170,7 @@ type SpotAct = Rc<dyn Fn(&mut Shell, &mut gpui_kit::Window, &mut Context<Shell>)
 impl Shell {
     /// Lista de trechos de ensaio: nome + `c3–c6`; o que está em loop agora fica
     /// aceso; ✎ renomeia, ✕ remove; trecho cuja seção sumiu aparece riscado.
-    fn practice_list(&self, th: &Theme, cx: &mut Context<Self>) -> gpui_kit::Div {
+    pub(crate) fn practice_list(&self, th: &Theme, cx: &mut Context<Self>) -> gpui_kit::Div {
         let st = self.state.read(cx);
         let song = st.song();
         let range = st.tp.range;

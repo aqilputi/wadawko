@@ -260,6 +260,10 @@ pub enum InputTarget {
     PracticeName(Option<String>),
     /// texto de efeitos de uma célula (compasso, linha, célula)
     CellFx(usize, usize, usize),
+    /// nome de um grupo de seções
+    GroupName(String),
+    /// cor em hex (`#rrggbb`) para seção, grupo ou instrumento
+    Color(crate::views::sections_panel::ColorTarget),
 }
 
 pub enum GridEvent {
