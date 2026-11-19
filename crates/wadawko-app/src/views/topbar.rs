@@ -184,6 +184,16 @@ impl Shell {
                     .when(!narrow, |d| d.child(chip("m-sub", format!("÷{}", tp.metro.subdiv.clamp(1, 4)), Box::new(keys::transport::MetroSubdiv))))
                     .when(!narrow, |d| d.child(chip("m-snd", tp.metro.sound.name().to_string(), Box::new(keys::transport::MetroSound))))
             })
+            // ensaiar como… (Alt+P): 👤 todos / 👤 sem Ana (âmbar quando ligado)
+            .when(!song.people().is_empty(), |d| {
+                let label = match &tp.rehearse {
+                    Some(r) => format!("👤 {} {}", r.listen.label(), song.person(&r.person).map_or(r.person.as_str(), |p| p.name.as_str())),
+                    None => "👤 todos".into(),
+                };
+                let on = tp.rehearse.is_some();
+                let warn = th.warn;
+                d.child(chip("rehearse", label, Box::new(keys::transport::RehearsePick)).when(on, |c| c.bg(Theme::alpha(warn, 0.22)).border_color(warn).text_color(warn)))
+            })
             .child(atoggle("countin", th, tp.count_in, keys::transport::ToggleCountIn).w(px(30.0)).px(px(0.0)).child("⏱"))
             // count-in a cada volta: só faz sentido com loop (economiza espaço em janela estreita)
             .when(tp.looping || tp.count_in_loop, |d| d.child(atoggle("countin-loop", th, tp.count_in_loop, keys::transport::ToggleCountInLoop).w(px(30.0)).px(px(0.0)).child("⏱↺")))

@@ -30,6 +30,54 @@ pub enum StateEvent {
     SongReplaced,
 }
 
+/// O que se ouve no modo "ensaiar como…" (ux-pesquisa #1).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Listen {
+    /// a música sem a pessoa (ela toca junto)
+    #[default]
+    Without,
+    /// só a pessoa
+    Only,
+}
+
+impl Listen {
+    pub fn label(self) -> &'static str {
+        match self {
+            Listen::Without => "sem",
+            Listen::Only => "só",
+        }
+    }
+}
+
+/// Modo "ensaiar como…": estado de transporte (não vai para o arquivo nem para o desfazer).
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Rehearse {
+    pub person: String,
+    pub listen: Listen,
+}
+
+/// Cópia da música para o áudio com o modo de ensaio aplicado (mudo/solo da pessoa).
+pub fn rehearsal_song(song: &Song, r: Option<&Rehearse>) -> Song {
+    let mut s = song.clone();
+    let Some(r) = r else { return s };
+    if let Some(people) = s.people.as_mut() {
+        for p in people.iter_mut() {
+            let me = p.id == r.person;
+            match r.listen {
+                Listen::Without if me => p.muted = Some(true),
+                Listen::Only => {
+                    p.solo = me.then_some(true);
+                    if me {
+                        p.muted = None;
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    s
+}
+
 /// Opções do transporte (não fazem parte da música).
 #[derive(Clone, Debug, PartialEq)]
 pub struct Transport {
@@ -50,6 +98,8 @@ pub struct Transport {
     /// trecho de loop em compassos `[start_bar, end_bar)` (F2): arraste na
     /// régua, `Loop: seleção`, `[`/`]`. Tem precedência sobre `selected`.
     pub range: Option<Region>,
+    /// "ensaiar como…": a pessoa e o que se ouve (sem ela / só ela)
+    pub rehearse: Option<Rehearse>,
 }
 
 impl Default for Transport {
@@ -65,6 +115,7 @@ impl Default for Transport {
             trainer_step: 0.05,
             selected: Vec::new(),
             range: None,
+            rehearse: None,
         }
     }
 }
@@ -424,7 +475,7 @@ impl AppState {
     /// Recompila a música para o engine agora (região = trecho ou seções selecionadas).
     pub fn sync_audio(&mut self) {
         self.audio_stale = false;
-        let song = self.store.song().clone();
+        let song = rehearsal_song(self.store.song(), self.tp.rehearse.as_ref());
         let region = self.region();
         let Some(audio) = self.audio.as_mut() else { return };
         self.schedule = audio.set_song(&song, &CompileOptions { region, ..CompileOptions::default() });
@@ -543,6 +594,15 @@ impl AppState {
         self.tp.metronome = on;
         if let Some(a) = self.audio.as_mut() {
             a.set_metronome(on);
+        }
+        cx.notify();
+    }
+
+    /// Liga/desliga o modo "ensaiar como…" (vale na hora, tocando ou não).
+    pub fn set_rehearse(&mut self, r: Option<Rehearse>, cx: &mut Context<Self>) {
+        if self.tp.rehearse != r {
+            self.tp.rehearse = r;
+            self.sync_audio();
         }
         cx.notify();
     }
@@ -1025,5 +1085,25 @@ mod selection_tests {
         assert_eq!(next_selection(&v(&["a"]), "b", true), v(&["a", "b"]));
         assert_eq!(next_selection(&v(&["a", "b"]), "a", true), v(&["b"]));
         assert_eq!(next_selection(&v(&[]), "a", true), v(&["a"]));
+    }
+}
+
+#[cfg(test)]
+mod rehearse_tests {
+    use super::*;
+    use wadawko_core::model::Person;
+
+    #[test]
+    fn sem_e_so_a_pessoa() {
+        let mut s = wadawko_core::demo::demo_song();
+        s.people = Some(vec![Person { id: "ana".into(), name: "Ana".into(), ..Default::default() }, Person { id: "bia".into(), name: "Bia".into(), ..Default::default() }]);
+        let audible = |s: &Song, id: &str| wadawko_core::ops::people::person_audible(s, Some(id));
+        let sem = rehearsal_song(&s, Some(&Rehearse { person: "ana".into(), listen: Listen::Without }));
+        assert!(!audible(&sem, "ana") && audible(&sem, "bia"));
+        let so = rehearsal_song(&s, Some(&Rehearse { person: "ana".into(), listen: Listen::Only }));
+        assert!(audible(&so, "ana") && !audible(&so, "bia"));
+        // a música original não muda
+        assert!(audible(&s, "ana") && audible(&s, "bia"));
+        assert_eq!(rehearsal_song(&s, None), s);
     }
 }

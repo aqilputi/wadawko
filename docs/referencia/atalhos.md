@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-19T00:35:25Z
+  at: 2026-11-19T02:36:11Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -80,6 +80,8 @@ Valem na área do editor (grade, partitura, esteira), com ou sem vim.
 | `Ctrl+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
 | `Alt+T` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
 | `Ctrl+Shift+B` | `view::ToggleSections` | Painel de seções: mostrar/esconder |
+| `Alt+P` | `transport::RehearsePick` | Ensaiar como… (escolher a pessoa) |
+| `Alt+Shift+P` | `transport::RehearseOff` | Ensaiar como: todos (desligar) |
 | `scrolllock` | `view::ToggleFollow` | Seguir o playhead: ligar/desligar |
 | `Ctrl+Shift+R` | `fx::Roll` | Efeito: rulo (×2 → 3 → 4 → 6 → 8 → nenhum) |
 | `Ctrl+Shift+F` | `fx::Flam` | Efeito: flam (liga/desliga) |
@@ -174,6 +176,7 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `t` `m` | `transport::ToggleMetronome` | Metrônomo: ligar/desligar |
 | `Space` `t` `c` | `transport::ToggleCountIn` | Count-in: ligar/desligar |
 | `Space` `t` `r` | `transport::ToggleCountInLoop` | Count-in a cada volta do loop: ligar/desligar |
+| `Space` `p` | `transport::RehearsePick` | Ensaiar como… (escolher a pessoa) |
 | `Space` `s` `g` | `section::Group` | Seções: agrupar as selecionadas |
 | `Space` `s` `Shift+G` | `section::Ungroup` | Seções: desfazer o grupo |
 | `Space` `s` `y` | `section::Copy` | Seções: copiar as selecionadas (cola noutra música também) |

@@ -37,6 +37,8 @@ pub struct VPaintArgs {
     pub loop_preview: Option<Region>,
     /// cor da seção nos 2 px do gutter (T7; por ora `None` = `ink_faint`)
     pub sec_color: Option<Hsla>,
+    /// "ensaiar como…": linhas que NÃO são da pessoa (esmaecidas)
+    pub faded: std::rc::Rc<Vec<bool>>,
     pub shaped: TextCache,
 }
 
@@ -210,6 +212,7 @@ pub fn vpaint_section(b: Bounds<Pixels>, a: &VPaintArgs, window: &mut Window, cx
                         continue;
                     }
                     let audible = song.audible(t);
+                    let faded = a.faded.get(t).copied().unwrap_or(false);
                     let shared = track.is_shared();
                     let has_people = !track.person_ids().is_empty();
                     let row = meas.cells.get(&track.id);
@@ -231,7 +234,7 @@ pub fn vpaint_section(b: Bounds<Pixels>, a: &VPaintArgs, window: &mut Window, cx
                         if beat_start && k > 0 {
                             window.paint_quad(fill(rect(x, y, cols.group_w[t], 1.0), th.line_beat));
                         }
-                        let mut dim = !audible;
+                        let mut dim = !audible || faded;
                         if let Some(word) = cell {
                             match phrase::resolve_cell(word) {
                                 Some(res) => {

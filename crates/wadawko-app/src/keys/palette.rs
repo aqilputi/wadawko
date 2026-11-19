@@ -24,6 +24,8 @@ pub enum PRun {
     Practice(String),
     /// música nova a partir de um modelo (`wadawko_core::templates`)
     Template(&'static str),
+    /// modo "ensaiar como…" (`None` = todos)
+    Rehearse(Option<crate::state::Rehearse>),
 }
 
 /// item da paleta: (título, grupo, atalho, o que fazer)
@@ -52,6 +54,18 @@ impl Shell {
             PRun::Action(a) => window.dispatch_action(a, cx),
             PRun::Song(i) => self.select_project(i, cx),
             PRun::Practice(id) => self.loop_spot(&id, cx),
+            PRun::Rehearse(r) => {
+                let msg = match &r {
+                    Some(r) => format!(
+                        "ensaiar como {}: {} no som",
+                        self.song(cx).person(&r.person).map_or(r.person.clone(), |p| p.name.clone()),
+                        if r.listen == crate::state::Listen::Without { "sem ela" } else { "só ela" }
+                    ),
+                    None => "ensaiar como: todos".into(),
+                };
+                self.state.update(cx, |s, cx| s.set_rehearse(r, cx));
+                self.flash(msg, cx);
+            }
             PRun::Template(id) => {
                 if let Some(song) = wadawko_core::templates::template_song(id) {
                     self.state.update(cx, |s, cx| s.add_project(song, cx));
@@ -110,6 +124,23 @@ impl Shell {
             if let Some(sc) = keys::fuzzy(q, &format!("música {t}")) {
                 scored.push((sc - 5, 1000 + i, (format!("Abrir música: {t}"), "Música", None, PRun::Song(i))));
             }
+        }
+        // ensaiar como… (ux-pesquisa #1)
+        for (i, p) in self.state.read(cx).song().people().iter().enumerate() {
+            for (j, (listen, what)) in [(crate::state::Listen::Without, "tocar junto, sem ela no som"), (crate::state::Listen::Only, "ouvir só ela")].into_iter().enumerate() {
+                if let Some(sc) = keys::fuzzy(q, &format!("ensaiar como {} {what}", p.name)) {
+                    scored.push((
+                        sc + if j == 0 { 80 } else { 20 },
+                        1100 + i * 2 + j,
+                        (format!("Ensaiar como {}: {what}", p.name), "Transporte", None, PRun::Rehearse(Some(crate::state::Rehearse { person: p.id.clone(), listen }))),
+                    ));
+                }
+            }
+        }
+        if self.state.read(cx).tp.rehearse.is_some()
+            && let Some(sc) = keys::fuzzy(q, "ensaiar como todos desligar")
+        {
+            scored.push((sc + 1, 1099, ("Ensaiar como: todos (desligar)".into(), "Transporte", None, PRun::Rehearse(None))));
         }
         // modelos de música (F9)
         for (i, t) in wadawko_core::templates::TEMPLATES.iter().enumerate() {

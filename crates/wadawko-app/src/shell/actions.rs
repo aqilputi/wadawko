@@ -254,6 +254,30 @@ impl Shell {
             this.save_settings(cx);
             this.flash(format!("metrônomo: som de {}", m.sound.name()), cx)
         });
+        let d = on!(d, cx, transport::RehearsePick, |this, w, cx| {
+            if this.song(cx).people().is_empty() {
+                this.flash("a música não tem pessoas (página Pessoas)", cx);
+            } else {
+                this.open_palette(w, cx);
+                if let Some(p) = this.palette.as_mut() {
+                    p.query = "ensaiar como".into();
+                }
+            }
+        });
+        let d = on!(d, cx, transport::RehearseOff, |this, w, cx| {
+            this.state.update(cx, |s, cx| s.set_rehearse(None, cx));
+            this.flash("ensaiar como: todos", cx)
+        });
+        let d = on!(d, cx, transport::RehearseListen, |this, w, cx| {
+            let r = this.state.read(cx).tp.rehearse.clone();
+            match r {
+                Some(mut r) => {
+                    r.listen = if r.listen == crate::state::Listen::Without { crate::state::Listen::Only } else { crate::state::Listen::Without };
+                    this.state.update(cx, |s, cx| s.set_rehearse(Some(r), cx));
+                }
+                None => this.flash("escolha a pessoa primeiro (Alt+P)", cx),
+            }
+        });
         let d = on!(d, cx, transport::TapTempo, |this, w, cx| this.tap_tempo(cx));
         let d = on!(d, cx, transport::ToggleTrainer, |this, w, cx| this.state.update(cx, |s, cx| {
             s.tp.trainer = !s.tp.trainer;

@@ -1190,6 +1190,34 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 check("loop no gutter do editor vertical: arrastar cria c1–c2; Alt+clique limpa", r1 == Some(wadawko_core::timeline::Region { start_bar: 0, end_bar: 2 }) && r2.is_none());
             }
         }
+        // ensaiar como… (ux #1): Alt+P abre a paleta filtrada; Enter liga; Alt+Shift+P desliga
+        {
+            // garante uma pessoa na música (as fixtures podem não ter)
+            let had = cx.update(|cx| !state.read(cx).song().people().is_empty());
+            if !had {
+                cx.update(|cx| state.update(cx, |s, cx| {
+                    s.edit(cx, |song| {
+                        song.people = Some(vec![wadawko_core::model::Person { id: "probe-ana".into(), name: "Ana".into(), ..Default::default() }]);
+                    });
+                }));
+                wait(cx, 100).await;
+            }
+            key("alt-p", cx);
+            wait(cx, 150).await;
+            let q = cx.update(|cx| shell.read(cx).palette.as_ref().map(|p| p.query.clone()));
+            key("enter", cx);
+            wait(cx, 150).await;
+            let on = cx.update(|cx| state.read(cx).tp.rehearse.clone());
+            key("alt-shift-p", cx);
+            wait(cx, 100).await;
+            let off = cx.update(|cx| state.read(cx).tp.rehearse.is_none());
+            if !had {
+                key("ctrl-z", cx);
+                wait(cx, 100).await;
+            }
+            println!("PROBE ensaiar como: paleta {q:?} → {on:?} → desligado {off}");
+            check("ensaiar como: Alt+P + Enter liga; Alt+Shift+P desliga", q.as_deref() == Some("ensaiar como") && on.is_some() && off);
+        }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
             let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());

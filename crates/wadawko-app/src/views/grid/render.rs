@@ -563,7 +563,7 @@ impl GridView {
         kyai_rows.sort();
         crate::shell::chrome::key(|k| {
             use std::hash::Hash;
-            (Arc::as_ptr(&self.song) as usize, st.revision, st.theme.dark, selected, format!("{range:?}"), looping, format!("{bar:?}")).hash(k);
+            (Arc::as_ptr(&self.song) as usize, st.revision, st.theme.dark, selected, format!("{range:?}"), looping, format!("{bar:?}"), &st.tp.rehearse).hash(k);
             (format!("{:?}", self.cursor), format!("{:?}", self.anchor), self.vmode, format!("{:?}", self.lane), &self.edit).hash(k);
             (format!("{:?}", self.menu), format!("{:?}", self.move_drag), format!("{:?}", self.loop_drag), self.drag_sec, self.drag_over).hash(k);
             (self.cw.to_bits(), self.offset.to_bits(), self.cell_h.to_bits(), collapsed, dyn_rows, kyai_rows).hash(k);

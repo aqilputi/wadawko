@@ -210,6 +210,10 @@ botões prontos. O áudio, a esteira e o MIDI tocam os efeitos; a partitura aind
   compasso de contagem, para o grupo respirar entre as voltas. Combina com o treino.
 - **Altura das linhas**: `Ctrl+Alt+↑/↓` (vim: `z k`/`z j`, `z =` volta ao padrão) — linhas
   baixas cabem mais na tela (abaixo de 32 px some o nome do instrumento). Fica salva.
+- **Ensaiar como…** (`Alt+P`, chip 👤 na barra de cima; vim `space p`): escolha uma pessoa e o som
+  toca **sem ela** (ela toca junto) ou **só ela**; as linhas das outras pessoas ficam esmaecidas e a
+  barra de status mostra `👤 sem Ana`. Não muda a música nem entra no desfazer. `Alt+Shift+P` volta
+  a todos; "Ensaiar como: ouvir sem / só" alterna.
 - **Modo projeção** (`F10`, ou `Ctrl+K` → "Modo projeção"): tela cheia em letras grandes para a TV
   do ensaio — seção atual e a volta (`2/3`), compasso, os tempos acendendo, a próxima seção e o
   BPM que está soando; a lista de linhas com as cores embaixo. `Espaço` toca/para, `Esc` sai.

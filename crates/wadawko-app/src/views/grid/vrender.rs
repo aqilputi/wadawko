@@ -90,6 +90,10 @@ impl GridView {
             looping,
             loop_preview: self.loop_drag.filter(|d| d.moved).map(|d| d.region()),
             sec_color,
+            faded: std::rc::Rc::new(match self.state.read(cx).tp.rehearse.as_ref() {
+                Some(r) => self.song.tracks.iter().map(|t| !t.person_ids().contains(&r.person)).collect(),
+                None => Vec::new(),
+            }),
             shaped: self.shaped.clone(),
         };
         div()
