@@ -148,6 +148,8 @@ pub struct Shell {
     pub top_narrow: bool,
     /// painel de seções à esquerda (tracker §3)
     pub sec_panel_open: bool,
+    /// aba do painel da esquerda: seções ou linhas (instrumentos)
+    pub left_tab: crate::views::tracks_panel::LeftTab,
     pub sec_drag: Option<crate::views::sections_panel::SecDrag>,
     pub sec_menu: Option<crate::views::sections_panel::SecMenu>,
     /// última seção clicada (âncora do Shift+clique)
@@ -302,6 +304,7 @@ impl Shell {
             director_close: false,
             top_narrow: false,
             sec_panel_open: true,
+            left_tab: Default::default(),
             sec_drag: None,
             sec_menu: None,
             sec_anchor: None,

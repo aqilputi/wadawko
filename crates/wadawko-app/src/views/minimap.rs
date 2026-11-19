@@ -22,6 +22,14 @@ use crate::views::grid::{SEC_GAP, SEC_HEAD_H};
 
 /// Largura do minimap.
 pub const MINI_W: f32 = 84.0;
+/// Abaixo desta altura de linha (px no minimap) desenha a densidade por tempo.
+const DETAIL_PX: f32 = 2.5;
+
+/// Cor da linha mais calma para o minimap (menos saturação).
+fn soften(c: Hsla) -> Hsla {
+    Hsla { s: c.s * 0.55, ..c }
+}
+
 /// Escala máxima (música curta não vira um bloco gigante).
 const MAX_K: f32 = 0.22;
 
@@ -110,7 +118,7 @@ impl Shell {
         let g = self.grid.read(cx);
         let row_h = g.row_h;
         let (secs, content_h) = layout(&song, row_h, |s| song.secs().get(s).is_some_and(|sec| g.is_collapsed(sec)));
-        let tcols: Vec<Hsla> = song.tracks.iter().map(|t| track_color(&song, t)).collect();
+        let tcols: Vec<Hsla> = song.tracks.iter().map(|t| soften(track_color(&song, t))).collect();
         let vp = self.mini_viewport(cx);
         let ph = self.mini_playhead(cx);
         let mg = self.mini_geom.clone();
@@ -133,8 +141,8 @@ impl Shell {
                         break;
                     }
                     // faixa de cor da seção à esquerda e o cabeçalho
-                    window.paint_quad(fill(rect(x0 + 2.0, top, 3.0, total.max(1.0)), sec.color.unwrap_or(th.line_strong)));
-                    window.paint_quad(fill(rect(cx0, top, w - 10.0, (SEC_HEAD_H * k).max(1.0)), Theme::alpha(th.ink_faint, 0.35)));
+                    window.paint_quad(fill(rect(x0 + 2.0, top, 2.0, total.max(1.0)), sec.color.unwrap_or(th.line_strong)));
+                    window.paint_quad(fill(rect(cx0, top, w - 10.0, (SEC_HEAD_H * k).max(1.0)), Theme::alpha(th.ink_faint, 0.18)));
                     if sec.collapsed {
                         continue;
                     }
@@ -142,14 +150,32 @@ impl Shell {
                     let rh = (row_h * k).max(0.6);
                     for &(m, my) in &sec.measures {
                         let Some(meas) = song.measures.get(m) else { continue };
-                        // barra de compasso
-                        window.paint_quad(fill(rect(cx0, body + my * k, w - 10.0, 0.5), Theme::alpha(th.ink_faint, 0.5)));
+                        // barra de compasso: fio discreto
+                        window.paint_quad(fill(rect(cx0, body + my * k, w - 10.0, 0.5), Theme::alpha(th.ink_faint, 0.35)));
+                        let sub = meas.subdivision.max(1);
                         for (t, tr) in song.tracks.iter().enumerate() {
                             let Some(row) = meas.cells.get(&tr.id) else { continue };
-                            for (ci, c) in row.iter().enumerate() {
-                                if c.as_deref().is_some_and(|s| !s.is_empty()) {
+                            let x = cx0 + t as f32 * colw + 0.5;
+                            let cw = (colw - 2.0).max(1.0);
+                            if rh >= DETAIL_PX {
+                                // detalhe: cada célula, com 1 px de folga; acento um pouco mais forte
+                                for (ci, c) in row.iter().enumerate() {
+                                    let Some(v) = c.as_deref().filter(|s| !s.is_empty()) else { continue };
                                     let y = body + (my + ci as f32 * row_h) * k;
-                                    window.paint_quad(fill(rect(cx0 + t as f32 * colw, y, (colw - 1.0).max(1.0), rh), Theme::alpha(tcols[t], 0.85)));
+                                    let strong = v.chars().next().is_some_and(char::is_uppercase);
+                                    window.paint_quad(fill(rect(x, y, cw, (rh - 1.0).max(1.0)), Theme::alpha(tcols[t], if strong { 0.62 } else { 0.42 })));
+                                }
+                            } else {
+                                // denso (passagens rápidas / zoom baixo): densidade por tempo, sem blocos cheios
+                                for (b, chunk) in row.chunks(sub).enumerate() {
+                                    let n = chunk.iter().filter(|c| c.as_deref().is_some_and(|s| !s.is_empty())).count();
+                                    if n == 0 {
+                                        continue;
+                                    }
+                                    let dens = n as f32 / chunk.len().max(1) as f32;
+                                    let y = body + (my + (b * sub) as f32 * row_h) * k;
+                                    let bh = (chunk.len() as f32 * row_h * k - 0.6).max(0.6);
+                                    window.paint_quad(fill(rect(x, y, cw, bh), Theme::alpha(tcols[t], 0.12 + 0.38 * dens)));
                                 }
                             }
                         }

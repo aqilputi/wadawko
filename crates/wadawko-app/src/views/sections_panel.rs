@@ -21,6 +21,7 @@ use crate::song_ext::SongExt;
 use crate::theme::{Theme, parse_color};
 use crate::ui::{self, panel_header};
 use crate::views::grid::{Cur, InputTarget};
+use crate::views::tracks_panel::LeftTab;
 
 /// Largura do painel.
 pub const SECTIONS_W: f32 = 220.0;
@@ -69,7 +70,10 @@ impl Shell {
         let cur_sec = self.grid.read(cx).cursor.map(|c| song.section_of(c.m));
         let playing_sec = st.playing().then(|| st.playhead().map(|p| song.section_of(p.mi))).flatten();
         (st.revision, st.theme.dark, &st.tp.selected, format!("{:?}", st.tp.range), cur_sec, playing_sec).hash(k);
-        (format!("{:?}", self.sec_drag), format!("{:?}", self.sec_menu)).hash(k);
+        (format!("{:?}", self.sec_drag), format!("{:?}", self.sec_menu), self.left_tab).hash(k);
+        if self.left_tab == LeftTab::Tracks {
+            self.tracks_panel_key(k, cx);
+        }
     }
 
     /// Clique numa seção do painel.
@@ -429,20 +433,59 @@ impl Shell {
                     }
                 }),
             )
-            .child(
-                panel_header("Seções", &th2).child(
+            .child({
+                // abas: SEÇÕES | LINHAS (os botões do cabeçalho mudam com a aba)
+                let tab = |id: &'static str, label: &'static str, which: LeftTab, cx: &mut Context<Self>| {
+                    let on = self.left_tab == which;
                     div()
+                        .id(id)
+                        .h(px(22.0))
+                        .px(px(6.0))
+                        .flex()
+                        .items_center()
+                        .text_size(px(10.0))
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(if on { th2.ink } else { th2.ink_faint })
+                        .border_b_2()
+                        .border_color(if on { th2.accent } else { gpui_kit::transparent_black() })
+                        .cursor_pointer()
+                        .child(label)
+                        .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
+                            this.left_tab = which;
+                            cx.notify();
+                        }))
+                };
+                let buttons = match self.left_tab {
+                    LeftTab::Sections => div()
                         .flex()
                         .gap(px(3.0))
                         .child(small("secp-grp", "⊞", Box::new(keys::section::Group)))
                         .child(small("secp-copy", "⧉", Box::new(keys::section::Copy)))
                         .child(small("secp-paste", "⎘", Box::new(keys::section::Paste)))
                         .child(small("secp-add", "+", Box::new(keys::section::Add))),
-                ),
-            )
-            .child(div().id("sec-list").flex_1().min_h_0().overflow_y_scroll().child(list))
-            .child(panel_header("Trechos", &th2).child(ui::abtn("tr-save", &th2, keys::practice::Save).h(px(18.0)).px(px(6.0)).text_size(px(10.0)).font_weight(FontWeight::BOLD).child("+ guardar")))
-            .child(div().id("practice").flex_none().max_h(px(180.0)).overflow_y_scroll().child(self.practice_list(&th2, cx)))
+                    LeftTab::Tracks => div().flex().gap(px(3.0)).child(small("trkp-add", "+ linha", Box::new(keys::track::Add))),
+                };
+                div()
+                    .h(px(26.0))
+                    .flex_none()
+                    .px(px(4.0))
+                    .flex()
+                    .items_end()
+                    .justify_between()
+                    .border_b_1()
+                    .border_color(th2.line)
+                    .child(div().flex().child(tab("ltab-sec", "SEÇÕES", LeftTab::Sections, cx)).child(tab("ltab-trk", "LINHAS", LeftTab::Tracks, cx)))
+                    .child(div().pb(px(3.0)).child(buttons))
+            })
+            .when(self.left_tab == LeftTab::Sections, |d| {
+                d.child(div().id("sec-list").flex_1().min_h_0().overflow_y_scroll().child(list))
+                    .child(
+                        panel_header("Trechos", &th2)
+                            .child(ui::abtn("tr-save", &th2, keys::practice::Save).h(px(18.0)).px(px(6.0)).text_size(px(10.0)).font_weight(FontWeight::BOLD).child("+ guardar")),
+                    )
+                    .child(div().id("practice").flex_none().max_h(px(180.0)).overflow_y_scroll().child(self.practice_list(&th2, cx)))
+            })
+            .when(self.left_tab == LeftTab::Tracks, |d| d.child(div().id("trk-list").flex_1().min_h_0().overflow_y_scroll().child(self.tracks_list(&th2, cx))))
     }
 
     /// Menus flutuantes (contexto da seção, cores) — por cima de tudo.

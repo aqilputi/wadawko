@@ -1488,6 +1488,14 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                     });
                     s.state.update(cx, |st, cx| st.select_section(&ids[1], false, cx));
                 }
+                // aba LINHAS do painel da esquerda, com a 2ª linha aberta
+                "linhas" => {
+                    s.left_tab = views::tracks_panel::LeftTab::Tracks;
+                    s.grid.update(cx, |g, cx| {
+                        g.cursor = Some(Cur { m: 0, t: 1, k: 0 });
+                        cx.notify();
+                    });
+                }
                 // modo projeção tocando (F7d)
                 "director" => {
                     s.director = Some(false);

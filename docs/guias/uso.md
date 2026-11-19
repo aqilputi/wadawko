@@ -126,7 +126,8 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
 # Minimap e rolagem
 
 - À direita do editor vertical fica o **minimap** (como o do VS Code): a música inteira em
-  miniatura, com a faixa de cor de cada seção, as notas na cor de cada linha, o retângulo da área
+  miniatura, com a faixa de cor de cada seção, as notas em tom suave da cor de cada linha (em
+  passagens densas, a densidade por tempo), o retângulo da área
   visível e o playhead. Clique ou arraste nele para ir até ali. `Ctrl+K` → "Minimap" esconde.
 - Tocando, a grade **segue o playhead** virando a página; `space v shift-f` (ou a paleta) troca para
   **centrado** (a linha que soa fica fixa e a música rola por baixo — mais suave, mais pesado), e
@@ -163,6 +164,10 @@ escreve nos tempos; passo 0 fica na célula.
   aparece na linha do gutter do editor vertical. A cor dos **instrumentos** fica na página **Kit**
   (cada linha herda a do instrumento, a menos que tenha cor própria no ⚙ da linha).
 - Os **trechos de ensaio** ficam embaixo, no mesmo painel.
+- A aba **LINHAS** (ao lado de SEÇÕES) lista os instrumentos como os cabeçalhos de faixa de uma
+  DAW: cor, nome, instrumento e M/S/★. Clique numa linha para levar o cursor até ela; a linha do
+  cursor abre com a cor (12 cores ou "herdar"), volume, pan, o que mostrar na grade (dinâmica,
+  kiai, efeitos), pessoas e ↑/↓, nome, som e remover.
 
 # Efeitos por célula
 

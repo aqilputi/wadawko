@@ -2,6 +2,10 @@
 
 ## 2026-11-18
 
+**Criação** da [pesquisa de UX em DAWs e apps de ensaio](/planejamento/ux-pesquisa.md): 22
+recomendações priorizadas (ensaiar como uma pessoa, preencher seleção, visão por pessoa, partes
+individuais, pacote de ensaio "sem mim", roteiro de ensaio…).
+
 **Criação** do plano [editor vertical estilo tracker](/planejamento/tracker.md): pesquisa do
 pattern editor do Renoise, dos trackers modernos (Polyend, M8, Furnace, OpenMPT, SunVox) e de
 como apps de percussão marcam acento, ghost, flam e rulo; modelo mental do editor vertical

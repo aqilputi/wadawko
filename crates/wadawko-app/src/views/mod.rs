@@ -27,6 +27,7 @@ pub mod sections_panel;
 pub mod settings;
 pub mod status_bar;
 pub mod topbar;
+pub mod tracks_panel;
 pub mod widgets;
 
 use gpui_kit::{AnyElement, Context, Entity, prelude::*};
