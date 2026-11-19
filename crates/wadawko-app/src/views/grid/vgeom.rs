@@ -265,6 +265,10 @@ impl GridView {
         if x < 0.0 {
             return None;
         }
+        // faixa de loop (8 px à esquerda do gutter): arrastar marca o trecho, como a régua horizontal
+        if (LOOP_X - 2.0..LOOP_X + LOOP_W + 2.0).contains(&x) {
+            return Some(Hit::LoopLane);
+        }
         if x < GUTTER_W {
             return Some(Hit::Timeline(Some((m, k))));
         }

@@ -844,16 +844,51 @@ impl GridView {
         Some(f32::from(b.origin.x) + lx - self.offset)
     }
 
-    /// Aperto na faixa de loop da régua da seção `s` (F2).
+    /// Compasso da seção `s` sob o ponto (janela), no eixo do tempo do layout
+    /// (x na grade horizontal, y no editor vertical), preso às pontas da seção.
+    pub fn measure_at(&self, s: usize, pos: Point<Pixels>) -> Option<usize> {
+        if self.layout == Layout::Horizontal {
+            return self.measure_at_x(s, f32::from(pos.x));
+        }
+        let g = self.geom.borrow();
+        let b = *g.sections.get(s)?;
+        if f32::from(b.size.height) <= 0.0 {
+            return None;
+        }
+        let (a, end) = self.song.section_range(s);
+        if end <= a {
+            return None;
+        }
+        let ly = f32::from(pos.y) - f32::from(b.origin.y);
+        let ys = vgeom::measure_ys(&self.song, s, g.row_h);
+        Some(a + ys.iter().rposition(|&my| ly >= my).unwrap_or(0))
+    }
+
+    /// Posição (no eixo do tempo, janela) do início do compasso `bar` da seção `s`.
+    pub fn bar_pos(&self, s: usize, bar: usize) -> Option<f32> {
+        if self.layout == Layout::Horizontal {
+            return self.bar_x(s, bar);
+        }
+        let g = self.geom.borrow();
+        let b = *g.sections.get(s)?;
+        let (a, end) = self.song.section_range(s);
+        if bar < a || bar > end || end <= a {
+            return None;
+        }
+        let ly = if bar == end { vgeom::section_body_h(&self.song, s, g.row_h) } else { vgeom::measure_y(&self.song, s, bar, g.row_h)? };
+        Some(f32::from(b.origin.y) + ly)
+    }
+
+    /// Aperto na faixa de loop da régua da seção `s` (F2; no vertical, a faixa do gutter).
     fn loop_lane_down(&mut self, s: usize, ev: &MouseDownEvent, cx: &mut Context<Self>) {
-        let x = f32::from(ev.position.x);
-        let Some(m) = self.measure_at_x(s, x) else { return };
+        let x = if self.layout == Layout::Horizontal { f32::from(ev.position.x) } else { f32::from(ev.position.y) };
+        let Some(m) = self.measure_at(s, ev.position) else { return };
         let range = self.state.read(cx).tp.range;
         let handle = range.and_then(|r| {
-            let (x0, x1) = (self.bar_x(s, r.start_bar)?, self.bar_x(s, r.end_bar)?);
+            let (x0, x1) = (self.bar_pos(s, r.start_bar)?, self.bar_pos(s, r.end_bar)?);
             grab_handle(x, x0, x1).map(|end| (r, end))
         });
-        let grab = (x, f32::from(ev.position.y));
+        let grab = (f32::from(ev.position.x), f32::from(ev.position.y));
         self.loop_drag = Some(match handle {
             Some((r, false)) => LoopDrag { sec: s, anchor: r.end_bar - 1, cur: r.start_bar, grab, moved: false, alt: ev.modifiers.alt, inside: true },
             Some((r, true)) => LoopDrag { sec: s, anchor: r.start_bar, cur: r.end_bar - 1, grab, moved: false, alt: ev.modifiers.alt, inside: true },
@@ -871,10 +906,10 @@ impl GridView {
         }
         d.moved = true;
         let sec = self.section_at_y(y).unwrap_or(d.sec);
-        let cur = self.measure_at_x(sec, x).or_else(|| self.measure_at_x(d.sec, x));
+        let cur = self.measure_at(sec, pos).or_else(|| self.measure_at(d.sec, pos));
         if let Some(cur) = cur {
             d.cur = cur;
-            d.sec = if self.measure_at_x(sec, x).is_some() { sec } else { d.sec };
+            d.sec = if self.measure_at(sec, pos).is_some() { sec } else { d.sec };
         }
         if Some(d) != self.loop_drag {
             self.loop_drag = Some(d);

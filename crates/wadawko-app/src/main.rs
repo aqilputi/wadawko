@@ -1161,6 +1161,35 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 check("teclado vertical: passo 2 desce 2 células; Tab vai para a próxima linha", wrote.as_deref() == Some("don") && c1.is_some_and(|c| c.k == k0 + 2 && c.t == 0) && c2.is_some_and(|c| c.t == 1));
             }
         }
+        // faixa de loop no gutter do editor vertical (T3b): arrastar c1→c2 cria o trecho; Alt+clique limpa
+        if cx.update(|cx| shell.read(cx).grid.read(cx).layout == views::grid::Layout::Vertical) {
+            cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            cx.update(|cx| state.update(cx, |s, cx| s.set_range(None, cx)));
+            wait(cx, 200).await;
+            let pt = |m: usize, cx: &mut AsyncApp| {
+                cx.update(|cx| {
+                    let g = shell.read(cx).grid.read(cx);
+                    let s = g.song.section_of(m);
+                    let b = *g.geom.borrow().sections.get(s)?;
+                    let y = g.bar_pos(s, m)? + g.row_h / 2.0;
+                    Some(gpui_kit::point(b.origin.x + gpui_kit::px(views::grid::vgeom::LOOP_X + 3.0), gpui_kit::px(y)))
+                })
+            };
+            if let (Some(p0), Some(p1)) = (pt(0, cx), pt(1, cx)) {
+                mouse(PlatformInput::MouseMove(MouseMoveEvent { position: p0, pressed_button: None, modifiers: none }), cx);
+                mouse(down(p0, none), cx);
+                wait(cx, 60).await;
+                sweep(p0, p1, none, cx);
+                mouse(up(p1, none), cx);
+                wait(cx, 150).await;
+                let r1 = cx.update(|cx| state.read(cx).tp.range);
+                let p0 = pt(0, cx).unwrap_or(p0);
+                click(p0, alt, cx).await;
+                let r2 = cx.update(|cx| state.read(cx).tp.range);
+                println!("PROBE loop no gutter: arrasto c1→c2 = {r1:?} · Alt+clique = {r2:?}");
+                check("loop no gutter do editor vertical: arrastar cria c1–c2; Alt+clique limpa", r1 == Some(wadawko_core::timeline::Region { start_bar: 0, end_bar: 2 }) && r2.is_none());
+            }
+        }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
             let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());
