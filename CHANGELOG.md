@@ -5,6 +5,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ## [Não lançado]
 
 ### Adicionado
+- **Minimap** à direita do editor vertical (clique/arraste para rolar) e a grade **acompanha a seleção**
+  (teclado e arrasto com rolagem automática nas bordas).
 - **Efeitos por célula** estilo tracker: rulo, flam, atraso, corte, força e humanização (`R4< D+1`),
   com coluna própria no editor vertical, atalhos e inspector; tocam no áudio, na esteira e no MIDI.
 - **Painel de seções** à esquerda: seleção, renomear, arrastar para reordenar (Alt clona), menu de

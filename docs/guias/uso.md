@@ -123,6 +123,15 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   canal 10 (bateria GM), com andamento, fórmulas de compasso e marcadores de seção. Notas: ōdaiko
   35, ō-nagadō 41, nagadō 43, chū 45, okedō 47, hira 50, shime 38, borda 37, kane 56/80.
 
+# Minimap e rolagem
+
+- À direita do editor vertical fica o **minimap** (como o do VS Code): a música inteira em
+  miniatura, com a faixa de cor de cada seção, as notas na cor de cada linha, o retângulo da área
+  visível e o playhead. Clique ou arraste nele para ir até ali. `Ctrl+K` → "Minimap" esconde.
+- A grade **acompanha o cursor e a seleção**: estender com `Shift+setas`, movimentos do vim,
+  clicar numa seção no painel — se o cursor sair da vista, a grade rola até ele. Arrastando para
+  selecionar, encostar o mouse na borda de cima ou de baixo rola sozinho e continua selecionando.
+
 # Painel de seções (à esquerda)
 
 - A lista de **seções** da música (`Ctrl+Shift+B` mostra/esconde): quadradinho de cor, nome,

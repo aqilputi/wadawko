@@ -17,6 +17,7 @@ pub mod grid;
 pub mod inspector;
 pub mod kit;
 pub mod lane;
+pub mod minimap;
 pub mod mixer;
 pub mod nav_rail;
 pub mod people;

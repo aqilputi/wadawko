@@ -1080,6 +1080,56 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 check("painel de seções: linhas visíveis", false);
             }
         }
+        // a grade acompanha a seleção: Shift+↓ ×40 estende e o cursor continua visível;
+        // minimap: clicar perto do fim rola o editor para baixo
+        if cx.update(|cx| shell.read(cx).grid.read(cx).layout == views::grid::Layout::Vertical) {
+            cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                g.cursor = Some(Cur { m: 0, t: 0, k: 0 });
+                g.anchor = None;
+                cx.notify();
+            }));
+            wait(cx, 200).await;
+            for _ in 0..40 {
+                key("shift-down", cx);
+            }
+            wait(cx, 300).await;
+            let visible = cx.update(|cx| {
+                let sh = shell.read(cx);
+                let vb = sh.scroll.bounds();
+                sh.grid.read(cx).cursor.and_then(|c| sh.grid.read(cx).cell_bounds(c)).map(|b| {
+                    let y = f32::from(b.origin.y);
+                    (y, f32::from(vb.origin.y), f32::from(vb.origin.y) + f32::from(vb.size.height))
+                })
+            });
+            let anchor_ok = cx.update(|cx| shell.read(cx).grid.read(cx).anchor.is_some());
+            println!("PROBE seleção acompanhada: cursor y/vista {visible:?} · âncora {anchor_ok}");
+            check("a grade acompanha a seleção (Shift+↓ ×40 mantém o cursor visível)", anchor_ok && visible.is_some_and(|(y, t, b)| y >= t - 1.0 && y <= b));
+            key("escape", cx);
+            // minimap
+            let mini = cx.update(|cx| shell.read(cx).mini_geom.get().bounds);
+            if let Some(mb) = mini {
+                cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+                wait(cx, 150).await;
+                let y0 = cx.update(|cx| f32::from(shell.read(cx).scroll.offset().y));
+                let k = cx.update(|cx| shell.read(cx).mini_geom.get().k);
+                let content_h = cx.update(|cx| shell.read(cx).grid.read(cx).grid_height());
+                // ~80 % do conteúdo, dentro do desenho do minimap
+                let py = f32::from(mb.origin.y) + (content_h * k * 0.8).min(f32::from(mb.size.height) - 4.0);
+                let p = gpui_kit::point(mb.center().x, gpui_kit::px(py));
+                mouse(PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: None, modifiers: none }), cx);
+                mouse(down(p, none), cx);
+                wait(cx, 60).await;
+                mouse(up(p, none), cx);
+                wait(cx, 200).await;
+                let y1 = cx.update(|cx| f32::from(shell.read(cx).scroll.offset().y));
+                println!("PROBE minimap: rolagem {y0} → {y1} (k {k:.3})");
+                check("minimap: clicar perto do fim rola o editor", y1 < y0 - 50.0);
+                cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            } else {
+                check("minimap visível no editor vertical", false);
+            }
+        }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
             let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());

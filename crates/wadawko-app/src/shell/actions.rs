@@ -458,6 +458,7 @@ impl Shell {
         let d = on!(d, cx, section::Paste, |this, w, cx| this.sections_paste(cx));
         let d = on!(d, cx, section::Group, |this, w, cx| this.sections_group(cx));
         let d = on!(d, cx, section::Ungroup, |this, w, cx| this.sections_ungroup(cx));
+        let d = on!(d, cx, view::ToggleMinimap, |this, w, cx| this.mini_open = !this.mini_open);
         let d = on!(d, cx, view::ToggleSections, |this, w, cx| this.sec_panel_open = !this.sec_panel_open);
         let d = on!(d, cx, section::Clone, |this, w, cx| this.sec_edit(cx, |s, id| {
             ops::sections::clone_section(s, id);

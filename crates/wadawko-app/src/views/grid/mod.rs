@@ -10,7 +10,7 @@
 
 mod paint;
 mod render;
-mod vgeom;
+pub(crate) mod vgeom;
 mod vpaint;
 mod vrender;
 pub use vrender::{COL_HEAD_RENDERS, COL_HEAD_US};
@@ -804,6 +804,23 @@ impl GridView {
     }
 
     /// Seção cujo canvas contém a ordenada `y` (janela).
+    /// Arrastando para selecionar (não é bloco nem faixa de loop)?
+    pub fn is_drag_selecting(&self) -> bool {
+        self.dragging && self.move_drag.is_none() && self.loop_drag.is_none() && self.pan.is_none()
+    }
+
+    /// Estende a seleção do arrasto até a célula sob `pos` (janela) — usado pela
+    /// rolagem automática: a grade andou, o ponteiro não.
+    pub fn drag_select_at(&mut self, pos: Point<Pixels>, cx: &mut Context<Self>) {
+        if !self.is_drag_selecting() {
+            return;
+        }
+        if let Some(s) = self.section_at_y(f32::from(pos.y)) {
+            let ev = MouseMoveEvent { position: pos, pressed_button: Some(MouseButton::Left), modifiers: Default::default() };
+            self.mouse_move(s, &ev, cx);
+        }
+    }
+
     pub fn section_at_y(&self, y: f32) -> Option<usize> {
         let g = self.geom.borrow();
         g.sections.iter().position(|b| f32::from(b.size.width) > 0.0 && y >= f32::from(b.origin.y) && y < f32::from(b.origin.y) + f32::from(b.size.height))

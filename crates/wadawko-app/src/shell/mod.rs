@@ -112,7 +112,7 @@ pub struct Shell {
     pub palette_focus: FocusHandle,
     /// moldura em cache (barra de cima, lateral, painel de músicas, barra de contexto,
     /// status bar) — ver `chrome.rs`; índices em `chrome::Part`
-    pub chrome: [Entity<chrome::Chrome>; 6],
+    pub chrome: [Entity<chrome::Chrome>; 7],
     /// o que a status bar mostra (recalculado a cada frame; ela redesenha quando muda)
     pub status: crate::views::status_bar::StatusModel,
     /// altura medida da barra de contexto (0 = medir no próximo frame, sem cache)
@@ -154,6 +154,15 @@ pub struct Shell {
     pub sec_anchor: Option<String>,
     /// prompt pedido de um listener sem janela; o render abre
     pub pending_ask: Option<(InputTarget, String)>,
+    /// minimap ligado (`view::ToggleMinimap`)
+    pub mini_open: bool,
+    /// minimap: geometria do último desenho e arrasto em curso
+    pub mini_geom: Rc<Cell<crate::views::minimap::MiniGeom>>,
+    pub mini_drag: bool,
+    /// cursor/âncora do último render: mudou → a grade acompanha (revela o cursor)
+    pub last_sel: Option<(Option<Cur>, Option<Cur>)>,
+    /// ponteiro durante o arrasto de seleção na grade (rolagem automática nas bordas)
+    pub drag_ptr: Rc<Cell<Option<gpui_kit::Point<Pixels>>>>,
     pub prompt: Option<keys::modal::Prompt>,
     pub last_change: Option<keys::modal::Change>,
     pub recording: bool,
@@ -260,7 +269,8 @@ impl Shell {
             swing: Rc::new(RefCell::new(Default::default())),
             chrome: {
                 let me = cx.weak_entity();
-                [chrome::Part::Top, chrome::Part::Nav, chrome::Part::Panel, chrome::Part::Context, chrome::Part::Status, chrome::Part::Sections].map(|p| cx.new(|_| chrome::Chrome::new(me.clone(), p)))
+                [chrome::Part::Top, chrome::Part::Nav, chrome::Part::Panel, chrome::Part::Context, chrome::Part::Status, chrome::Part::Sections, chrome::Part::Minimap]
+                    .map(|p| cx.new(|_| chrome::Chrome::new(me.clone(), p)))
             },
             status: Default::default(),
             ctx_h: Rc::new(std::cell::Cell::new(0.0)),
@@ -290,6 +300,11 @@ impl Shell {
             sec_menu: None,
             sec_anchor: None,
             pending_ask: None,
+            mini_geom: Default::default(),
+            mini_drag: false,
+            mini_open: true,
+            last_sel: None,
+            drag_ptr: Default::default(),
             prompt: None,
             last_change: None,
             recording: false,
@@ -341,6 +356,7 @@ impl Shell {
             }),
             chrome::key(|k| h(k, &(dark, &self.status))),
             chrome::key(|k| self.sections_panel_key(k, cx)),
+            chrome::key(|k| self.minimap_key(k, cx)),
         ];
         for (i, (view, key)) in self.chrome.iter().zip(keys).enumerate() {
             view.update(cx, |c, cx| {
@@ -614,7 +630,7 @@ impl Shell {
 
     /// Posição do playhead (x na grade horizontal; y no editor vertical) e o canvas da
     /// seção — tocando, a posição audível; parado, a célula de onde o play vai começar.
-    fn playhead(&self, cx: &App) -> Option<PlayheadAt> {
+    pub(crate) fn playhead(&self, cx: &App) -> Option<PlayheadAt> {
         let st = self.state.read(cx);
         let song = st.song();
         let (m, frac) = if st.playing() {
@@ -888,6 +904,46 @@ impl Shell {
         self.status = self.status_model(playing, play_pos, cx);
         // moldura em cache: só re-renderiza quando a chave dela muda
         self.top_narrow = f32::from(window.viewport_size().width) < crate::views::topbar::NARROW_W;
+        // a grade acompanha o cursor/seleção: mudou (teclado, vim, painel, paleta) → revela
+        let sel = {
+            let g = self.grid.read(cx);
+            (g.cursor, g.anchor)
+        };
+        if self.last_sel != Some(sel) {
+            let first = self.last_sel.is_none();
+            self.last_sel = Some(sel);
+            if !first && self.on_grid() && !self.playing(cx) && !self.grid.read(cx).is_drag_selecting() {
+                self.reveal_cursor(cx);
+            }
+        }
+        // arrastando a seleção perto da borda de cima/baixo: rola sozinho e estende
+        if self.on_grid() && self.grid.read(cx).is_drag_selecting() {
+            if let Some(p) = self.drag_ptr.get() {
+                let vb = self.scroll.bounds();
+                let (top, bottom) = (f32::from(vb.origin.y), f32::from(vb.origin.y) + f32::from(vb.size.height));
+                let y = f32::from(p.y);
+                const EDGE: f32 = 40.0;
+                let dy = if y < top + EDGE {
+                    -((top + EDGE - y).min(EDGE * 2.0) * 0.5)
+                } else if y > bottom - EDGE {
+                    (y - (bottom - EDGE)).min(EDGE * 2.0) * 0.5
+                } else {
+                    0.0
+                };
+                if dy != 0.0 && f32::from(vb.size.height) > 0.0 {
+                    let cur = self.scroll.offset();
+                    let max = self.scroll.max_offset();
+                    let ny = (f32::from(cur.y) - dy).clamp(-f32::from(max.y), 0.0);
+                    if (ny - f32::from(cur.y)).abs() > 0.1 {
+                        self.scroll.set_offset(point(cur.x, px(ny)));
+                        self.grid.update(cx, |g, cx| g.drag_select_at(p, cx));
+                        window.request_animation_frame();
+                    }
+                }
+            }
+        } else if self.drag_ptr.get().is_some() {
+            self.drag_ptr.set(None);
+        }
         self.refresh_chrome(playing, f32::from(window.viewport_size().width), cx);
         let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(64.0)).h_full().flex_none());
         let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(44.0)).flex_none());
@@ -1043,6 +1099,8 @@ impl Shell {
 
         let panel = self.chrome[2].clone().cached(gpui_kit::StyleRefinement::default().w(px(280.0)).h_full().flex_none());
         let show_secs = self.sec_panel_open && self.page == Page::Editor;
+        let show_mini = self.mini_open && self.on_grid() && self.grid.read(cx).layout == Layout::Vertical;
+        let minimap = self.chrome[chrome::Part::Minimap as usize].clone().cached(gpui_kit::StyleRefinement::default().w(px(crate::views::minimap::MINI_W)).h_full().flex_none());
         let secs_panel = self.chrome[chrome::Part::Sections as usize].clone().cached(gpui_kit::StyleRefinement::default().w(px(crate::views::sections_panel::SECTIONS_W)).h_full().flex_none());
         let status = self.chrome[chrome::Part::Status as usize].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(22.0)).flex_none());
 
@@ -1059,12 +1117,15 @@ impl Shell {
             .flex()
             .flex_col()
             .child(
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .flex()
-                    .when(self.nav_open, |d| d.child(nav))
-                    .child(div().flex_1().min_w_0().flex().flex_col().child(topbar).child(div().flex_1().min_h_0().flex().when(show_secs, |d| d.child(secs_panel)).child(editor).child(panel))),
+                div().flex_1().min_h_0().flex().when(self.nav_open, |d| d.child(nav)).child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .child(topbar)
+                        .child(div().flex_1().min_h_0().flex().when(show_secs, |d| d.child(secs_panel)).child(editor).when(show_mini, |d| d.child(minimap)).child(panel)),
+                ),
             )
             .child(status);
 
@@ -1154,6 +1215,27 @@ impl Shell {
                 );
             }
             None => self.swing.borrow_mut().reset(),
+        }
+
+        // ── arrasto de seleção: guarda o ponteiro (a rolagem automática usa no render) ──
+        if self.on_grid() && self.grid.read(cx).is_drag_selecting() {
+            let (ptr, me) = (self.drag_ptr.clone(), cx.entity().downgrade());
+            root = root.child(
+                canvas(
+                    |_, _, _| {},
+                    move |_, _, window, _| {
+                        let (ptr, me) = (ptr.clone(), me.clone());
+                        window.on_mouse_event(move |ev: &gpui_kit::MouseMoveEvent, phase, _, cx| {
+                            if phase == gpui_kit::DispatchPhase::Capture {
+                                ptr.set(Some(ev.position));
+                                let _ = me.update(cx, |_, cx| cx.notify());
+                            }
+                        });
+                    },
+                )
+                .absolute()
+                .inset_0(),
+            );
         }
 
         // ── arrasto na faixa de loop da régua: mover/soltar valem em toda a janela ──
