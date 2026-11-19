@@ -458,6 +458,14 @@ impl Shell {
         let d = on!(d, cx, section::Paste, |this, w, cx| this.sections_paste(cx));
         let d = on!(d, cx, section::Group, |this, w, cx| this.sections_group(cx));
         let d = on!(d, cx, section::Ungroup, |this, w, cx| this.sections_ungroup(cx));
+        let d = on!(d, cx, view::ToggleFollow, |this, w, cx| {
+            this.follow_on = !this.follow_on;
+            this.flash(if this.follow_on { "a grade segue o playhead" } else { "seguir desligado" }, cx)
+        });
+        let d = on!(d, cx, view::ToggleFollowCenter, |this, w, cx| {
+            this.follow_center = !this.follow_center;
+            this.flash(if this.follow_center { "seguir: centrado" } else { "seguir: por página" }, cx)
+        });
         let d = on!(d, cx, view::ToggleMinimap, |this, w, cx| this.mini_open = !this.mini_open);
         let d = on!(d, cx, view::ToggleSections, |this, w, cx| this.sec_panel_open = !this.sec_panel_open);
         let d = on!(d, cx, section::Clone, |this, w, cx| this.sec_edit(cx, |s, id| {

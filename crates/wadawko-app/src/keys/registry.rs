@@ -51,6 +51,8 @@ pub static SPECS: &[Spec] = &[
     spec!("section::Paste", "Seções: colar depois da selecionada", "Estrutura", "colar seção"),
     spec!("section::Group", "Seções: agrupar as selecionadas", "Estrutura", "grupo agrupar seção parte"),
     spec!("section::Ungroup", "Seções: desfazer o grupo", "Estrutura", "grupo desagrupar"),
+    spec!("view::ToggleFollow", "Seguir o playhead: ligar/desligar", "Ver", "follow rolar acompanhar scroll lock"),
+    spec!("view::ToggleFollowCenter", "Seguir: centrado / por página", "Ver", "follow centro página tracker"),
     spec!("view::ToggleMinimap", "Minimap: mostrar/esconder", "Ver", "minimapa visão geral mapa rolar"),
     spec!("view::ToggleSections", "Painel de seções: mostrar/esconder", "Ver", "seções painel esquerda estrutura"),
     spec!("practice::Save", "Trechos: guardar o trecho de loop com um nome…", "Transporte", "ensaio trecho salvar nome loop região practice"),

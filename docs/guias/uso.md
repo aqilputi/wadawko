@@ -128,6 +128,9 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
 - À direita do editor vertical fica o **minimap** (como o do VS Code): a música inteira em
   miniatura, com a faixa de cor de cada seção, as notas na cor de cada linha, o retângulo da área
   visível e o playhead. Clique ou arraste nele para ir até ali. `Ctrl+K` → "Minimap" esconde.
+- Tocando, a grade **segue o playhead** virando a página; `space v shift-f` (ou a paleta) troca para
+  **centrado** (a linha que soa fica fixa e a música rola por baixo — mais suave, mais pesado), e
+  `Scroll Lock` / `space v f` liga/desliga o seguir.
 - A grade **acompanha o cursor e a seleção**: estender com `Shift+setas`, movimentos do vim,
   clicar numa seção no painel — se o cursor sair da vista, a grade rola até ele. Arrastando para
   selecionar, encostar o mouse na borda de cima ou de baixo rola sozinho e continua selecionando.

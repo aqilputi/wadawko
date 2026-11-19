@@ -213,6 +213,30 @@ impl Shell {
         let (t1, t2, t3) = (tid.clone(), tid.clone(), tid.clone());
         body = body
             .child(row().child(swatch).child(bold(track.name.clone())).child(ibtn("ins-trk-ren", "✎", Box::new(keys::track::Rename))).child(ibtn("ins-trk-set", "⚙", Box::new(keys::track::Settings))))
+            .child({
+                // origem da cor (tracker §5.1): própria → do instrumento → padrão do base
+                let def = ops::kit::resolve_instrument(&song, track);
+                let inst = ops::structure::instrument_color(&song, &def.id).is_some();
+                let origin = if track.color.is_some() {
+                    "cor própria da linha"
+                } else if inst {
+                    "cor do instrumento (Kit)"
+                } else {
+                    "cor padrão do instrumento"
+                };
+                let tid4 = tid.clone();
+                row().child(lbl("cor")).child(soft(origin.to_string())).when(track.color.is_some(), |d| {
+                    d.child(chip(
+                        "ins-col-inherit".into(),
+                        "herdar".into(),
+                        false,
+                        Rc::new(move |sh, cx| {
+                            let id = tid4.clone();
+                            sh.edit(cx, |s| ops::tracks::set_track_color(s, &id, None));
+                        }),
+                    ))
+                })
+            })
             .child(
                 row()
                     .child(div().flex_1().min_w_0().child(soft(ops::kit::instrument_label(&song, track).to_string())))

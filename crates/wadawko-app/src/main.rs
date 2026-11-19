@@ -1411,16 +1411,21 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                     window.dispatch_action(Box::new(keys::view::Esteira), cx);
                 }
                 // `grade` = grade horizontal (linha de base); `tracker` = editor vertical
-                let layout = if tab == "tracker" { Layout::Vertical } else { Layout::Horizontal };
+                // `centro` = editor vertical com o seguir centrado (T3b)
+                let layout = if tab == "tracker" || tab == "centro" { Layout::Vertical } else { Layout::Horizontal };
                 shell.read(cx).grid.clone().update(cx, |g, cx| g.set_layout(layout, cx));
+                shell.update(cx, |s: &mut Shell, _| s.follow_center = tab == "centro");
                 shell.update(cx, |s: &mut Shell, cx| s.toggle_play(false, cx));
             });
             cx.background_executor().timer(Duration::from_millis(2000)).await;
             let (r0, u0, t0) = (RENDERS.load(Ordering::Relaxed), shell::RENDER_US.load(Ordering::Relaxed), Instant::now());
+            let (sn0, su0) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
             println!("STAT início");
             cx.background_executor().timer(Duration::from_millis(6000)).await;
             let (r1, u1, secs) = (RENDERS.load(Ordering::Relaxed), shell::RENDER_US.load(Ordering::Relaxed), t0.elapsed().as_secs_f32());
             println!("STAT fim · {} frames em {secs:.1} s ({:.0} fps) · Shell::render média {:.2} ms", r1 - r0, (r1 - r0) as f32 / secs, (u1 - u0) as f64 / (r1 - r0).max(1) as f64 / 1000.0);
+            let (sn1, su1) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
+            println!("STAT seções · {} renders ({:.1} por frame) · {:.2} ms por frame", sn1 - sn0, (sn1 - sn0) as f64 / (r1 - r0).max(1) as f64, (su1 - su0) as f64 / (r1 - r0).max(1) as f64 / 1000.0);
             cx.update(|cx| cx.quit());
             return;
         }

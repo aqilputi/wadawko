@@ -156,6 +156,10 @@ pub struct Shell {
     pub pending_ask: Option<(InputTarget, String)>,
     /// minimap ligado (`view::ToggleMinimap`)
     pub mini_open: bool,
+    /// a grade segue o playhead tocando (`view::ToggleFollow`)
+    pub follow_on: bool,
+    /// seguir centrado (linha fixa a 40 %) em vez de virar a página (`view::ToggleFollowCenter`)
+    pub follow_center: bool,
     /// minimap: geometria do último desenho e arrasto em curso
     pub mini_geom: Rc<Cell<crate::views::minimap::MiniGeom>>,
     pub mini_drag: bool,
@@ -303,6 +307,8 @@ impl Shell {
             mini_geom: Default::default(),
             mini_drag: false,
             mini_open: true,
+            follow_on: true,
+            follow_center: false,
             last_sel: None,
             drag_ptr: Default::default(),
             prompt: None,
@@ -750,15 +756,26 @@ impl Shell {
     }
 
     fn follow(&mut self, cx: &mut Context<Self>) {
-        if !self.playing(cx) || !self.on_grid() {
+        if !self.follow_on || !self.playing(cx) || !self.on_grid() {
             return;
         }
         let Some(ph) = self.playhead(cx) else { return };
         if ph.vertical {
-            // follow "page" (T3a): vira a página quando o playhead passa de 85 % da área
-            // visível (só `scroll.set_offset`); o "center" é da T3b
             let vb = self.scroll.bounds();
             let (vt, vh) = (f32::from(vb.origin.y), f32::from(vb.size.height));
+            // follow centrado (T3b): a linha que soa fica fixa a 40 % da vista e a música
+            // rola por baixo; custa um re-render das seções visíveis por frame
+            if self.follow_center && vh > 0.0 {
+                let cur = self.scroll.offset();
+                let max = self.scroll.max_offset();
+                let ny = (f32::from(cur.y) - (ph.pos - (vt + vh * 0.4))).clamp(-f32::from(max.y), 0.0);
+                if (ny - f32::from(cur.y)).abs() > 0.5 {
+                    DBG_FOLLOW_V.fetch_add(1, Ordering::Relaxed);
+                    self.scroll.set_offset(point(cur.x, px(ny)));
+                }
+                return;
+            }
+            // follow "página": vira a página quando o playhead passa de 85 % da área visível
             if vh > 0.0 && (ph.pos + ph.row_h > vt + vh * 0.85 || ph.pos < vt) {
                 let cur = self.scroll.offset();
                 let max = self.scroll.max_offset();

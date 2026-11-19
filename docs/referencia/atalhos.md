@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-19T00:18:19Z
+  at: 2026-11-19T00:24:48Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -80,6 +80,7 @@ Valem na área do editor (grade, partitura, esteira), com ou sem vim.
 | `Ctrl+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
 | `Alt+T` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
 | `Ctrl+Shift+B` | `view::ToggleSections` | Painel de seções: mostrar/esconder |
+| `scrolllock` | `view::ToggleFollow` | Seguir o playhead: ligar/desligar |
 | `Ctrl+Shift+R` | `fx::Roll` | Efeito: rulo (×2 → 3 → 4 → 6 → 8 → nenhum) |
 | `Ctrl+Shift+F` | `fx::Flam` | Efeito: flam (liga/desliga) |
 | `Ctrl+Shift+X` | `fx::Cut` | Efeito: corte / abafar (liga/desliga) |
@@ -188,6 +189,8 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `f` `c` | `fx::Clear` | Efeitos: limpar |
 | `Space` `f` `e` | `fx::Edit` | Efeitos da célula… (V R F D X H) |
 | `Space` `v` `x` | `fx::ToggleColumn` | Efeitos: mostrar a coluna em todas as linhas |
+| `Space` `v` `f` | `view::ToggleFollow` | Seguir o playhead: ligar/desligar |
+| `Space` `v` `Shift+F` | `view::ToggleFollowCenter` | Seguir: centrado / por página |
 | `Space` `t` `g` | `practice::Save` | Trechos: guardar o trecho de loop com um nome… |
 | `Space` `t` `a` | `transport::MetroPattern` | Metrônomo: padrão de acentos… (ABBB) |
 | `Space` `t` `d` | `transport::MetroSubdiv` | Metrônomo: subdivisão (1 → 2 → 3 → 4 por tempo) |

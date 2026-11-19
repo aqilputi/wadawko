@@ -45,7 +45,28 @@ pub mod transport {
 }
 pub mod view {
     use gpui_kit::actions;
-    actions!(view, [Grade, Partitura, Esteira, ToggleTheme, ZoomIn, ZoomOut, ZoomReset, RowTaller, RowShorter, RowReset, Director, ToggleSections, ToggleMinimap, ToggleNav, ToggleLayout]);
+    actions!(
+        view,
+        [
+            Grade,
+            Partitura,
+            Esteira,
+            ToggleTheme,
+            ZoomIn,
+            ZoomOut,
+            ZoomReset,
+            RowTaller,
+            RowShorter,
+            RowReset,
+            Director,
+            ToggleSections,
+            ToggleMinimap,
+            ToggleFollow,
+            ToggleFollowCenter,
+            ToggleNav,
+            ToggleLayout
+        ]
+    );
 }
 pub mod nav {
     use gpui_kit::actions;

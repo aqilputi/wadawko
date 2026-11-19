@@ -203,6 +203,9 @@ padrão do instrumento) e `Theme::on_track_color()` para texto sobre ela.
   que mudou (`cx.notify()` / `entity.update(cx, |_, cx| cx.notify())`).
 - Só peça `request_animation_frame` enquanto algo realmente anima (ex.: o bloco
   arrastado para de pedir frames quando assenta — `drag_ghost::Swing::settled`).
+- Seguir centrado (`Shell::follow_center`): rolar a área move as seções em cache, que são
+  redesenhadas a cada frame (medido em 2026-11-18: 12 seções/frame, +0,9 ms/frame contra 0,03 ms
+  do seguir por página) — por isso o padrão é por página. `--demo playstat-tracker|playstat-centro`.
 - Medir: `--demo playstat-grade|playstat-esteira` (frames e render em 6 s tocando),
   `--demo hoverstat` (200 hovers alternando entre dois botões ★: renders da grade e
   das seções; medido em 2026-11-18: 2,67 ms → 0,04 ms + 0,20 ms de uma seção),

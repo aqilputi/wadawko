@@ -614,6 +614,9 @@ impl GridView {
         let mk = |id: String, label: &'static str, on: bool, op: Op| mkc(id, label, on, th.accent, op);
 
         let Some(sec) = secs.get(s) else { return div().into_any_element() };
+        let sec_meta = sec.id.as_deref().and_then(|id| song.section(id));
+        let sec_col = sec_meta.and_then(|m| ops::structure::section_color(&song, m)).and_then(crate::theme::parse_color);
+        let group_name = sec_meta.and_then(|m| m.group.as_deref()).and_then(|g| ops::structure::group(&song, g)).map(|g| g.name.clone());
         let collapsed = self.is_collapsed(sec);
         let rep = sec.repeat;
         let cur_sec = self.cursor.map(|c| song.section_of(c.m)) == Some(s);
@@ -730,6 +733,20 @@ impl GridView {
                                 }),
                             ),
                     )
+                    // cor da seção (ou do grupo) e o grupo a que ela pertence
+                    .when_some(sec_col, |d, c| d.child(div().size(px(10.0)).flex_none().rounded(px(2.0)).bg(c)))
+                    .when_some(group_name.clone(), |d, g| {
+                        d.child(
+                            div()
+                                .flex_none()
+                                .max_w(px(90.0))
+                                .truncate()
+                                .text_size(px(9.5))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(th.ink_faint)
+                                .child(SharedString::from(format!("{} ›", g.to_uppercase()))),
+                        )
+                    })
                     .child({
                         let w = weak.clone();
                         let sid2 = sid_hint.clone();
