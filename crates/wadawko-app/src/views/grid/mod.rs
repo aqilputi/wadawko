@@ -401,6 +401,8 @@ pub struct GridView {
     pub hover_sec: Option<usize>,
     /// altura da célula das linhas (F16), em px
     pub cell_h: f32,
+    /// passo de edição: quantas células o cursor anda ao confirmar uma sílaba (0 = fica)
+    pub edit_step: usize,
     /// editor vertical (padrão) ou grade horizontal
     pub layout: Layout,
     /// editor vertical: altura da linha e largura pedida da coluna de nota
@@ -500,6 +502,7 @@ impl GridView {
             hover_sec: None,
             sec_views: Vec::new(),
             cell_h: CELL_H,
+            edit_step: 1,
             layout: Layout::Vertical,
             row_h: ROW_H,
             col_w: COL_W,
@@ -1124,7 +1127,10 @@ impl GridView {
         if let Some(c) = self.commit_edit_in_place(cx) {
             self.cursor = Some(c);
         }
-        self.motion(Motion::Right, 1, false, cx);
+        // passo de edição (como o edit step do Renoise): 0 = fica na célula
+        if self.edit_step > 0 {
+            self.motion(Motion::Right, self.edit_step, false, cx);
+        }
         true
     }
 

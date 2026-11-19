@@ -63,6 +63,10 @@ pub mod project {
     use gpui_kit::actions;
     actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ImportLibrary, ExportMp3, ExportWav, ExportMidi, CancelExport]);
 }
+pub mod step {
+    use gpui_kit::actions;
+    actions!(step, [Step0, Step1, Step2, Step3, Step4, Step5, Step6, Step7, Step8, Step9]);
+}
 pub mod fx {
     use gpui_kit::actions;
     actions!(fx, [Edit, Roll, RollCresc, Flam, Later, Earlier, Cut, Softer, Exact, Clear, ToggleColumn]);
@@ -99,6 +103,8 @@ pub mod grid {
     actions!(
         grid,
         [
+            NextTrackCell,
+            PrevTrackCell,
             Left,
             Right,
             Up,

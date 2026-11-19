@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-19T00:13:43Z
+  at: 2026-11-19T00:18:19Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -355,6 +355,26 @@ Com a paleta aberta. Tab/Shift+Tab e ↑/↓ andam na lista, Enter executa, Esc 
 | `Alt+Shift+↑` | `grid::CloneSelLeft` | Clonar seleção ← |
 | `Alt+Shift+→` | `grid::CloneSelDown` | Clonar seleção ↓ |
 | `Alt+Shift+←` | `grid::CloneSelUp` | Clonar seleção ↑ |
+| `Tab` | `grid::NextTrackCell` | Confirmar e ir para a próxima linha (instrumento) |
+| `Shift+Tab` | `grid::PrevTrackCell` | Confirmar e ir para a linha anterior |
+| `PgDn` | `grid::NextMeasure` | próximo compasso |
+| `PgUp` | `grid::PrevMeasure` | compasso anterior |
+| `Ctrl+↓` | `grid::NextBeat` | próximo tempo |
+| `Ctrl+↑` | `grid::PrevBeat` | tempo anterior |
+| `Alt+PgDn` | `grid::NextSection` | próxima seção |
+| `Alt+PgUp` | `grid::PrevSection` | seção anterior |
+| `Ctrl+PgDn` | `grid::LastTrack` | última linha |
+| `Ctrl+PgUp` | `grid::FirstTrack` | primeira linha |
+| `Alt+0` | `step::Step0` | Passo de edição: 0 (fica na célula) |
+| `Alt+1` | `step::Step1` | Passo de edição: 1 |
+| `Alt+2` | `step::Step2` | Passo de edição: 2 |
+| `Alt+3` | `step::Step3` |  |
+| `Alt+4` | `step::Step4` | Passo de edição: 4 |
+| `Alt+5` | `step::Step5` |  |
+| `Alt+6` | `step::Step6` |  |
+| `Alt+7` | `step::Step7` |  |
+| `Alt+8` | `step::Step8` |  |
+| `Alt+9` | `step::Step9` |  |
 
 ## Contexto `Workspace && layout == vertical && (mode == normal || mode == visual || mode == vline)`
 

@@ -307,7 +307,27 @@
       "alt-shift-down": "grid::CloneSelRight",
       "alt-shift-up": "grid::CloneSelLeft",
       "alt-shift-right": "grid::CloneSelDown",
-      "alt-shift-left": "grid::CloneSelUp"
+      "alt-shift-left": "grid::CloneSelUp",
+      "tab": "grid::NextTrackCell",
+      "shift-tab": "grid::PrevTrackCell",
+      "pagedown": "grid::NextMeasure",
+      "pageup": "grid::PrevMeasure",
+      "ctrl-down": "grid::NextBeat",
+      "ctrl-up": "grid::PrevBeat",
+      "alt-pagedown": "grid::NextSection",
+      "alt-pageup": "grid::PrevSection",
+      "ctrl-pagedown": "grid::LastTrack",
+      "ctrl-pageup": "grid::FirstTrack",
+      "alt-0": "step::Step0",
+      "alt-1": "step::Step1",
+      "alt-2": "step::Step2",
+      "alt-3": "step::Step3",
+      "alt-4": "step::Step4",
+      "alt-5": "step::Step5",
+      "alt-6": "step::Step6",
+      "alt-7": "step::Step7",
+      "alt-8": "step::Step8",
+      "alt-9": "step::Step9"
     }
   },
   {

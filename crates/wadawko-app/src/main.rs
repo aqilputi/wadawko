@@ -1130,6 +1130,37 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 check("minimap visível no editor vertical", false);
             }
         }
+        // teclado do editor vertical (T4): passo 2 → "don" + Enter grava e desce 2 células; Tab troca de linha
+        if cx.update(|cx| shell.read(cx).grid.read(cx).layout == views::grid::Layout::Vertical) {
+            let empty = cx.update(|cx| {
+                let song = state.read(cx).song().clone();
+                (0..song.measures.first().map_or(0, |m| m.cell_count())).find(|&k| song.cell(0, 0, k).is_none() && k + 2 < song.mlen(0))
+            });
+            if let Some(k0) = empty {
+                cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                    g.cursor = Some(Cur { m: 0, t: 0, k: k0 });
+                    g.anchor = None;
+                    cx.notify();
+                }));
+                key("alt-2", cx);
+                if cx.update(|cx| shell.read(cx).vim_on) {
+                    key("i", cx);
+                }
+                for k in ["d", "o", "n", "enter"] {
+                    key(k, cx);
+                }
+                wait(cx, 120).await;
+                let (c1, wrote) = cx.update(|cx| (shell.read(cx).grid.read(cx).cursor, state.read(cx).song().cell(0, 0, k0).map(str::to_string)));
+                key("tab", cx);
+                wait(cx, 80).await;
+                let c2 = cx.update(|cx| shell.read(cx).grid.read(cx).cursor);
+                key("ctrl-z", cx);
+                key("alt-1", cx);
+                key("escape", cx);
+                println!("PROBE teclado vertical: gravou {wrote:?} · cursor → {c1:?} · Tab → {c2:?}");
+                check("teclado vertical: passo 2 desce 2 células; Tab vai para a próxima linha", wrote.as_deref() == Some("don") && c1.is_some_and(|c| c.k == k0 + 2 && c.t == 0) && c2.is_some_and(|c| c.t == 1));
+            }
+        }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
             let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());

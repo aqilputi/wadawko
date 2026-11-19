@@ -190,7 +190,7 @@ impl Shell {
     }
 
     pub(crate) fn actions(&self, d: gpui_kit::Stateful<gpui_kit::Div>, cx: &mut Context<Self>) -> gpui_kit::Stateful<gpui_kit::Div> {
-        use crate::keys::{fx, grid as ga, hints, keys as kb, measure, nav, practice, project, section, song, track, transport, view, vim};
+        use crate::keys::{fx, grid as ga, hints, keys as kb, measure, nav, practice, project, section, song, step, track, transport, view, vim};
         let d = on!(d, cx, transport::TogglePlay, |this, w, cx| this.toggle_play(false, cx));
         let d = on!(d, cx, transport::PlayHere, |this, w, cx| this.toggle_play(true, cx));
         let d = on!(d, cx, transport::PlayFromStart, |this, w, cx| this.state.update(cx, |s, cx| {
@@ -606,6 +606,18 @@ impl Shell {
         // do Tab do gpui_kit, que só trocava o foco e deixava a grade sem teclado)
         let d = on!(d, cx, ga::NextCell, |this, w, cx| this.tab_cell(M::Right, cx));
         let d = on!(d, cx, ga::PrevCell, |this, w, cx| this.tab_cell(M::Left, cx));
+        let d = on!(d, cx, ga::NextTrackCell, |this, w, cx| this.tab_cell(M::Down, cx));
+        let d = on!(d, cx, ga::PrevTrackCell, |this, w, cx| this.tab_cell(M::Up, cx));
+        let d = on!(d, cx, step::Step0, |this, w, cx| this.set_edit_step(0, cx));
+        let d = on!(d, cx, step::Step1, |this, w, cx| this.set_edit_step(1, cx));
+        let d = on!(d, cx, step::Step2, |this, w, cx| this.set_edit_step(2, cx));
+        let d = on!(d, cx, step::Step3, |this, w, cx| this.set_edit_step(3, cx));
+        let d = on!(d, cx, step::Step4, |this, w, cx| this.set_edit_step(4, cx));
+        let d = on!(d, cx, step::Step5, |this, w, cx| this.set_edit_step(5, cx));
+        let d = on!(d, cx, step::Step6, |this, w, cx| this.set_edit_step(6, cx));
+        let d = on!(d, cx, step::Step7, |this, w, cx| this.set_edit_step(7, cx));
+        let d = on!(d, cx, step::Step8, |this, w, cx| this.set_edit_step(8, cx));
+        let d = on!(d, cx, step::Step9, |this, w, cx| this.set_edit_step(9, cx));
         let d = on!(d, cx, ga::Up, |this, w, cx| {
             this.mv(M::Up, false, cx);
             this.reveal_cursor(cx)
@@ -849,6 +861,12 @@ impl Shell {
             cx.notify();
         });
         self.reveal_cursor(cx);
+    }
+
+    /// Passo de edição (Alt+0…9): quantas células o cursor anda ao confirmar.
+    pub(crate) fn set_edit_step(&mut self, n: usize, cx: &mut Context<Self>) {
+        self.grid.update(cx, |g, _| g.edit_step = n);
+        self.flash(if n == 0 { "passo de edição 0: o cursor fica na célula".to_string() } else { format!("passo de edição: {n}") }, cx);
     }
 
     pub fn project_pos(&self, cx: &gpui_kit::App) -> (usize, usize) {

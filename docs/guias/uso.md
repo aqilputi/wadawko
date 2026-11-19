@@ -132,6 +132,15 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   clicar numa seção no painel — se o cursor sair da vista, a grade rola até ele. Arrastando para
   selecionar, encostar o mouse na borda de cima ou de baixo rola sozinho e continua selecionando.
 
+# Teclado no editor vertical
+
+`↑`/`↓` andam no tempo e `←`/`→` entre as linhas (no vim, `j`/`k` e `h`/`l`). `Tab`/`Shift+Tab`
+confirmam o que está sendo digitado e vão para a linha seguinte/anterior (como no Renoise).
+`PgUp`/`PgDn` vão para o compasso anterior/seguinte, `Ctrl+↑/↓` andam por tempo, `Alt+PgUp/PgDn`
+por seção e `Ctrl+PgUp/PgDn` vão para a primeira/última linha. **Passo de edição** (`Alt+0`…`Alt+9`):
+quantas células o cursor desce ao confirmar uma sílaba — com passo 2 numa música em colcheias você
+escreve nos tempos; passo 0 fica na célula.
+
 # Painel de seções (à esquerda)
 
 - A lista de **seções** da música (`Ctrl+Shift+B` mostra/esconde): quadradinho de cor, nome,
