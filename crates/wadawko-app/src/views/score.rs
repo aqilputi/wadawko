@@ -518,11 +518,11 @@ mod tests {
     fn theme_comes_from_app_tokens() {
         let (l, d) = (score_theme(&Theme::light()), score_theme(&Theme::dark()));
         assert_eq!(l.ink.hex_rgb(), "#1f1f1f");
-        assert_eq!(l.accent.hex_rgb(), "#c94531");
+        assert_eq!(l.accent.hex_rgb(), "#c2185b");
         assert_eq!(l.paper.unwrap().hex_rgb(), "#ffffff");
         assert_eq!(l.kyai.hex_rgb(), "#d6452b");
-        assert_eq!(d.ink.hex_rgb(), "#e6e6e6");
-        assert_eq!(d.paper.unwrap().hex_rgb(), "#303030");
+        assert_eq!(d.ink.hex_rgb(), "#e9edf3");
+        assert_eq!(d.paper.unwrap().hex_rgb(), "#22272f");
         assert_ne!(d.kyai, l.kyai);
     }
 

@@ -176,6 +176,13 @@ das linhas (3 px sob o nome) são pintados nesse mesmo overlay com
 dentro da grade. O arrasto na faixa de loop da régua também é acompanhado por
 um overlay do Shell (`on_mouse_event` de mover/soltar em toda a janela).
 
+**Identidade visual (2026-11-18)**: tema escuro em grafites azulados, **rosa** (`accent`, `#ff5fa2`)
+para "ligado"/ação e notas de couro, **ciano** (`accent2`, `#3dd6e6`) para seleção, display e notas
+de borda; fonte da interface `theme::UI_FONT` = Inconsolata (registrada em `main.rs`); ícones SVG
+próprios em `crates/wadawko-app/assets/icons`, servidos por `icons::Assets` (`with_assets`) e
+desenhados com `ui::icon(nome, tamanho).text_color(...)`; botões em relevo com `ui::relief`
+(gradiente), `ui::raised`/`ui::sunken` (sombras; `.active` afunda) e `ui::glow` (aceso).
+
 Tokens e formas: `theme.rs` tem os cinzas neutros em níveis (`chrome` < `bg` <
 `paper`), uma cor de "ligado" (`accent`) e uma de seleção (`accent2`), `warn`
 (mudo), `danger` (clip) e `meter_lo/mid/hi`; `ui::R0` (0 px: superfícies) e

@@ -408,13 +408,10 @@ impl Shell {
         if ranges.is_empty() {
             list = list.child(div().px(px(10.0)).py(px(6.0)).text_size(px(10.5)).text_color(th2.ink_faint).child("A música ainda não tem seções: + cria a primeira com todos os compassos."));
         }
+        // botões do cabeçalho: ícone (nome em `assets/icons`) ou texto
         let small = |id: &'static str, label: &'static str, a: Box<dyn gpui_kit::Action>| {
-            ui::with_tip(ui::btn(id, &th2), &th2, a.boxed_clone())
-                .h(px(18.0))
-                .px(px(5.0))
-                .text_size(px(10.0))
-                .child(label)
-                .on_click(move |_: &ClickEvent, w, cx| w.dispatch_action(a.boxed_clone(), cx))
+            let b = ui::with_tip(ui::btn(id, &th2), &th2, a.boxed_clone()).h(px(20.0)).px(px(5.0)).text_size(px(10.0)).on_click(move |_: &ClickEvent, w, cx| w.dispatch_action(a.boxed_clone(), cx));
+            if crate::icons::ICONS.iter().any(|(n, _)| *n == label) { b.child(ui::icon(label, 12.0).text_color(th2.ink_soft)) } else { b.child(label) }
         };
         div()
             .w(px(SECTIONS_W))
@@ -459,10 +456,10 @@ impl Shell {
                     LeftTab::Sections => div()
                         .flex()
                         .gap(px(3.0))
-                        .child(small("secp-grp", "⊞", Box::new(keys::section::Group)))
-                        .child(small("secp-copy", "⧉", Box::new(keys::section::Copy)))
-                        .child(small("secp-paste", "⎘", Box::new(keys::section::Paste)))
-                        .child(small("secp-add", "+", Box::new(keys::section::Add))),
+                        .child(small("secp-grp", "group", Box::new(keys::section::Group)))
+                        .child(small("secp-copy", "copy", Box::new(keys::section::Copy)))
+                        .child(small("secp-paste", "paste", Box::new(keys::section::Paste)))
+                        .child(small("secp-add", "plus", Box::new(keys::section::Add))),
                     LeftTab::Tracks => div().flex().gap(px(3.0)).child(small("trkp-add", "+ linha", Box::new(keys::track::Add))),
                 };
                 div()

@@ -37,8 +37,9 @@ que o app embute e exibe).
 
 | Fonte | Uso | Licença |
 |---|---|---|
-| Zen Kaku Gothic New | interface | SIL OFL 1.1 (`OFL-ZenKakuGothicNew.txt`) |
-| Shippori Mincho | títulos | SIL OFL 1.1 (`OFL-ShipporiMincho.txt`) |
+| Inconsolata | interface | SIL OFL 1.1 (`OFL-Inconsolata.txt`) |
+| Zen Kaku Gothic New | partitura e caracteres japoneses | SIL OFL 1.1 (`OFL-ZenKakuGothicNew.txt`) |
+| Shippori Mincho | logo 太 e partitura | SIL OFL 1.1 (`OFL-ShipporiMincho.txt`) |
 | Bravura (SMuFL) | símbolos da partitura | SIL OFL 1.1 (`OFL-Bravura.txt`, `FONTLOG-Bravura.txt`) |
 
 A OFL permite embutir e redistribuir; os textos das licenças devem acompanhar as fontes (já
@@ -47,3 +48,15 @@ estão na pasta).
 # Referências
 
 - [Uzume Taiko — notas de notação](/material/) — PDF de referência usado no desenho da partitura.
+
+## Inconsolata — SIL OFL 1.1
+
+Fonte da interface (identidade visual de 2026-11-18): **Inconsolata**, de Raph Levien e The
+Inconsolata Project Authors (https://github.com/googlefonts/Inconsolata), licença SIL Open Font
+License 1.1 (`assets/fonts/OFL-Inconsolata.txt`). Pesos Regular, Medium, SemiBold e Bold.
+
+## Ícones
+
+Os ícones da interface (`crates/wadawko-app/assets/icons/*.svg`) foram desenhados para o
+WaDAWko (traço de 2 px em 24×24) e seguem a licença do código (MIT OR Apache-2.0).
+

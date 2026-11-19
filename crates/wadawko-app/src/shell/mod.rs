@@ -1175,7 +1175,7 @@ impl Shell {
             )
             .child(status);
 
-        let root = div().id("root").relative().size_full().font_family("Zen Kaku Gothic New").bg(th.bg).text_color(th.ink);
+        let root = div().id("root").relative().size_full().font_family(crate::theme::UI_FONT).bg(th.bg).text_color(th.ink);
         let root = self.actions(root, cx);
         let mut root = crate::views::bind_actions(root, cx).child(workspace);
 

@@ -58,6 +58,8 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 - Licença do código: **MIT OR Apache-2.0** (`LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`).
 
 ### Mudado
+- **Identidade visual nova**: tema escuro com grafites azulados, rosa e ciano; fonte Inconsolata;
+  ícones próprios; botões com relevo (gradiente, brilho, sombra; aceso com brilho rosa).
 - Minimap mais calmo: cores esmaecidas, 1 px entre células e densidade por tempo nas passagens rápidas.
 - Barra de cima **compacta em janela estreita** (< 1200 px): nada mais se sobrepõe ao transporte.
 - **Desempenho**: cada seção da grade é desenhada em cache; passar o mouse num botão

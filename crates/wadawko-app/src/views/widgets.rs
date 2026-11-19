@@ -300,7 +300,7 @@ pub fn chip(id: impl Into<SharedString>, label: impl Into<SharedString>, th: &Th
 
 /// Título de página (mesmo estilo das Configurações).
 pub fn page_title(text: &'static str) -> gpui_kit::Div {
-    div().text_size(px(22.0)).font_family("Shippori Mincho").font_weight(FontWeight::BOLD).child(text)
+    div().text_size(px(22.0)).font_family(crate::theme::UI_FONT).font_weight(FontWeight::BOLD).child(text)
 }
 
 // ───────────────────────────── teclado ─────────────────────────────

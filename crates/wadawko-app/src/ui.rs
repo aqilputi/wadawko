@@ -6,7 +6,7 @@
 
 use std::rc::Rc;
 
-use gpui_kit::{Action, App, BorderStyle, Bounds, FontWeight, SharedString, Window, canvas, div, point, prelude::*, px, quad, size, transparent_black};
+use gpui_kit::{Action, App, BorderStyle, Bounds, FontWeight, Hsla, SharedString, Window, canvas, div, point, prelude::*, px, quad, size, transparent_black};
 
 use crate::keys;
 use crate::theme::Theme;
@@ -16,11 +16,48 @@ pub const R0: f32 = 0.0;
 /// raio de controle: botão, chip, kbd, campo, segmento, slider, medidor, swatch
 pub const R1: f32 = 2.0;
 
+/// Cor um pouco mais clara/escura (luminosidade ± `dl`).
+pub fn shade(c: Hsla, dl: f32) -> Hsla {
+    Hsla { l: (c.l + dl).clamp(0.0, 1.0), ..c }
+}
+
+/// Fundo em relevo: gradiente vertical (topo mais claro).
+pub fn relief(c: Hsla) -> gpui_kit::Background {
+    gpui_kit::linear_gradient(180.0, gpui_kit::linear_color_stop(shade(c, 0.045), 0.0), gpui_kit::linear_color_stop(shade(c, -0.025), 1.0))
+}
+
+/// Sombras de um controle em relevo: 1 px de brilho por dentro no topo e uma
+/// sombra curta embaixo (sensação de profundidade).
+pub fn raised(dark: bool) -> Vec<gpui_kit::BoxShadow> {
+    vec![
+        gpui_kit::BoxShadow { color: Hsla { h: 0.0, s: 0.0, l: 0.0, a: if dark { 0.55 } else { 0.18 } }, offset: point(px(0.0), px(1.0)), blur_radius: px(2.0), spread_radius: px(0.0), inset: false },
+        gpui_kit::BoxShadow { color: Hsla { h: 0.0, s: 0.0, l: 1.0, a: if dark { 0.08 } else { 0.6 } }, offset: point(px(0.0), px(1.0)), blur_radius: px(0.0), spread_radius: px(0.0), inset: true },
+    ]
+}
+
+/// Sombras de um controle afundado (pressionado).
+pub fn sunken(dark: bool) -> Vec<gpui_kit::BoxShadow> {
+    vec![gpui_kit::BoxShadow { color: Hsla { h: 0.0, s: 0.0, l: 0.0, a: if dark { 0.55 } else { 0.2 } }, offset: point(px(0.0), px(1.0)), blur_radius: px(3.0), spread_radius: px(0.0), inset: true }]
+}
+
+/// Brilho de um controle aceso na cor `c` (lâmpada ligada).
+pub fn glow(c: Hsla) -> Vec<gpui_kit::BoxShadow> {
+    vec![
+        gpui_kit::BoxShadow { color: Hsla { a: 0.45, ..c }, offset: point(px(0.0), px(0.0)), blur_radius: px(10.0), spread_radius: px(0.0), inset: false },
+        gpui_kit::BoxShadow { color: Hsla { h: 0.0, s: 0.0, l: 1.0, a: 0.25 }, offset: point(px(0.0), px(1.0)), blur_radius: px(0.0), spread_radius: px(0.0), inset: true },
+    ]
+}
+
+/// Ícone da identidade (`assets/icons/<nome>.svg`), na cor do texto.
+pub fn icon(name: &str, size: f32) -> gpui_kit::Svg {
+    gpui_kit::svg().path(SharedString::from(format!("icons/{name}.svg"))).size(px(size)).flex_none()
+}
+
 /// Botão padrão (com hover). Para um hover próprio use [`btn_bare`]: o gpui
 /// (debug) entra em pânico se `.hover` for chamado duas vezes no mesmo elemento.
 pub fn btn(id: impl Into<gpui_kit::ElementId>, th: &Theme) -> gpui_kit::Stateful<gpui_kit::Div> {
     let hover = th.paper_hover;
-    btn_bare(id, th).hover(move |s| s.bg(hover))
+    btn_bare(id, th).hover(move |s| s.bg(relief(hover)))
 }
 
 /// [`btn`] sem estilo de hover (o chamador define o seu). h 26, texto 12.
@@ -38,7 +75,12 @@ pub fn btn_bare(id: impl Into<gpui_kit::ElementId>, th: &Theme) -> gpui_kit::Sta
         .rounded(px(R1))
         .border_1()
         .border_color(th.line_strong)
-        .bg(th.paper_raise)
+        .bg(relief(th.paper_raise))
+        .shadow(raised(th.dark))
+        .active({
+            let (down, dark) = (shade(th.paper_raise, -0.03), th.dark);
+            move |s| s.bg(down).shadow(sunken(dark))
+        })
         .text_size(px(12.0))
         .font_weight(FontWeight::MEDIUM)
         .text_color(th.ink)
@@ -101,9 +143,10 @@ impl gpui_kit::Render for Tip {
     }
 }
 
-/// Botão de ícone 26×26 (glifo monocromático).
-pub fn icon_btn<A: Action + Clone>(id: &'static str, glyph: &'static str, th: &Theme, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
-    abtn(id, th, a).w(px(26.0)).px(px(0.0)).child(glyph)
+/// Botão de ícone 26×26 (`assets/icons/<icon>.svg`).
+pub fn icon_btn<A: Action + Clone>(id: &'static str, icon_name: &'static str, th: &Theme, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
+    let c = th.ink_soft;
+    abtn(id, th, a).w(px(26.0)).px(px(0.0)).child(icon(icon_name, 15.0).text_color(c))
 }
 
 /// Toggle "lâmpada": desligado é um botão comum; ligado fica PREENCHIDO com
@@ -111,7 +154,7 @@ pub fn icon_btn<A: Action + Clone>(id: &'static str, glyph: &'static str, th: &T
 pub fn atoggle<A: Action + Clone>(id: &'static str, th: &Theme, on: bool, a: A) -> gpui_kit::Stateful<gpui_kit::Div> {
     if on {
         let acc = th.accent;
-        abtn_bare(id, th, a).bg(acc).border_color(acc).text_color(th.on_accent).font_weight(FontWeight::BOLD).hover(move |s| s.bg(Theme::alpha(acc, 0.9)))
+        abtn_bare(id, th, a).bg(relief(acc)).shadow(glow(acc)).border_color(shade(acc, -0.08)).text_color(th.on_accent).font_weight(FontWeight::BOLD).hover(move |s| s.bg(relief(shade(acc, 0.04))))
     } else {
         abtn(id, th, a)
     }

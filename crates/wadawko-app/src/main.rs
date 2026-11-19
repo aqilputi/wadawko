@@ -7,6 +7,7 @@
 
 extern crate gpui_kit as gpui;
 
+mod icons;
 mod keys;
 mod shell;
 mod song_ext;
@@ -165,13 +166,18 @@ fn main() {
     let dark = args.dark.unwrap_or_else(|| !matches!(store.theme(), Ok(Some(wadawko_store::Theme::Light))));
     let theme = if dark { Theme::dark() } else { Theme::light() };
 
-    gpui_kit::application().run(move |cx: &mut App| {
+    gpui_kit::application().with_assets(icons::Assets).run(move |cx: &mut App| {
         gpui_kit::init(cx);
         let fonts: Vec<Cow<'static, [u8]>> = vec![
             Cow::Borrowed(include_bytes!("../../../assets/fonts/ZenKakuGothicNew-Regular.ttf")),
             Cow::Borrowed(include_bytes!("../../../assets/fonts/ZenKakuGothicNew-Medium.ttf")),
             Cow::Borrowed(include_bytes!("../../../assets/fonts/ZenKakuGothicNew-Bold.ttf")),
             Cow::Borrowed(include_bytes!("../../../assets/fonts/ShipporiMincho-Bold.ttf")),
+            // fonte da interface (identidade visual): Inconsolata, OFL
+            Cow::Borrowed(include_bytes!("../../../assets/fonts/Inconsolata-Regular.ttf")),
+            Cow::Borrowed(include_bytes!("../../../assets/fonts/Inconsolata-Medium.ttf")),
+            Cow::Borrowed(include_bytes!("../../../assets/fonts/Inconsolata-SemiBold.ttf")),
+            Cow::Borrowed(include_bytes!("../../../assets/fonts/Inconsolata-Bold.ttf")),
         ];
         cx.text_system().add_fonts(fonts).expect("registrar fontes");
 
