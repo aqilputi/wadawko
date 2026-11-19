@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-19T00:24:48Z
+  at: 2026-11-19T00:34:26Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 

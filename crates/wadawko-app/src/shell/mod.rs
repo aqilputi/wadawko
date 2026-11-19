@@ -156,6 +156,8 @@ pub struct Shell {
     pub pending_ask: Option<(InputTarget, String)>,
     /// minimap ligado (`view::ToggleMinimap`)
     pub mini_open: bool,
+    /// linha sob o mouse no último render (o overlay redesenha quando muda)
+    pub hover_band_key: Option<i32>,
     /// a grade segue o playhead tocando (`view::ToggleFollow`)
     pub follow_on: bool,
     /// seguir centrado (linha fixa a 40 %) em vez de virar a página (`view::ToggleFollowCenter`)
@@ -307,6 +309,7 @@ impl Shell {
             mini_geom: Default::default(),
             mini_drag: false,
             mini_open: true,
+            hover_band_key: None,
             follow_on: true,
             follow_center: false,
             last_sel: None,
@@ -1032,9 +1035,16 @@ impl Shell {
             other => (None, self.views.page(other).unwrap_or_else(|| div().into_any_element())),
         };
 
+        // linha do tempo sob o mouse (editor vertical): faixa sutil no overlay, sem tocar nas seções
+        let hover_band = if self.on_grid() && !self.grid.read(cx).is_drag_selecting() { self.grid.read(cx).vrow_band(window.mouse_position()) } else { None };
+        self.hover_band_key = hover_band.map(|(y, ..)| y.round() as i32);
         let overlay = canvas(
             |_, _, _| {},
             move |vb, _, window, _| {
+                if let Some((y, h, x0, x1)) = hover_band {
+                    let r = Bounds::new(point(px(x0), px(y)), size(px((x1 - x0).max(0.0)), px(h)));
+                    window.with_content_mask(Some(gpui_kit::ContentMask { bounds: vb }), |window| window.paint_quad(fill(r, Theme::alpha(th.ink, 0.04))));
+                }
                 // mini-medidores das linhas (3 px sob o nome)
                 for (b, level, peak) in &row_meters {
                     let clip = vb.intersect(b);
@@ -1110,7 +1120,23 @@ impl Shell {
             .flex_1()
             .min_h_0()
             .relative()
-            .child(div().id("editor-scroll").size_full().overflow_y_scroll().track_scroll(&self.scroll).p(px(20.0)).when(header.is_some(), |d| d.pt(px(12.0))).child(content))
+            .child(
+                div()
+                    .id("editor-scroll")
+                    .size_full()
+                    .overflow_y_scroll()
+                    .track_scroll(&self.scroll)
+                    .p(px(20.0))
+                    .when(header.is_some(), |d| d.pt(px(12.0)))
+                    // a faixa da linha sob o mouse muda → só o Shell (overlay) redesenha
+                    .on_mouse_move(cx.listener(|this, ev: &gpui_kit::MouseMoveEvent, _, cx| {
+                        let k = this.grid.read(cx).vrow_band(ev.position).map(|(y, ..)| y.round() as i32);
+                        if k != this.hover_band_key {
+                            cx.notify();
+                        }
+                    }))
+                    .child(content),
+            )
             .child(overlay);
         let editor = div().flex_1().min_w_0().h_full().flex().flex_col().bg(th.bg).when_some(header, |d, h| d.child(div().flex_none().child(h))).child(scroll_area);
 

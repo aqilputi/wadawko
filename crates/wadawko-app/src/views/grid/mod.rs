@@ -824,6 +824,21 @@ impl GridView {
         }
     }
 
+    /// Editor vertical: a faixa (janela) da linha do tempo sob `pos` — (y, altura, x0, x1).
+    pub fn vrow_band(&self, pos: Point<Pixels>) -> Option<(f32, f32, f32, f32)> {
+        if self.layout != Layout::Vertical {
+            return None;
+        }
+        let s = self.section_at_y(f32::from(pos.y))?;
+        let g = self.geom.borrow();
+        let b = *g.sections.get(s)?;
+        let ly = f32::from(pos.y) - f32::from(b.origin.y);
+        let (m, k) = vgeom::row_at(&self.song, s, g.row_h, ly)?;
+        let y = f32::from(b.origin.y) + vgeom::measure_y(&self.song, s, m, g.row_h)? + k as f32 * g.row_h;
+        let x0 = f32::from(b.origin.x) + vgeom::LOOP_X + vgeom::LOOP_W;
+        Some((y, g.row_h, x0, (x0 + vgeom::LEFT_W + g.cols.w - g.offset).min(f32::from(b.origin.x) + f32::from(b.size.width))))
+    }
+
     pub fn section_at_y(&self, y: f32) -> Option<usize> {
         let g = self.geom.borrow();
         g.sections.iter().position(|b| f32::from(b.size.width) > 0.0 && y >= f32::from(b.origin.y) && y < f32::from(b.origin.y) + f32::from(b.size.height))

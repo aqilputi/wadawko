@@ -126,12 +126,16 @@ impl Shell {
             return;
         }
         let id = d.id.clone();
+        // soltar sobre uma seção = ocupar o lugar dela E entrar no grupo dela (ou sair, se ela não tem)
+        let target_group = order.get(to).and_then(|t| song.section(t)).and_then(|t| t.group.clone());
         self.edit(cx, move |s| {
             let src = if d.clone { ops::sections::clone_section(s, &id) } else { Some(id.clone()) };
             if let Some(src) = src {
                 let to = if d.clone && to > from { to + 1 } else { to };
                 ops::sections::move_section(s, &src, to);
-                // entrou/saiu de grupo: herda o grupo do vizinho de destino, se for o mesmo dos dois lados
+                if let Some(sec) = s.sections.as_mut().and_then(|v| v.iter_mut().find(|x| x.id == src)) {
+                    sec.group = target_group.clone();
+                }
                 structure::prune_groups(s);
             }
         });

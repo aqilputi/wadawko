@@ -1020,9 +1020,12 @@ T10 ficam para depois.
 | T0, T3a | feito | editor vertical (agente) |
 | T1 | feito | `wadawko-core::fx`, `ops::structure` (cores, grupos, copiar/colar), campos novos; a cor dos instrumentos prontos fica em `Song.instrumentColors` |
 | T2 | feito | schedule/engine (`EventKind::Cut`, `HitEv.humanize: f32`), esteira; MIDI herda do schedule |
-| T5 | feito | `views/sections_panel.rs` (`Part::Sections` em cache): clique/Ctrl/Shift, duplo clique, arrastar (Alt clona), menu de contexto, menu de cor, copiar/colar, trechos migrados |
-| T6 | parcial | grupos no painel (recolher, cor, renomear, selecionar o grupo); falta a banda de grupo no editor e arrastar para dentro/fora de grupo |
-| T7 | parcial | cor de seção/grupo (painel + gutter) e de instrumento (Kit); falta a "origem da cor" no ⚙ e no inspector |
-| T8 | feito | sub-coluna fx, ações `fx::*`, inspector; T8b (partitura) não |
-| T3b, T4, T9, T10 | pendente | follow centrado, loop no gutter, teclado completo, polimento, remover a horizontal |
-
+| T3b | feito | faixa de loop no gutter (`measure_at`/`bar_pos` por layout); seguir centrado como opção (`view::ToggleFollowCenter`) — custa +0,9 ms/frame (12 seções redesenhadas por frame), por isso o padrão continua "por página"; `view::ToggleFollow` (Scroll Lock); faixa da linha sob o mouse no overlay (0 renders de seção) |
+| T4 | feito (essencial) | `Tab`/`Shift+Tab` trocam de linha, `PgUp/PgDn` compasso, `Ctrl+↑/↓` tempo, `Alt+PgUp/PgDn` seção, `Ctrl+PgUp/PgDn` 1ª/última linha, passo de edição `Alt+0–9`. Faltam V-BLOCO, `grid::Reverse`, `gf`/`gn` |
+| T5 | feito | painel de seções (`Part::Sections`) com trechos |
+| T6 | feito | grupos no painel; arrastar sobre uma seção entra no grupo dela; grupo e cor no cabeçalho da seção do editor (sem banda própria: a geometria não muda) |
+| T7 | feito | cor de seção/grupo/instrumento; origem da cor no inspector ("herdar") |
+| T8 | feito | sub-coluna fx, ações, inspector |
+| T8b | parcial | partitura: rulo (`R`) e ghost (`V0–V2`); flam e corte ainda não desenham |
+| extra | feito | **minimap** (`views/minimap.rs`, `Part::Minimap`) e a grade acompanhando a seleção (reveal no render + rolagem automática no arrasto) |
+| T9, T10 | pendente | polimento visual geral; remover a grade horizontal (Q1, com o OK do Fernando) |
