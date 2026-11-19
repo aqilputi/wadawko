@@ -519,6 +519,23 @@ impl Shell {
             this.follow_center = !this.follow_center;
             this.flash(if this.follow_center { "seguir: centrado" } else { "seguir: por página" }, cx)
         });
+        let d = on!(d, cx, view::ViewPick, |this, w, cx| {
+            if this.song(cx).people().is_empty() {
+                this.flash("a música não tem pessoas (página Pessoas)", cx);
+            } else {
+                this.open_palette(w, cx);
+                if let Some(p) = this.palette.as_mut() {
+                    p.query = "visão".into();
+                }
+            }
+        });
+        let d = on!(d, cx, view::ViewAll, |this, w, cx| {
+            this.grid.update(cx, |g, cx| {
+                g.view_person = None;
+                cx.notify();
+            });
+            this.flash("visão: todas as linhas", cx)
+        });
         let d = on!(d, cx, view::ToggleMinimap, |this, w, cx| this.mini_open = !this.mini_open);
         let d = on!(d, cx, view::ToggleSections, |this, w, cx| this.sec_panel_open = !this.sec_panel_open);
         let d = on!(d, cx, section::Clone, |this, w, cx| this.sec_edit(cx, |s, id| {

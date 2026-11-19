@@ -26,6 +26,8 @@ pub enum PRun {
     Template(&'static str),
     /// modo "ensaiar como…" (`None` = todos)
     Rehearse(Option<crate::state::Rehearse>),
+    /// visão por pessoa (`None` = todas as linhas)
+    ViewPerson(Option<String>),
 }
 
 /// item da paleta: (título, grupo, atalho, o que fazer)
@@ -54,6 +56,19 @@ impl Shell {
             PRun::Action(a) => window.dispatch_action(a, cx),
             PRun::Song(i) => self.select_project(i, cx),
             PRun::Practice(id) => self.loop_spot(&id, cx),
+            PRun::ViewPerson(p) => {
+                let name = p.as_ref().and_then(|id| self.song(cx).person(id).map(|x| x.name.clone()));
+                self.grid.update(cx, |g, cx| {
+                    g.view_person = p;
+                    // o cursor não pode ficar numa linha escondida
+                    if let Some(c) = g.cursor {
+                        let t = g.nearest_visible_pub(c.t);
+                        g.cursor = Some(crate::views::grid::Cur { t, ..c });
+                    }
+                    cx.notify();
+                });
+                self.flash(name.map_or_else(|| "visão: todas as linhas".into(), |n| format!("visão: só as linhas de {n}")), cx);
+            }
             PRun::Rehearse(r) => {
                 let msg = match &r {
                     Some(r) => format!(
@@ -125,12 +140,29 @@ impl Shell {
                 scored.push((sc - 5, 1000 + i, (format!("Abrir música: {t}"), "Música", None, PRun::Song(i))));
             }
         }
+        // visão por pessoa (ux #3)
+        for (i, p) in self.state.read(cx).song().people().iter().enumerate() {
+            if let Some(sc) = keys::fuzzy(q, &format!("visão pessoa {} linhas", p.name)) {
+                scored.push((sc + if q.contains("vis") { 90 } else { 0 }, 1050 + i, (format!("Visão: só as linhas de {}", p.name), "Ver", None, PRun::ViewPerson(Some(p.id.clone())))));
+            }
+        }
+        if self.grid.read(cx).view_person.is_some()
+            && let Some(sc) = keys::fuzzy(q, "visão todas linhas todos")
+        {
+            scored.push((sc + if q.contains("vis") { 91 } else { 0 }, 1049, ("Visão: todas as linhas".into(), "Ver", None, PRun::ViewPerson(None))));
+        }
         // ensaiar como… (ux-pesquisa #1)
         for (i, p) in self.state.read(cx).song().people().iter().enumerate() {
             for (j, (listen, what)) in [(crate::state::Listen::Without, "tocar junto, sem ela no som"), (crate::state::Listen::Only, "ouvir só ela")].into_iter().enumerate() {
                 if let Some(sc) = keys::fuzzy(q, &format!("ensaiar como {} {what}", p.name)) {
                     scored.push((
-                        sc + if j == 0 { 80 } else { 20 },
+                        sc + if !q.contains("ensai") {
+                            0
+                        } else if j == 0 {
+                            80
+                        } else {
+                            20
+                        },
                         1100 + i * 2 + j,
                         (format!("Ensaiar como {}: {what}", p.name), "Transporte", None, PRun::Rehearse(Some(crate::state::Rehearse { person: p.id.clone(), listen }))),
                     ));

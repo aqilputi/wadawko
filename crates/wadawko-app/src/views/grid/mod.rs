@@ -76,6 +76,8 @@ pub struct Rows {
     pub kyai: Vec<bool>,
     /// sub-coluna de efeitos (editor vertical): a linha tem efeitos ou foi ligada
     pub fx: Vec<bool>,
+    /// visão por pessoa (editor vertical): linha escondida (largura zero)
+    pub hidden: Vec<bool>,
     pub h: f32,
     /// altura da célula (linha principal) — `CELL_H` por padrão
     pub cell_h: f32,
@@ -384,6 +386,8 @@ pub struct GridView {
     pub show_fx: HashSet<String>,
     /// sub-coluna de efeitos em todas as linhas (`fx::ToggleColumn`)
     pub show_fx_all: bool,
+    /// visão por pessoa (ux #3): só as linhas desta pessoa no editor vertical
+    pub view_person: Option<String>,
     /// registradores: '"' sem nome, '0' último yank, 'a'..'z', '+' área de transferência
     pub registers: HashMap<char, Register>,
     /// registrador escolhido com `"x` para a próxima operação
@@ -493,6 +497,7 @@ impl GridView {
             show_kyai: HashSet::new(),
             show_fx: HashSet::new(),
             show_fx_all: false,
+            view_person: None,
             registers: HashMap::new(),
             reg_sel: None,
             insert_log: Vec::new(),
@@ -550,7 +555,34 @@ impl GridView {
     pub fn rows(&self) -> Rows {
         let mut r = Rows::new(&self.song, &self.show_dyn, &self.show_kyai, self.cell_h);
         r.fx = self.song.tracks.iter().map(|t| self.show_fx_all || self.show_fx.contains(&t.id) || ops::cells::track_has_fx(&self.song, &t.id)).collect();
+        r.hidden = (0..self.song.tracks.len()).map(|t| !self.track_visible(t)).collect();
         r
+    }
+
+    /// Visão por pessoa (ux #3): a linha `t` aparece? Só filtra no editor vertical;
+    /// sem pessoa escolhida (ou se a pessoa não toca nada), tudo aparece.
+    pub fn track_visible(&self, t: usize) -> bool {
+        let Some(p) = self.view_person.as_deref().filter(|_| self.layout == Layout::Vertical) else { return true };
+        if !self.song.tracks.iter().any(|tr| tr.person_ids().iter().any(|x| x == p)) {
+            return true;
+        }
+        self.song.tracks.get(t).is_none_or(|tr| tr.person_ids().iter().any(|x| x == p))
+    }
+
+    /// Linha visível mais próxima de `t` (para quem troca a visão).
+    pub fn nearest_visible_pub(&self, t: usize) -> usize {
+        self.nearest_visible(t, 1)
+    }
+
+    /// Linha visível mais próxima de `t` (na direção `dir`; senão na outra).
+    fn nearest_visible(&self, t: usize, dir: i32) -> usize {
+        let n = self.song.tracks.len();
+        if n == 0 || self.track_visible(t) {
+            return t;
+        }
+        let fwd = (t..n).find(|&i| self.track_visible(i));
+        let back = (0..=t.min(n - 1)).rev().find(|&i| self.track_visible(i));
+        (if dir >= 0 { fwd.or(back) } else { back.or(fwd) }).unwrap_or(t)
     }
 
     pub fn is_collapsed(&self, sec: &Sec) -> bool {
@@ -1054,10 +1086,15 @@ impl GridView {
                 let s = if at_start { s0.saturating_sub(n) } else { (s0 + 1).saturating_sub(n) };
                 (c.t, song.flat(secs[s].start.min(song.measures.len() - 1), 0))
             }
-            Motion::FirstTrack => (0, g),
-            Motion::LastTrack => (tracks - 1, g),
+            Motion::FirstTrack => (self.nearest_visible(0, 1), g),
+            Motion::LastTrack => (self.nearest_visible(tracks - 1, -1), g),
             Motion::HalfRight => (c.t, (g + half * n).min(total - 1)),
             Motion::HalfLeft => (c.t, g.saturating_sub(half * n)),
+        };
+        // visão por pessoa: pula as linhas escondidas
+        let t = match mo {
+            Motion::Up => self.nearest_visible(t, -1),
+            _ => self.nearest_visible(t, 1),
         };
         self.set_cursor_flat(t, g2);
         if !extend && matches!(self.vmode, VMode::Normal | VMode::Insert | VMode::Simple) {

@@ -226,6 +226,9 @@ botões prontos. O áudio, a esteira e o MIDI tocam os efeitos; a partitura aind
   toca **sem ela** (ela toca junto) ou **só ela**; as linhas das outras pessoas ficam esmaecidas e a
   barra de status mostra `👤 sem Ana`. Não muda a música nem entra no desfazer. `Alt+Shift+P` volta
   a todos; "Ensaiar como: ouvir sem / só" alterna.
+- **Visão por pessoa** (`Alt+V`; vim `space v v`): o editor mostra só as linhas de uma pessoa
+  (as outras somem, o cursor pula para a linha visível mais próxima); a barra de status mostra
+  `👁 Ana`. `Alt+Shift+V` (ou "Visão: todas as linhas") volta a mostrar tudo. Não muda a música.
 - **Modo projeção** (`F10`, ou `Ctrl+K` → "Modo projeção"): tela cheia em letras grandes para a TV
   do ensaio (durante o count-in, a contagem gigante 4… 3… 2… 1) — seção atual e a volta (`2/3`), compasso, os tempos acendendo, a próxima seção e o
   BPM que está soando; a lista de linhas com as cores embaixo. `Espaço` toca/para, `Esc` sai.

@@ -122,11 +122,15 @@ impl Cols {
                 gw += KYAI_W;
                 x
             });
+            // visão por pessoa: linha escondida = largura zero (sem fresta)
+            let hidden = rows.hidden.get(t).copied().unwrap_or(false);
             c.x.push(c.w);
-            c.group_w.push(gw);
+            c.group_w.push(if hidden { 0.0 } else { gw });
             c.dyn_x.push(d);
             c.kyai_x.push(k);
-            c.w += gw + COL_GAP;
+            if !hidden {
+                c.w += gw + COL_GAP;
+            }
         }
         c
     }

@@ -64,6 +64,8 @@ pub mod view {
             RowShorter,
             RowReset,
             Director,
+            ViewPick,
+            ViewAll,
             ToggleSections,
             ToggleMinimap,
             ToggleFollow,

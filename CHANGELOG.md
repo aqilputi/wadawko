@@ -5,6 +5,7 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ## [Não lançado]
 
 ### Adicionado
+- **Visão por pessoa** (`Alt+V`): o editor mostra só as linhas de uma pessoa.
 - Aba **LINHAS** no painel da esquerda (cabeçalhos de faixa com o que o inspector mostra).
 - **Minimap** à direita do editor vertical (clique/arraste para rolar) e a grade **acompanha a seleção**
   (teclado e arrasto com rolagem automática nas bordas).

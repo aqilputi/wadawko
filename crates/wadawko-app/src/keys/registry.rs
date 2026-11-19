@@ -66,6 +66,8 @@ pub static SPECS: &[Spec] = &[
     spec!("section::Ungroup", "Seções: desfazer o grupo", "Estrutura", "grupo desagrupar"),
     spec!("view::ToggleFollow", "Seguir o playhead: ligar/desligar", "Ver", "follow rolar acompanhar scroll lock"),
     spec!("view::ToggleFollowCenter", "Seguir: centrado / por página", "Ver", "follow centro página tracker"),
+    spec!("view::ViewPick", "Visão por pessoa… (só as linhas dela)", "Ver", "visão pessoa filtro parte linhas"),
+    spec!("view::ViewAll", "Visão: todas as linhas", "Ver", "visão todos filtro"),
     spec!("view::ToggleMinimap", "Minimap: mostrar/esconder", "Ver", "minimapa visão geral mapa rolar"),
     spec!("view::ToggleSections", "Painel de seções: mostrar/esconder", "Ver", "seções painel esquerda estrutura"),
     spec!("practice::Save", "Trechos: guardar o trecho de loop com um nome…", "Transporte", "ensaio trecho salvar nome loop região practice"),

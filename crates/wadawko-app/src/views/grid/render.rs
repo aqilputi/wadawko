@@ -567,7 +567,7 @@ impl GridView {
             (format!("{:?}", self.cursor), format!("{:?}", self.anchor), self.vmode, format!("{:?}", self.lane), &self.edit).hash(k);
             (format!("{:?}", self.menu), format!("{:?}", self.move_drag), format!("{:?}", self.loop_drag), self.drag_sec, self.drag_over).hash(k);
             (self.cw.to_bits(), self.offset.to_bits(), self.cell_h.to_bits(), collapsed, dyn_rows, kyai_rows).hash(k);
-            (self.layout, self.col_w_eff.to_bits(), self.row_h.to_bits(), self.show_fx_all, {
+            (self.layout, self.col_w_eff.to_bits(), self.row_h.to_bits(), &self.view_person, self.show_fx_all, {
                 let mut v: Vec<&String> = self.show_fx.iter().collect();
                 v.sort();
                 v

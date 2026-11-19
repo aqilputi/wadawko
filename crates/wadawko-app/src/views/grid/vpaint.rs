@@ -206,6 +206,10 @@ pub fn vpaint_section(b: Bounds<Pixels>, a: &VPaintArgs, window: &mut Window, cx
             // ── colunas ──
             window.with_content_mask(Some(ContentMask { bounds: cols_mask }), |window| {
                 for t in 0..n_tracks {
+                    // visão por pessoa: coluna escondida
+                    if cols.group_w[t] <= 0.0 {
+                        continue;
+                    }
                     let track = &song.tracks[t];
                     let x = colx0 + cols.x[t] - off;
                     if x > ox + w || x + cols.group_w[t] < colx0 {

@@ -41,7 +41,7 @@ impl GridView {
         let st = self.state.read(cx);
         crate::shell::chrome::key(|k| {
             use std::hash::Hash;
-            (std::sync::Arc::as_ptr(&self.song) as usize, st.revision, st.theme.dark, self.layout, self.col_w_eff.to_bits(), self.offset.to_bits(), self.hover_col).hash(k);
+            (std::sync::Arc::as_ptr(&self.song) as usize, st.revision, st.theme.dark, self.layout, self.col_w_eff.to_bits(), self.offset.to_bits(), self.hover_col, &self.view_person).hash(k);
             let menu_t = match self.menu {
                 Some(Menu::Row { t, .. }) => Some(t),
                 _ => None,
@@ -164,6 +164,9 @@ impl GridView {
 
         let mut strip = div().relative().flex().flex_none().left(px(-self.offset));
         for (t, tr) in song.tracks.iter().enumerate().take(cols.x.len()) {
+            if cols.group_w[t] <= 0.0 {
+                continue;
+            }
             let hov = self.hover_col == Some(t);
             let audible = song.audible(t);
             let tcol = track_color(&song, tr);

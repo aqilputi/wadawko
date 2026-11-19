@@ -1251,6 +1251,35 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 check("preencher: a cada 2 escreve nas vazias e um Ctrl+Z desfaz", n1 > n0 && n2 == n0);
             }
         }
+        // visão por pessoa (ux #3): Alt+V + Enter mostra só as linhas da pessoa; Alt+Shift+V volta
+        if cx.update(|cx| shell.read(cx).grid.read(cx).layout == views::grid::Layout::Vertical && state.read(cx).song().tracks.len() >= 2) {
+            cx.update(|cx| state.update(cx, |s, cx| {
+                s.edit(cx, |song| {
+                    song.people = Some(vec![wadawko_core::model::Person { id: "probe-vis".into(), name: "Visão".into(), ..Default::default() }]);
+                    let t0 = song.tracks[0].id.clone();
+                    wadawko_core::ops::people::toggle_track_person(song, &t0, "probe-vis");
+                });
+            }));
+            wait(cx, 120).await;
+            key("alt-v", cx);
+            wait(cx, 150).await;
+            key("enter", cx);
+            wait(cx, 200).await;
+            let (vp, w1) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.view_person.clone(), g.cols().group_w.get(1).copied())
+            });
+            key("alt-shift-v", cx);
+            wait(cx, 150).await;
+            let (vp2, w2) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.view_person.clone(), g.cols().group_w.get(1).copied())
+            });
+            key("ctrl-z", cx);
+            wait(cx, 100).await;
+            println!("PROBE visão por pessoa: {vp:?} largura linha 1 {w1:?} → {vp2:?} {w2:?}");
+            check("visão por pessoa: Alt+V esconde as outras linhas; Alt+Shift+V volta", vp.is_some() && w1 == Some(0.0) && vp2.is_none() && w2.is_some_and(|w| w > 0.0));
+        }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
             let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());
