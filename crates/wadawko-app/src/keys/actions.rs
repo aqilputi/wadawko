@@ -35,6 +35,7 @@ pub mod transport {
             MetroSubdiv,
             MetroVolume,
             MetroSound,
+            CountVoice,
             ToggleCountInLoop,
             TapTempo,
             RehearsePick,

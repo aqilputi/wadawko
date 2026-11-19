@@ -76,6 +76,7 @@ pub static SPECS: &[Spec] = &[
     spec!("transport::MetroPattern", "Metrônomo: padrão de acentos… (ABBB)", "Transporte", "click acento forte fraco mudo tempos"),
     spec!("transport::MetroSubdiv", "Metrônomo: subdivisão (1 → 2 → 3 → 4 por tempo)", "Transporte", "click colcheia tercina semicolcheia"),
     spec!("transport::MetroVolume", "Metrônomo: volume…", "Transporte", "click alto baixo"),
+    spec!("transport::CountVoice", "Count-in: contagem falada (sem voz → masculina → feminina)", "Transporte", "ichi ni san voz contagem falada"),
     spec!("transport::MetroSound", "Metrônomo: timbre (bipe → shime → kane)", "Transporte", "click som madeira metal sino"),
     spec!("transport::RehearsePick", "Ensaiar como… (escolher a pessoa)", "Transporte", "ensaio pessoa mudo sem mim play along parte"),
     spec!("transport::RehearseOff", "Ensaiar como: todos (desligar)", "Transporte", "ensaio pessoa todos"),

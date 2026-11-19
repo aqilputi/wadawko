@@ -449,13 +449,15 @@ fn previews_cell_instrument_phrase_kyai_and_fue() {
     pump(&mut eng, 0.05);
     assert!(peak(&pump(&mut eng, 0.5)) < 1e-4, "parar mata a cauda");
     // kiai: voz da linha; 3 sílabas a cada 0,25 s
-    ctl.preview_kyai(&song.tracks[1], &["so", "re", "ya!"], 0.25, None);
+    ctl.preview_kyai(&song, &song.tracks[1], &["so", "re", "ya!"], 0.25, None);
     let voice = pump(&mut eng, 1.2);
     for i in 0..3 {
-        let at = ((0.03 + 0.012 + i as f64 * 0.25) * SR as f64) as usize;
-        assert!(peak(&voice[(at + 2400) * 2..(at + 7200) * 2]) > 0.003, "sílaba {i}");
+        let at = ((0.03 + i as f64 * 0.25) * SR as f64) as usize;
+        assert!(peak(&voice[at * 2..(at + 9600) * 2]) > 0.003, "sílaba {i}");
     }
-    assert!(peak(&pump(&mut eng, 0.5)) < 1e-4);
+    // o grito final toca a gravação inteira (até 1,2 s) e acaba sozinho
+    pump(&mut eng, 0.8);
+    assert!(peak(&pump(&mut eng, 0.3)) < 1e-4);
     // easter egg: ~7,6 s de melodia; a 2ª chamada enquanto toca devolve 0
     let ms = ctl.play_fue();
     assert_eq!(ms, 7560);

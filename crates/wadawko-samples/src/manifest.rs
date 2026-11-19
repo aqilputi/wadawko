@@ -324,46 +324,102 @@ pub static MANIFEST: [InstrumentManifest; BaseInstrument::COUNT] = [
     },
 ];
 
-/// Nome (sem extensão) do sample das letras do animalese (vozes dos kiai).
-pub const ANIMALESE: &str = "animalese";
-
-/// Dados estáticos do `animalese.ogg` (de `src/lib/kyai.ts`): 26 letras (a–z)
-/// de [`animalese::LETTER_SEC`] s cada, em sequência.
-pub mod animalese {
-    /// duração (s) de cada letra no arquivo.
-    pub const LETTER_SEC: f32 = 0.15;
-
-    /// início audível (s, dentro da fatia da letra) e força relativa.
-    #[derive(Clone, Copy, Debug, PartialEq)]
-    pub struct Letter {
-        pub start: f32,
-        pub gain: f32,
+/// Gravações de kiai (kakegoe) e da contagem em japonês, em `assets/samples/kiai/`
+/// (fontes e licenças em `CREDITS.md`, detalhes em `kiai/manifest.json`).
+pub mod kiai {
+    /// Voz da gravação.
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+    pub enum Voice {
+        Male,
+        Female,
     }
 
-    /// `LETTER[l]` do TS; `None` para letras que o kiai não usa.
-    pub fn letter(l: char) -> Option<Letter> {
-        let (start, gain) = match l {
-            'a' => (0.0, 1.0),
-            'b' => (0.0, 0.8),
-            'd' => (0.02, 1.6),
-            'e' => (0.0, 1.5),
-            'g' => (0.01, 2.0),
-            'i' => (0.008, 1.8),
-            'j' => (0.02, 2.5),
-            'k' => (0.03, 1.6),
-            'm' => (0.0, 3.0),
-            'n' => (0.0, 2.5),
-            'o' => (0.0, 0.8),
-            'p' => (0.02, 1.3),
-            'u' => (0.0, 3.5),
-            'w' => (0.02, 1.4),
+    impl Voice {
+        pub fn other(self) -> Voice {
+            match self {
+                Voice::Male => Voice::Female,
+                Voice::Female => Voice::Male,
+            }
+        }
+    }
+
+    /// Uma tomada: nome do sample (sem `.ogg`), voz, se é contagem e a palavra (romaji).
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    pub struct KiaiTake {
+        pub name: &'static str,
+        pub voice: Voice,
+        pub count: bool,
+        pub word: &'static str,
+    }
+
+    /// Todas as tomadas (gerado de `kiai/manifest.json`).
+    pub static TAKES: &[KiaiTake] = &[
+        KiaiTake { name: "kiai/m-ha-0", voice: Voice::Male, count: false, word: "ha" },
+        KiaiTake { name: "kiai/m-ha-1", voice: Voice::Male, count: false, word: "ha" },
+        KiaiTake { name: "kiai/m-ha-2", voice: Voice::Male, count: false, word: "ha" },
+        KiaiTake { name: "kiai/m-ha-3", voice: Voice::Male, count: false, word: "ha" },
+        KiaiTake { name: "kiai/m-hai-0", voice: Voice::Male, count: false, word: "hai" },
+        KiaiTake { name: "kiai/m-hai-1", voice: Voice::Male, count: false, word: "hai" },
+        KiaiTake { name: "kiai/m-yo-0", voice: Voice::Male, count: false, word: "yo" },
+        KiaiTake { name: "kiai/m-yo-1", voice: Voice::Male, count: false, word: "yo" },
+        KiaiTake { name: "kiai/m-yo-2", voice: Voice::Male, count: false, word: "yo" },
+        KiaiTake { name: "kiai/m-iyo-0", voice: Voice::Male, count: false, word: "iyo" },
+        KiaiTake { name: "kiai/m-iyo-1", voice: Voice::Male, count: false, word: "iyo" },
+        KiaiTake { name: "kiai/m-iya-0", voice: Voice::Male, count: false, word: "iya" },
+        KiaiTake { name: "kiai/m-iya-1", voice: Voice::Male, count: false, word: "iya" },
+        KiaiTake { name: "kiai/m-haiya-0", voice: Voice::Male, count: false, word: "haiya" },
+        KiaiTake { name: "kiai/m-ya-0", voice: Voice::Male, count: false, word: "ya" },
+        KiaiTake { name: "kiai/m-ei-0", voice: Voice::Male, count: false, word: "ei" },
+        KiaiTake { name: "kiai/m-orya-0", voice: Voice::Male, count: false, word: "orya" },
+        KiaiTake { name: "kiai/f-hai-0", voice: Voice::Female, count: false, word: "hai" },
+        KiaiTake { name: "kiai/f-hai-1", voice: Voice::Female, count: false, word: "hai" },
+        KiaiTake { name: "kiai/f-hai-2", voice: Voice::Female, count: false, word: "hai" },
+        KiaiTake { name: "kiai/f-hai-3", voice: Voice::Female, count: false, word: "hai" },
+        KiaiTake { name: "kiai/f-ha-0", voice: Voice::Female, count: false, word: "ha" },
+        KiaiTake { name: "kiai/f-ha-1", voice: Voice::Female, count: false, word: "ha" },
+        KiaiTake { name: "kiai/f-ha-2", voice: Voice::Female, count: false, word: "ha" },
+        KiaiTake { name: "kiai/f-ha-3", voice: Voice::Female, count: false, word: "ha" },
+        KiaiTake { name: "kiai/f-ha-4", voice: Voice::Female, count: false, word: "ha" },
+        KiaiTake { name: "kiai/f-sa-0", voice: Voice::Female, count: false, word: "sa" },
+        KiaiTake { name: "kiai/f-iya-0", voice: Voice::Female, count: false, word: "iya" },
+        KiaiTake { name: "kiai/f-iya-1", voice: Voice::Female, count: false, word: "iya" },
+        KiaiTake { name: "kiai/f-hya-0", voice: Voice::Female, count: false, word: "hya" },
+        KiaiTake { name: "kiai/f-hyo-0", voice: Voice::Female, count: false, word: "hyo" },
+        KiaiTake { name: "kiai/f-ya-0", voice: Voice::Female, count: false, word: "ya" },
+        KiaiTake { name: "kiai/f-ho-0", voice: Voice::Female, count: false, word: "ho" },
+        KiaiTake { name: "kiai/m-count-ichi-0", voice: Voice::Male, count: true, word: "ichi" },
+        KiaiTake { name: "kiai/m-count-ni-0", voice: Voice::Male, count: true, word: "ni" },
+        KiaiTake { name: "kiai/m-count-san-0", voice: Voice::Male, count: true, word: "san" },
+        KiaiTake { name: "kiai/m-count-yon-0", voice: Voice::Male, count: true, word: "yon" },
+        KiaiTake { name: "kiai/m-count-go-0", voice: Voice::Male, count: true, word: "go" },
+        KiaiTake { name: "kiai/m-count-roku-0", voice: Voice::Male, count: true, word: "roku" },
+        KiaiTake { name: "kiai/m-count-nana-0", voice: Voice::Male, count: true, word: "nana" },
+        KiaiTake { name: "kiai/m-count-hachi-0", voice: Voice::Male, count: true, word: "hachi" },
+        KiaiTake { name: "kiai/f-count-ichi-0", voice: Voice::Female, count: true, word: "ichi" },
+        KiaiTake { name: "kiai/f-count-ni-0", voice: Voice::Female, count: true, word: "ni" },
+        KiaiTake { name: "kiai/f-count-san-0", voice: Voice::Female, count: true, word: "san" },
+        KiaiTake { name: "kiai/f-count-shi-0", voice: Voice::Female, count: true, word: "shi" },
+        KiaiTake { name: "kiai/f-count-go-0", voice: Voice::Female, count: true, word: "go" },
+        KiaiTake { name: "kiai/f-count-roku-0", voice: Voice::Female, count: true, word: "roku" },
+        KiaiTake { name: "kiai/f-count-shichi-0", voice: Voice::Female, count: true, word: "shichi" },
+        KiaiTake { name: "kiai/f-count-hachi-0", voice: Voice::Female, count: true, word: "hachi" },
+    ];
+
+    /// Palavra da contagem (1-based) em cada voz: as gravações masculinas
+    /// têm "yon"/"nana", as femininas "shi"/"shichi".
+    pub fn count_word(n: usize, voice: Voice) -> Option<&'static str> {
+        Some(match (n, voice) {
+            (1, _) => "ichi",
+            (2, _) => "ni",
+            (3, _) => "san",
+            (4, Voice::Male) => "yon",
+            (4, Voice::Female) => "shi",
+            (5, _) => "go",
+            (6, _) => "roku",
+            (7, Voice::Male) => "nana",
+            (7, Voice::Female) => "shichi",
+            (8, _) => "hachi",
             _ => return None,
-        };
-        Some(Letter { start, gain })
-    }
-
-    /// offset (s) do início da fatia da letra no arquivo (`idx * LETTER_SEC`).
-    pub fn slice_offset(l: char) -> Option<f32> {
-        l.is_ascii_lowercase().then(|| (l as u8 - b'a') as f32 * LETTER_SEC)
+        })
     }
 }

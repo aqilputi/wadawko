@@ -254,6 +254,13 @@ impl Shell {
             this.save_settings(cx);
             this.flash(format!("metrônomo: som de {}", m.sound.name()), cx)
         });
+        let d = on!(d, cx, transport::CountVoice, |this, w, cx| {
+            let mut m = this.state.read(cx).tp.metro;
+            m.voice = m.voice.next();
+            this.state.update(cx, |s, cx| s.set_metronome_config(m, cx));
+            this.save_settings(cx);
+            this.flash(format!("count-in: {}", m.voice.name()), cx)
+        });
         let d = on!(d, cx, transport::RehearsePick, |this, w, cx| {
             if this.song(cx).people().is_empty() {
                 this.flash("a música não tem pessoas (página Pessoas)", cx);

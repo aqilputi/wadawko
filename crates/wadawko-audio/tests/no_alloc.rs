@@ -84,7 +84,7 @@ fn realtime_path_does_not_allocate() {
     let def = BUILTIN_INSTRUMENTS.iter().find(|d| d.id == "preset-nagado-anelado").unwrap();
     ctl.preview_cell(&song, &song.tracks[0], "teke");
     ctl.preview_instrument(def, wadawko_core::Zone::Head);
-    ctl.preview_kyai(&song.tracks[1], &["so", "ri", "ya!"], 0.2, None);
+    ctl.preview_kyai(&song, &song.tracks[1], &["so", "ri", "ya!"], 0.2, None);
     ctl.start_phrase_loop(def, &["don", "doko", "kara"], 0.12, 0.5);
     ctl.play_fue();
     callback(&mut eng, 300);

@@ -210,6 +210,8 @@ impl Shell {
             } else {
                 th.ink_soft
             })))
+            // contagem falada no count-in (sem voz → masculina → feminina)
+            .when(tp.count_in && !narrow, |d| d.child(chip("ci-voz", tp.metro.voice.name().to_string(), Box::new(keys::transport::CountVoice))))
             // count-in a cada volta: só faz sentido com loop (economiza espaço em janela estreita)
             .when(tp.looping || tp.count_in_loop, |d| {
                 d.child(

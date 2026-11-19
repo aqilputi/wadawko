@@ -384,12 +384,12 @@ fn kyai_events_are_scheduled_and_deterministic() {
     let voice: Vec<_> = s.events.iter().filter(|e| matches!(e.kind, EventKind::Grain(_) | EventKind::Noise(_))).collect();
     let ticks: std::collections::BTreeSet<u64> = voice.iter().map(|e| e.tick as u64).collect();
     assert_eq!(ticks.into_iter().collect::<Vec<_>>(), vec![0, 480, 3 * 3840 + 2880]);
-    // "so": 1 ruído (s) + grãos da vogal "o" (letra 14 do animalese)
+    // "so" (sem gravação de "sore"): uma tomada gravada de kiai, no canal de kiai da linha
     let so: Vec<_> = voice.iter().filter(|e| e.tick == 0.0).collect();
-    assert_eq!(so.iter().filter(|e| matches!(e.kind, EventKind::Noise(_))).count(), 1);
+    assert!(so.iter().all(|e| !matches!(e.kind, EventKind::Noise(_))));
     let grains: Vec<_> = so.iter().filter_map(|e| if let EventKind::Grain(g) = e.kind { Some(g) } else { None }).collect();
-    assert!(grains.len() >= 2);
-    assert!(grains.iter().all(|g| (g.start - 14.0 * 0.15).abs() < 0.02 && g.sample == bank().animalese_id().0 && g.strip == slot * 2));
+    assert_eq!(grains.len(), 1);
+    assert!(grains.iter().all(|g| wadawko_samples::SAMPLE_NAMES[g.sample as usize].starts_with("kiai/") && g.start == 0.0 && g.strip == slot * 2));
     // a sílaba cabe no intervalo até a próxima (meia colcheia a 100 BPM = 0,3 s), fora o micro-atraso
     assert!(grains.iter().all(|g| g.delay + g.dur < 0.3 + 0.018 * 0.5 + 0.006), "{grains:?}");
     // mesma semente → mesmos kiai; outra semente → variação diferente
@@ -401,7 +401,7 @@ fn kyai_events_are_scheduled_and_deterministic() {
     song.tracks[1].muted = true;
     assert!(export(&song).events.iter().all(|e| !matches!(e.kind, EventKind::Grain(_) | EventKind::Noise(_))));
     // volume da voz (dB) vai pro canal de kiai
-    song.tracks[1].kyai = Some(wadawko_core::KyaiVoice { pitch: None, vary: Some(0.0), gain: Some(-6.0) });
+    song.tracks[1].kyai = Some(wadawko_core::KyaiVoice { pitch: None, vary: Some(0.0), gain: Some(-6.0), voice: None });
     let s = live(&song);
     assert!((s.channels[s.channel_slot("chu1@master#kyai").unwrap() as usize].gain - 0.5012).abs() < 1e-4);
 }

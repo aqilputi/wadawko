@@ -43,7 +43,7 @@ pub use backend::{Audio, AudioConfig, device_rate};
 pub use controller::{Controller, PlayOptions, TrainerOptions, engine_pair};
 pub use engine::{BLOCK, Clock, ClockSnapshot, Command, Engine, EngineConfig, EngineEvent, HUMANIZE_LEAD, MAX_VOICES, MasterMode, Meters, PlayCmd, PreviewSeq, SampleSet, Trainer};
 pub use fue::fue_total_secs;
-pub use metronome::{ClickLevel, ClickSound, Metronome};
+pub use metronome::{ClickLevel, ClickSound, CountVoice, Metronome};
 pub use offline::{Cancelled, RenderOptions, Rendered, render, render_with};
 pub use schedule::{
     BAR_TICKS, BusDef, ChannelDef, CompileOptions, Compiler, Event, EventKind, GrainEv, HitEv, MAX_BUSES, MAX_CHANNELS, NoiseEv, PPQ, PREVIEW_SLOT, Schedule, TempoCurve, TimeMap, compile, sfz_dyn,

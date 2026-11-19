@@ -1179,7 +1179,7 @@ impl GridView {
                 && let Some(a) = st.audio.as_mut()
             {
                 let refs: Vec<&str> = syls.iter().map(String::as_str).collect();
-                a.preview_kyai(track, &refs, unit, seed.as_deref());
+                a.preview_kyai(&song, track, &refs, unit, seed.as_deref());
             }
         });
     }

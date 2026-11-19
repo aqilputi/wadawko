@@ -100,6 +100,13 @@ pub fn set_person_color(song: &mut Song, id: &str, color: &str) {
     }
 }
 
+/// Voz dos kiai da pessoa: `Some("m")`, `Some("f")` ou `None` (sorteada pelo id).
+pub fn set_person_voice(song: &mut Song, id: &str, voice: Option<&str>) {
+    if let Some(p) = song.person_mut(id) {
+        p.voice = voice.map(str::to_string);
+    }
+}
+
 /// Remove a pessoa: limpa `personIds` e `cellOwners`; NÃO apaga tracks nem
 /// notas. UI: se ela era a caneta ativa, passe pra `song.people()[0]`.
 pub fn delete_person(song: &mut Song, id: &str) {

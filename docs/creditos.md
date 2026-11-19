@@ -27,7 +27,7 @@ que o app embute e exibe).
 | [SCC Taiko Drums](https://github.com/floe-audio/Taiko-Drums) | S. Christian Collins e Subaqueous | **CC BY-SA 4.0** | chū, nagadō, ō-nagadō, ōdaiko (couro e borda), borda do shime |
 | [taikoset1_ste58](https://freesound.org/people/whatsanickname4u/sounds/127337/) | whatsanickname4u (Dave Thayer) | CC BY 3.0 | shime (couro), okedō |
 | [Gongo pequeno de santuário](https://freesound.org/people/RutgerMuller/sounds/364847/) | RutgerMuller | CC0 | kane |
-| [animalese.js](https://github.com/acedio/animalese.js) | Josh Simmons | CC BY 4.0 | voz dos kiai (`animalese.ogg`) |
+| [Freesound](https://freesound.org) (vários autores, lista em `assets/samples/CREDITS.md`) | WelvynZPorterSamples, Vilaa2404, Reitanna, Alivvie, dobroide e outros | CC0 / CC BY 3.0 / CC BY 4.0 | vozes dos kiai e da contagem falada (`kiai/`) |
 
 - **CC BY-SA 4.0**: os samples derivados continuam CC BY-SA — quem redistribuir precisa dar
   crédito e manter a mesma licença **nesses arquivos**. A share-alike não se estende ao código.

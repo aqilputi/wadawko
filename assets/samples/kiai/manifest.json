@@ -1,0 +1,770 @@
+[
+  {
+    "file": "m-ha-0.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "ha",
+    "source_url": "https://freesound.org/people/WelvynZPorterSamples/sounds/623441/",
+    "source_title": "\"HA!\" - NO reverb.wav",
+    "excerpt_s": [
+      0.14,
+      0.65
+    ],
+    "author": "WelvynZPorterSamples",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "file": "m-ha-1.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "ha",
+    "source_url": "https://freesound.org/people/A_kn/sounds/712116/",
+    "source_title": "Cartoon-like male attack effort vocal sfx",
+    "excerpt_s": [
+      4.59,
+      4.87
+    ],
+    "author": "A_kn",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "file": "m-ha-2.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "ha",
+    "source_url": "https://freesound.org/people/A_kn/sounds/712116/",
+    "source_title": "Cartoon-like male attack effort vocal sfx",
+    "excerpt_s": [
+      7.93,
+      8.27
+    ],
+    "author": "A_kn",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "file": "m-ha-3.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "ha",
+    "source_url": "https://freesound.org/people/WannyManny/sounds/632075/",
+    "source_title": "Ninja Vocalizations, Several Types.wav",
+    "excerpt_s": [
+      3.46,
+      3.71
+    ],
+    "author": "WannyManny",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "file": "m-hai-0.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "hai",
+    "source_url": "https://freesound.org/people/Vilaa2404/sounds/867892/",
+    "source_title": "Japanese \"hai\"",
+    "excerpt_s": [
+      0.0,
+      0.6
+    ],
+    "author": "Vilaa2404",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "kabuki-style \"hai\" with room reverb"
+  },
+  {
+    "file": "m-hai-1.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "hai",
+    "source_url": "https://freesound.org/people/WannyManny/sounds/632075/",
+    "source_title": "Ninja Vocalizations, Several Types.wav",
+    "excerpt_s": [
+      10.64,
+      11.17
+    ],
+    "author": "WannyManny",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "file": "m-yo-0.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "yo",
+    "source_url": "https://freesound.org/people/Vilaa2404/sounds/867896/",
+    "source_title": "Japanese yo 2short",
+    "excerpt_s": [
+      0.0,
+      1.2
+    ],
+    "author": "Vilaa2404",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  {
+    "file": "m-yo-1.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "yo",
+    "source_url": "https://freesound.org/people/Vilaa2404/sounds/867898/",
+    "source_title": "Japanese yo 3short",
+    "excerpt_s": [
+      0.0,
+      1.2
+    ],
+    "author": "Vilaa2404",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  {
+    "file": "m-yo-2.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "yo",
+    "source_url": "https://freesound.org/people/Vilaa2404/sounds/867899/",
+    "source_title": "Japanese \"yoooooo\" 4",
+    "excerpt_s": [
+      0.03,
+      1.2
+    ],
+    "author": "Vilaa2404",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "held kabuki \"yoooo\", truncated to 1.2 s with 200 ms fade"
+  },
+  {
+    "file": "m-iyo-0.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "iyo",
+    "source_url": "https://freesound.org/people/Vilaa2404/sounds/867901/",
+    "source_title": "Japanese yo 5short",
+    "excerpt_s": [
+      0.0,
+      1.2
+    ],
+    "author": "Vilaa2404",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  {
+    "file": "m-iyo-1.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "iyo",
+    "source_url": "https://freesound.org/people/Vilaa2404/sounds/867900/",
+    "source_title": "Japanese yo 4short",
+    "excerpt_s": [
+      0.0,
+      1.2
+    ],
+    "author": "Vilaa2404",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  {
+    "file": "m-iya-0.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "iya",
+    "source_url": "https://freesound.org/people/oldedgar/sounds/97977/",
+    "source_title": "Kung Fu Yell.aif",
+    "excerpt_s": [
+      2.05,
+      3.25
+    ],
+    "author": "oldedgar",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "yell heard as \"u-iyaa\" (kung-fu style)"
+  },
+  {
+    "file": "m-iya-1.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "iya",
+    "source_url": "https://freesound.org/people/oldedgar/sounds/97977/",
+    "source_title": "Kung Fu Yell.aif",
+    "excerpt_s": [
+      0.26,
+      1.2
+    ],
+    "author": "oldedgar",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "yell heard as \"ho-yaa\" (kung-fu style); used as an iya variant"
+  },
+  {
+    "file": "m-haiya-0.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "haiya",
+    "source_url": "https://freesound.org/people/Envywolf/sounds/392762/",
+    "source_title": "GritoNinja.wav",
+    "excerpt_s": [
+      0.88,
+      1.61
+    ],
+    "author": "Envywolf",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "\"hai-ya!\" (ninja yell)"
+  },
+  {
+    "file": "m-ya-0.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "ya",
+    "source_url": "https://freesound.org/people/Nox_Sound/sounds/474651/",
+    "source_title": "Voice_Male_Attack_Mono.wav",
+    "excerpt_s": [
+      0.12,
+      0.66
+    ],
+    "author": "Nox_Sound",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/"
+  },
+  {
+    "file": "m-ei-0.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "ei",
+    "source_url": "https://freesound.org/people/khenshom/sounds/527740/",
+    "source_title": "Hey - Men Shouting together - Jewish Wedding",
+    "excerpt_s": [
+      0.03,
+      0.51
+    ],
+    "author": "khenshom",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "small group of men shouting \"hey!\""
+  },
+  {
+    "file": "m-orya-0.ogg",
+    "kind": "kiai",
+    "voice": "m",
+    "word": "orya",
+    "source_url": "https://freesound.org/people/WannyManny/sounds/632075/",
+    "source_title": "Ninja Vocalizations, Several Types.wav",
+    "excerpt_s": [
+      24.07,
+      25.27
+    ],
+    "author": "WannyManny",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "\"oryaa!\" (closest to sorya; no initial s)"
+  },
+  {
+    "file": "f-hai-0.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "hai",
+    "source_url": "https://freesound.org/people/Reitanna/sounds/235015/",
+    "source_title": "japanese - yes1.wav",
+    "excerpt_s": [
+      0.06,
+      0.38
+    ],
+    "author": "Reitanna",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken-firm \"hai\" (not shouted)"
+  },
+  {
+    "file": "f-hai-1.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "hai",
+    "source_url": "https://freesound.org/people/Reitanna/sounds/235118/",
+    "source_title": "japanese - yes2.wav",
+    "excerpt_s": [
+      0.08,
+      0.39
+    ],
+    "author": "Reitanna",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken-firm \"hai\" (not shouted)"
+  },
+  {
+    "file": "f-hai-2.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "hai",
+    "source_url": "https://freesound.org/people/Reitanna/sounds/235012/",
+    "source_title": "japanese - yes4.wav",
+    "excerpt_s": [
+      0.05,
+      0.38
+    ],
+    "author": "Reitanna",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken-firm \"hai\" (not shouted)"
+  },
+  {
+    "file": "f-hai-3.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "hai",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323194/",
+    "source_title": "hai/yes 2",
+    "excerpt_s": [
+      0.03,
+      0.62
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "drawn-out \"haai\" (not shouted)"
+  },
+  {
+    "file": "f-ha-0.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "ha",
+    "source_url": "https://freesound.org/people/vibritherabjit123/sounds/721133/",
+    "source_title": "Female Haha Sound 2 (A)",
+    "excerpt_s": [
+      0.06,
+      0.31
+    ],
+    "author": "vibritherabjit123",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "first \"ha\" of \"ha-ha\""
+  },
+  {
+    "file": "f-ha-1.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "ha",
+    "source_url": "https://freesound.org/people/vibritherabjit123/sounds/721132/",
+    "source_title": "Female Haha Sound 1 (A)",
+    "excerpt_s": [
+      0.11,
+      0.37
+    ],
+    "author": "vibritherabjit123",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "first \"ha\" of \"ha-ha\""
+  },
+  {
+    "file": "f-ha-2.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "ha",
+    "source_url": "https://freesound.org/people/SkyRaeVoicing/sounds/368843/",
+    "source_title": "Female Grunts For Games",
+    "excerpt_s": [
+      0.29,
+      0.52
+    ],
+    "author": "SkyRaeVoicing",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/"
+  },
+  {
+    "file": "f-ha-3.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "ha",
+    "source_url": "https://freesound.org/people/SkyRaeVoicing/sounds/368843/",
+    "source_title": "Female Grunts For Games",
+    "excerpt_s": [
+      1.04,
+      1.28
+    ],
+    "author": "SkyRaeVoicing",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/"
+  },
+  {
+    "file": "f-ha-4.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "ha",
+    "source_url": "https://freesound.org/people/montblanccandies/sounds/273200/",
+    "source_title": "game_vocalizations.wav",
+    "excerpt_s": [
+      17.3,
+      17.56
+    ],
+    "author": "montblanccandies",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/"
+  },
+  {
+    "file": "f-sa-0.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "sa",
+    "source_url": "https://freesound.org/people/AderuMoro/sounds/213295/",
+    "source_title": "Fighting Game grunts - young female.wav",
+    "excerpt_s": [
+      0.38,
+      1.03
+    ],
+    "author": "AderuMoro",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  {
+    "file": "f-iya-0.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "iya",
+    "source_url": "https://freesound.org/people/montblanccandies/sounds/271598/",
+    "source_title": "iya2.wav",
+    "excerpt_s": [
+      0.71,
+      1.35
+    ],
+    "author": "montblanccandies",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/",
+    "note": "\"iyaa\""
+  },
+  {
+    "file": "f-iya-1.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "iya",
+    "source_url": "https://freesound.org/people/SkyRaeVoicing/sounds/368843/",
+    "source_title": "Female Grunts For Games",
+    "excerpt_s": [
+      1.72,
+      2.09
+    ],
+    "author": "SkyRaeVoicing",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/"
+  },
+  {
+    "file": "f-hya-0.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "hya",
+    "source_url": "https://freesound.org/people/vibritherabjit123/sounds/721123/",
+    "source_title": "Female Hyah Sound 1 (A)",
+    "excerpt_s": [
+      0.03,
+      0.71
+    ],
+    "author": "vibritherabjit123",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "\"hii-yah!\" karate-style"
+  },
+  {
+    "file": "f-hyo-0.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "hyo",
+    "source_url": "https://freesound.org/people/vibritherabjit123/sounds/721137/",
+    "source_title": "Female Hyoh Sound (A)",
+    "excerpt_s": [
+      0.03,
+      0.44
+    ],
+    "author": "vibritherabjit123",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "\"hyoh!\" per author description"
+  },
+  {
+    "file": "f-ya-0.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "ya",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323202/",
+    "source_title": "yatta",
+    "excerpt_s": [
+      0.08,
+      0.44
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "\"ya\" from \"yatta!\""
+  },
+  {
+    "file": "f-ho-0.ogg",
+    "kind": "kiai",
+    "voice": "f",
+    "word": "ho",
+    "source_url": "https://freesound.org/people/montblanccandies/sounds/273200/",
+    "source_title": "game_vocalizations.wav",
+    "excerpt_s": [
+      16.63,
+      16.86
+    ],
+    "author": "montblanccandies",
+    "license": "CC BY 3.0",
+    "license_url": "https://creativecommons.org/licenses/by/3.0/"
+  },
+  {
+    "file": "m-count-ichi-0.ogg",
+    "kind": "count",
+    "voice": "m",
+    "word": "ichi",
+    "source_url": "https://freesound.org/people/dobroide/sounds/52786/",
+    "source_title": "japanese.numbers.wav",
+    "excerpt_s": [
+      0.13,
+      0.6
+    ],
+    "author": "dobroide",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "m-count-ni-0.ogg",
+    "kind": "count",
+    "voice": "m",
+    "word": "ni",
+    "source_url": "https://freesound.org/people/dobroide/sounds/52786/",
+    "source_title": "japanese.numbers.wav",
+    "excerpt_s": [
+      1.05,
+      1.5
+    ],
+    "author": "dobroide",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "m-count-san-0.ogg",
+    "kind": "count",
+    "voice": "m",
+    "word": "san",
+    "source_url": "https://freesound.org/people/dobroide/sounds/52786/",
+    "source_title": "japanese.numbers.wav",
+    "excerpt_s": [
+      2.29,
+      2.87
+    ],
+    "author": "dobroide",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "m-count-yon-0.ogg",
+    "kind": "count",
+    "voice": "m",
+    "word": "yon",
+    "source_url": "https://freesound.org/people/dobroide/sounds/52786/",
+    "source_title": "japanese.numbers.wav",
+    "excerpt_s": [
+      3.59,
+      4.09
+    ],
+    "author": "dobroide",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "m-count-go-0.ogg",
+    "kind": "count",
+    "voice": "m",
+    "word": "go",
+    "source_url": "https://freesound.org/people/dobroide/sounds/52786/",
+    "source_title": "japanese.numbers.wav",
+    "excerpt_s": [
+      4.79,
+      5.28
+    ],
+    "author": "dobroide",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "m-count-roku-0.ogg",
+    "kind": "count",
+    "voice": "m",
+    "word": "roku",
+    "source_url": "https://freesound.org/people/dobroide/sounds/52786/",
+    "source_title": "japanese.numbers.wav",
+    "excerpt_s": [
+      5.99,
+      6.65
+    ],
+    "author": "dobroide",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "m-count-nana-0.ogg",
+    "kind": "count",
+    "voice": "m",
+    "word": "nana",
+    "source_url": "https://freesound.org/people/dobroide/sounds/52786/",
+    "source_title": "japanese.numbers.wav",
+    "excerpt_s": [
+      7.18,
+      7.71
+    ],
+    "author": "dobroide",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "m-count-hachi-0.ogg",
+    "kind": "count",
+    "voice": "m",
+    "word": "hachi",
+    "source_url": "https://freesound.org/people/dobroide/sounds/52786/",
+    "source_title": "japanese.numbers.wav",
+    "excerpt_s": [
+      8.35,
+      8.97
+    ],
+    "author": "dobroide",
+    "license": "CC BY 4.0",
+    "license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "f-count-ichi-0.ogg",
+    "kind": "count",
+    "voice": "f",
+    "word": "ichi",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323188/",
+    "source_title": "counting 0-10",
+    "excerpt_s": [
+      0.91,
+      1.4
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "f-count-ni-0.ogg",
+    "kind": "count",
+    "voice": "f",
+    "word": "ni",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323188/",
+    "source_title": "counting 0-10",
+    "excerpt_s": [
+      1.52,
+      2.06
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "f-count-san-0.ogg",
+    "kind": "count",
+    "voice": "f",
+    "word": "san",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323188/",
+    "source_title": "counting 0-10",
+    "excerpt_s": [
+      2.38,
+      2.9
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "f-count-shi-0.ogg",
+    "kind": "count",
+    "voice": "f",
+    "word": "shi",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323188/",
+    "source_title": "counting 0-10",
+    "excerpt_s": [
+      3.03,
+      3.41
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "f-count-go-0.ogg",
+    "kind": "count",
+    "voice": "f",
+    "word": "go",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323188/",
+    "source_title": "counting 0-10",
+    "excerpt_s": [
+      3.77,
+      4.19
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "f-count-roku-0.ogg",
+    "kind": "count",
+    "voice": "f",
+    "word": "roku",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323188/",
+    "source_title": "counting 0-10",
+    "excerpt_s": [
+      4.49,
+      4.87
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "f-count-shichi-0.ogg",
+    "kind": "count",
+    "voice": "f",
+    "word": "shichi",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323188/",
+    "source_title": "counting 0-10",
+    "excerpt_s": [
+      5.33,
+      5.84
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken count (calm, not shouted)"
+  },
+  {
+    "file": "f-count-hachi-0.ogg",
+    "kind": "count",
+    "voice": "f",
+    "word": "hachi",
+    "source_url": "https://freesound.org/people/Alivvie/sounds/323188/",
+    "source_title": "counting 0-10",
+    "excerpt_s": [
+      6.11,
+      6.52
+    ],
+    "author": "Alivvie",
+    "license": "CC0 1.0",
+    "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "note": "spoken count (calm, not shouted)"
+  }
+]

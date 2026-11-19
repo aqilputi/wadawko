@@ -5,6 +5,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ## [Não lançado]
 
 ### Adicionado
+- **Kiai com vozes reais**: gravações masculinas e femininas (ha, hai, iya, yo, sa, hyo, orya…)
+  no lugar do sintetizador animalese; voz masc/fem por pessoa ou por linha.
+- **Contagem falada no count-in** (ichi, ni, san…), em voz masculina ou feminina.
 - **Visão por pessoa** (`Alt+V`): o editor mostra só as linhas de uma pessoa.
 - Aba **LINHAS** no painel da esquerda (cabeçalhos de faixa com o que o inspector mostra).
 - **Minimap** à direita do editor vertical (clique/arraste para rolar) e a grade **acompanha a seleção**

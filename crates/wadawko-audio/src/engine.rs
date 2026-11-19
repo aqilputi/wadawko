@@ -16,10 +16,11 @@ use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::time::Instant;
 
 use wadawko_samples::SampleBank;
+use wadawko_samples::kiai::{Voice as KiaiVoice, count_word};
 
 use crate::dsp::{Biquad, BiquadState, Compressor, CompressorParams, FilterChain, MAX_BANDS, Rng, soft_clip};
 use crate::fue::Fue;
-use crate::metronome::{ClickSound, ClickTone, Metronome};
+use crate::metronome::{ClickSound, ClickTone, CountVoice, Metronome};
 use crate::schedule::{Event, EventKind, GrainEv, HitEv, MAX_BUSES, MAX_CHANNELS, MAX_STRIPS, NoiseEv, PPQ, PREVIEW_KYAI_SLOT, PREVIEW_SLOT, Schedule};
 
 /// Pool fixo de vozes (golpes, grãos de kiai, cliques); estourou, rouba a mais antiga.
@@ -46,12 +47,20 @@ pub struct MonoSample {
 /// compartilhe (`Arc`) entre o engine ao vivo e os renders offline.
 pub struct SampleSet {
     pub samples: Vec<MonoSample>,
+    /// contagem falada: [masculina, feminina][número − 1] → sample
+    pub counts: [[Option<u16>; 8]; 2],
 }
 
 impl SampleSet {
     pub fn from_bank(bank: &SampleBank) -> Arc<SampleSet> {
         let samples = bank.samples().iter().map(|s| MonoSample { data: s.frames.as_chunks::<2>().0.iter().map(|f| (f[0] + f[1]) * 0.5).collect(), sr: s.sr }).collect();
-        Arc::new(SampleSet { samples })
+        let mut counts = [[None; 8]; 2];
+        for (vi, voice) in [KiaiVoice::Male, KiaiVoice::Female].into_iter().enumerate() {
+            for n in 1..=8 {
+                counts[vi][n - 1] = count_word(n, voice).and_then(|w| bank.kiai_takes(voice, w, true).first().map(|id| id.0));
+            }
+        }
+        Arc::new(SampleSet { samples, counts })
     }
 }
 
@@ -386,6 +395,8 @@ struct Voice {
     rim: bool,
     /// golpe de tambor (entra no choke); grãos de kiai e cliques não
     drum: bool,
+    /// sample direto no master, sem canal (contagem falada)
+    direct: bool,
     sample: u16,
     pos: f64,
     inc: f64,
@@ -422,6 +433,7 @@ impl Voice {
         strip: 0,
         rim: false,
         drum: false,
+        direct: false,
         sample: 0,
         pos: 0.0,
         inc: 1.0,
@@ -1034,11 +1046,41 @@ impl Engine {
             None => 4,
         }
         .clamp(1, 16);
+        let vi = match self.metro.voice {
+            CountVoice::Off => None,
+            CountVoice::Male => Some(0),
+            CountVoice::Female => Some(1),
+        };
         for i in 0..beats {
             let t = self.metro.count_in_tone(i);
-            self.trigger_click(t, self.lead + offset as u32 + (i as f64 * spb) as u32);
+            let at = self.lead + offset as u32 + (i as f64 * spb) as u32;
+            self.trigger_click(t, at);
+            if let Some(id) = vi.and_then(|v| self.samples.counts[v].get(i).copied().flatten()) {
+                self.trigger_spoken(id, (0.55 * self.metro.gain.clamp(0.05, 2.0)).min(1.0), at, spb as u32);
+            }
         }
         self.preroll = (beats as f64 * spb) as u64;
+    }
+
+    /// Número falado da contagem: o sample inteiro direto no master (como o
+    /// clique), cortado antes do próximo tempo.
+    fn trigger_spoken(&mut self, sample: u16, gain: f32, at: u32, max_frames: u32) {
+        let Some(s) = self.samples.samples.get(sample as usize) else { return };
+        let len = s.data.len() as f64;
+        let inc = s.sr as f64 / self.sr;
+        let i = self.alloc();
+        let v = &mut self.voices[i];
+        v.kind = VKind::Sample;
+        v.direct = true;
+        v.delay = at;
+        v.sample = sample;
+        v.pos = 0.0;
+        v.inc = inc;
+        v.src_end = len;
+        v.gain = gain;
+        v.dur = ((len / inc) as u32).min(max_frames.saturating_sub(64)).max(2);
+        v.att = 16;
+        v.rel_start = v.dur.saturating_sub(480).max(v.att);
     }
 
     fn trigger_click(&mut self, t: ClickTone, at: u32) {
@@ -1353,6 +1395,16 @@ impl Engine {
                 }
                 continue;
             }
+            if v.direct {
+                // contagem falada: direto no master
+                let mut tmp = [0.0f32; BLOCK];
+                play_sample(v, &samples.samples[v.sample as usize].data[..], &mut tmp[f0..n]);
+                for f in f0..n {
+                    master_l[f] += tmp[f];
+                    master_r[f] += tmp[f];
+                }
+                continue;
+            }
             let s = v.strip as usize;
             let buf = &mut strip_buf[s * BLOCK..s * BLOCK + n];
             if !strips[s].dirty {
@@ -1360,36 +1412,7 @@ impl Engine {
                 strips[s].dirty = true;
             }
             match v.kind {
-                VKind::Sample => {
-                    let data = &samples.samples[v.sample as usize].data[..];
-                    let last = data.len() - 1;
-                    for x in &mut buf[f0..] {
-                        if v.pos >= v.src_end || v.t >= v.dur {
-                            v.on = false;
-                            break;
-                        }
-                        let i = v.pos as usize;
-                        if i > last {
-                            v.on = false;
-                            break;
-                        }
-                        // interpolação cúbica (Catmull-Rom) com bordas repetidas
-                        let fr = (v.pos - i as f64) as f32;
-                        let (x0, x1, x2, x3) = (data[i.saturating_sub(1)], data[i], data[(i + 1).min(last)], data[(i + 2).min(last)]);
-                        let c1 = 0.5 * (x2 - x0);
-                        let c2 = x0 - 2.5 * x1 + 2.0 * x2 - 0.5 * x3;
-                        let c3 = 0.5 * (x3 - x0) + 1.5 * (x1 - x2);
-                        let y = ((c3 * fr + c2) * fr + c1) * fr + x1;
-                        let (e, alive) = v.envelope();
-                        *x += y * v.gain * e;
-                        v.pos += v.inc;
-                        v.t += 1;
-                        if !alive {
-                            v.on = false;
-                            break;
-                        }
-                    }
-                }
+                VKind::Sample => play_sample(v, &samples.samples[v.sample as usize].data[..], &mut buf[f0..]),
                 VKind::Noise => {
                     for x in &mut buf[f0..] {
                         if v.t >= v.dur {
@@ -1544,4 +1567,35 @@ impl Engine {
 /// Evento avulso com tick (útil em testes e para montar `Schedule`s à mão).
 pub fn event(tick: f64, kind: EventKind) -> Event {
     Event { tick, kind }
+}
+
+/// Toca um sample (interpolação cúbica Catmull-Rom, bordas repetidas) com o
+/// envelope da voz, somando em `out`; desliga a voz no fim.
+fn play_sample(v: &mut Voice, data: &[f32], out: &mut [f32]) {
+    let last = data.len() - 1;
+    for x in out {
+        if v.pos >= v.src_end || v.t >= v.dur {
+            v.on = false;
+            break;
+        }
+        let i = v.pos as usize;
+        if i > last {
+            v.on = false;
+            break;
+        }
+        let fr = (v.pos - i as f64) as f32;
+        let (x0, x1, x2, x3) = (data[i.saturating_sub(1)], data[i], data[(i + 1).min(last)], data[(i + 2).min(last)]);
+        let c1 = 0.5 * (x2 - x0);
+        let c2 = x0 - 2.5 * x1 + 2.0 * x2 - 0.5 * x3;
+        let c3 = 0.5 * (x3 - x0) + 1.5 * (x1 - x2);
+        let y = ((c3 * fr + c2) * fr + c1) * fr + x1;
+        let (e, alive) = v.envelope();
+        *x += y * v.gain * e;
+        v.pos += v.inc;
+        v.t += 1;
+        if !alive {
+            v.on = false;
+            break;
+        }
+    }
 }

@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-19T03:35:12Z
+  at: 2026-11-19T03:48:34Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -209,6 +209,7 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `t` `d` | `transport::MetroSubdiv` | Metrônomo: subdivisão (1 → 2 → 3 → 4 por tempo) |
 | `Space` `t` `v` | `transport::MetroVolume` | Metrônomo: volume… |
 | `Space` `t` `k` | `transport::MetroSound` | Metrônomo: timbre (bipe → shime → kane) |
+| `Space` `t` `i` | `transport::CountVoice` | Count-in: contagem falada (sem voz → masculina → feminina) |
 | `Space` `t` `.` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
 | `Space` `t` `t` | `transport::ToggleTrainer` | Treino (rampa de tempo): ligar/desligar |
 | `Space` `t` `w` | `transport::ToggleSwing` | Reto / swing |

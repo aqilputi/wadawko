@@ -44,6 +44,7 @@ pub fn load_settings() -> Settings {
     metro.subdiv = v["metro_subdiv"].as_u64().map_or(1, |d| d.clamp(1, 4) as u8);
     metro.gain = v["metro_gain"].as_f64().map_or(1.0, |g| g.clamp(0.0, 2.0) as f32);
     metro.sound = v["metro_sound"].as_str().and_then(wadawko_audio::ClickSound::from_name).unwrap_or_default();
+    metro.voice = v["metro_voice"].as_str().and_then(wadawko_audio::CountVoice::from_name).unwrap_or_default();
     let row_h = v["row_h"].as_f64().map_or(CELL_H, |h| (h as f32).clamp(CELL_H_MIN, CELL_H_MAX));
     let layout = v["layout"].as_str().and_then(Layout::parse).unwrap_or_default();
     let tracker_row_h = v["tracker_row_h"].as_f64().map_or(ROW_H, |h| (h as f32).clamp(ROW_H_MIN, ROW_H_MAX));
@@ -70,6 +71,7 @@ pub fn save_settings(s: Settings) -> Result<()> {
         "metro_subdiv": s.metro.subdiv,
         "metro_gain": s.metro.gain,
         "metro_sound": s.metro.sound.name(),
+        "metro_voice": s.metro.voice.name(),
         "count_in_loop": s.count_in_loop,
         "row_h": s.row_h,
         "layout": s.layout.name(),

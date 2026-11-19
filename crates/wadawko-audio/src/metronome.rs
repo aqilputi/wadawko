@@ -36,6 +36,40 @@ pub struct Metronome {
     pub gain: f32,
     /// timbre do clique
     pub sound: ClickSound,
+    /// contagem falada no count-in ("ichi, ni, san…")
+    pub voice: CountVoice,
+}
+
+/// Voz da contagem falada do count-in (gravações de `kiai/`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum CountVoice {
+    /// só os cliques
+    #[default]
+    Off,
+    Male,
+    Female,
+}
+
+impl CountVoice {
+    pub const ALL: [CountVoice; 3] = [CountVoice::Off, CountVoice::Male, CountVoice::Female];
+
+    /// nome curto (UI e `settings.json`)
+    pub fn name(self) -> &'static str {
+        match self {
+            CountVoice::Off => "sem voz",
+            CountVoice::Male => "voz m",
+            CountVoice::Female => "voz f",
+        }
+    }
+
+    pub fn from_name(s: &str) -> Option<CountVoice> {
+        CountVoice::ALL.into_iter().find(|c| c.name() == s)
+    }
+
+    pub fn next(self) -> CountVoice {
+        let i = CountVoice::ALL.iter().position(|&c| c == self).unwrap_or(0);
+        CountVoice::ALL[(i + 1) % CountVoice::ALL.len()]
+    }
 }
 
 /// Timbre do clique do metrônomo (sintetizado no engine, direto no master).
@@ -84,7 +118,7 @@ impl ClickSound {
 
 impl Default for Metronome {
     fn default() -> Self {
-        Metronome { pattern: [ClickLevel::Normal; MAX_PATTERN], len: 0, subdiv: 1, gain: 1.0, sound: ClickSound::Beep }
+        Metronome { pattern: [ClickLevel::Normal; MAX_PATTERN], len: 0, subdiv: 1, gain: 1.0, sound: ClickSound::Beep, voice: CountVoice::Off }
     }
 }
 

@@ -94,8 +94,12 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   padrão — ou "Linha: próxima cor" na paleta.
 - **Dinâmica**: a faixa fina acima das células — clique para escolher pp…ff; `<` e `>` marcam
   crescendo/diminuendo. Há dinâmica geral do compasso e, por linha, a sub-linha de dinâmica.
-- **Kiai**: sub-linha de gritos (`Ctrl+Shift+K` na linha do cursor) — o texto é cantado pelo
-  sintetizador de voz na hora certa.
+- **Kiai**: sub-linha de gritos (`Ctrl+Shift+K` na linha do cursor), uma sílaba por célula. Toca
+  com **gravações reais** de vozes masculinas e femininas: a palavra inteira quando ela foi
+  gravada (`ha!`, `hai!`, `iya!`, `yo!`, `sa!`, `hyo!`, `orya!`…), senão sílaba a sílaba pela
+  vogal (`so re!` → "yo"/"ho" + "ei"/"hai"). A voz é de quem toca a célula: escolha **masc/fem**
+  no cartão da pessoa (página Pessoas) ou no menu da linha ("voz"); em "auto" ela é sorteada pelo
+  nome, sempre a mesma.
 - **Régua** (números 1 e 2 e…): clique para escolher de onde tocar; arraste para rolar. A
   **faixa fina em cima** da régua é a do loop por trecho (abaixo).
 - **Zoom**: `Ctrl+roda` ou os botões 🔍−/🔍+.
@@ -220,6 +224,8 @@ botões prontos. O áudio, a esteira e o MIDI tocam os efeitos; a partitura aind
   renomeia, ✕ remove (Ctrl+Z volta). Ficam salvos na música e acompanham as seções.
 - **Count-in a cada volta** (⏱↺, aparece com o loop ligado): antes de cada repetição toca um
   compasso de contagem, para o grupo respirar entre as voltas. Combina com o treino.
+- **Contagem falada** (chip "sem voz / voz m / voz f" ao lado do count-in; vim `space t i`): o
+  count-in fala *ichi, ni, san, shi/yon…* junto com os cliques.
 - **Altura das linhas**: `Ctrl+Alt+↑/↓` (vim: `z k`/`z j`, `z =` volta ao padrão) — linhas
   baixas cabem mais na tela (abaixo de 32 px some o nome do instrumento). Fica salva.
 - **Ensaiar como…** (`Alt+P`, chip 👤 na barra de cima; vim `space p`): escolha uma pessoa e o som
