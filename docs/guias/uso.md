@@ -129,6 +129,8 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   miniatura, com a faixa de cor de cada seção, as notas em tom suave da cor de cada linha (em
   passagens densas, a densidade por tempo), o retângulo da área
   visível e o playhead. Clique ou arraste nele para ir até ali. `Ctrl+K` → "Minimap" esconde.
+- Se você **rolar ou mover o cursor tocando**, o seguir pausa (para não puxar a tela de volta
+  enquanto edita); volta sozinho ao parar, ou com `Scroll Lock`.
 - Tocando, a grade **segue o playhead** virando a página; `space v shift-f` (ou a paleta) troca para
   **centrado** (a linha que soa fica fixa e a música rola por baixo — mais suave, mais pesado), e
   `Scroll Lock` / `space v f` liga/desliga o seguir.
@@ -202,7 +204,9 @@ botões prontos. O áudio, a esteira e o MIDI tocam os efeitos; a partitura aind
 - `Space` toca/para (no modo simples, quando não está digitando). A grade acompanha o
   playhead; as células acendem quando a nota soa.
 - **Loop**, **metrônomo**, **count-in** e **reto/swing** na barra de cima.
-- **Treino** (🏃): começa numa % do BPM e acelera a cada volta (% inicial e passo editáveis).
+- **Treino**: começa numa % do BPM e acelera a cada volta. Com o treino ligado, os chips da barra
+  ajustam: % inicial, passo por degrau, **voltas por degrau** (×1 → ×4: repete cada andamento N
+  vezes antes de subir) e **até %** (o andamento onde para de subir — ex.: treinar até 90 %).
 - **Metrônomo com acentos**: com o 🎵 ligado aparecem dois chips. O do **padrão** (`auto`,
   `ABBB`…) abre um campo: `A` = forte, `B` = fraco, `.` = mudo, um caractere por tempo (até 16,
   repete se o compasso for maior; vazio = automático, forte no 1). Ex.: `A.B.` para marcar só
@@ -223,7 +227,7 @@ botões prontos. O áudio, a esteira e o MIDI tocam os efeitos; a partitura aind
   barra de status mostra `👤 sem Ana`. Não muda a música nem entra no desfazer. `Alt+Shift+P` volta
   a todos; "Ensaiar como: ouvir sem / só" alterna.
 - **Modo projeção** (`F10`, ou `Ctrl+K` → "Modo projeção"): tela cheia em letras grandes para a TV
-  do ensaio — seção atual e a volta (`2/3`), compasso, os tempos acendendo, a próxima seção e o
+  do ensaio (durante o count-in, a contagem gigante 4… 3… 2… 1) — seção atual e a volta (`2/3`), compasso, os tempos acendendo, a próxima seção e o
   BPM que está soando; a lista de linhas com as cores embaixo. `Espaço` toca/para, `Esc` sai.
 - **Tap tempo**: bata no **TAP** (ou `Alt+T`; no vim `Space t .`) no ritmo — da 2ª batida em
   diante o BPM segue a média das últimas 8; parar 2 s recomeça. Um `Ctrl+Z` desfaz o tap inteiro.

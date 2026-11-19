@@ -162,6 +162,8 @@ pub struct Shell {
     pub hover_band_key: Option<i32>,
     /// a grade segue o playhead tocando (`view::ToggleFollow`)
     pub follow_on: bool,
+    /// seguir pausado porque a pessoa mexeu (rolou/moveu o cursor) tocando; volta ao parar
+    pub follow_suspended: bool,
     /// seguir centrado (linha fixa a 40 %) em vez de virar a página (`view::ToggleFollowCenter`)
     pub follow_center: bool,
     /// minimap: geometria do último desenho e arrasto em curso
@@ -314,6 +316,7 @@ impl Shell {
             mini_open: true,
             hover_band_key: None,
             follow_on: true,
+            follow_suspended: false,
             follow_center: false,
             last_sel: None,
             drag_ptr: Default::default(),
@@ -762,7 +765,12 @@ impl Shell {
     }
 
     fn follow(&mut self, cx: &mut Context<Self>) {
-        if !self.follow_on || !self.playing(cx) || !self.on_grid() {
+        if !self.playing(cx) {
+            // parou: o seguir volta para a próxima vez
+            self.follow_suspended = false;
+            return;
+        }
+        if !self.follow_on || self.follow_suspended || !self.on_grid() {
             return;
         }
         let Some(ph) = self.playhead(cx) else { return };
@@ -935,7 +943,14 @@ impl Shell {
         if self.last_sel != Some(sel) {
             let first = self.last_sel.is_none();
             self.last_sel = Some(sel);
-            if !first && self.on_grid() && !self.playing(cx) && !self.grid.read(cx).is_drag_selecting() {
+            if !first && self.on_grid() && !self.grid.read(cx).is_drag_selecting() {
+                if self.playing(cx) {
+                    // mexeu tocando: o seguir pausa (como no Live) até parar
+                    if self.follow_on && !self.follow_suspended {
+                        self.follow_suspended = true;
+                        self.flash("seguir pausado enquanto você edita — para, ou Scroll Lock, retoma", cx);
+                    }
+                }
                 self.reveal_cursor(cx);
             }
         }
@@ -1131,6 +1146,13 @@ impl Shell {
                     .track_scroll(&self.scroll)
                     .p(px(20.0))
                     .when(header.is_some(), |d| d.pt(px(12.0)))
+                    // rolar tocando pausa o seguir (volta ao parar)
+                    .on_scroll(cx.listener(|this, _: &gpui_kit::ScrollEvent, _, cx| {
+                        if this.follow_on && !this.follow_suspended && this.playing(cx) {
+                            this.follow_suspended = true;
+                            this.flash("seguir pausado — para, ou Scroll Lock, retoma", cx);
+                        }
+                    }))
                     // a faixa da linha sob o mouse muda → só o Shell (overlay) redesenha
                     .on_mouse_move(cx.listener(|this, ev: &gpui_kit::MouseMoveEvent, _, cx| {
                         let k = this.grid.read(cx).vrow_band(ev.position).map(|(y, ..)| y.round() as i32);

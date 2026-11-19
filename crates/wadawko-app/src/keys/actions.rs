@@ -29,6 +29,8 @@ pub mod transport {
             SetBpm,
             TrainerPct,
             TrainerStep,
+            TrainerTarget,
+            TrainerLaps,
             MetroPattern,
             MetroSubdiv,
             MetroVolume,

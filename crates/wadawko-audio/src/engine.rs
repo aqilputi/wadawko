@@ -71,6 +71,10 @@ pub enum MasterMode {
 pub struct Trainer {
     pub base_bpm: f32,
     pub step: f32,
+    /// BPM alvo (para de subir aí; ≤ `base_bpm` na prática, mas pode passar)
+    pub target_bpm: f32,
+    /// quantas voltas em cada degrau antes de subir (≥ 1)
+    pub laps: u32,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -1118,8 +1122,10 @@ impl Engine {
                 let wraps = self.wraps;
                 self.emit(EngineEvent::LoopWrapped { wraps, frame });
                 // treino: a cada volta do loop, sobe o BPM até o tempo base
-                if let Some(t) = self.trainer {
-                    let next = (self.bpm + t.base_bpm * t.step).round().min(t.base_bpm);
+                if let Some(t) = self.trainer
+                    && self.wraps.is_multiple_of(t.laps.max(1))
+                {
+                    let next = (self.bpm + t.base_bpm * t.step).round().min(t.target_bpm);
                     if next != self.bpm {
                         self.bpm = next;
                         self.emit(EngineEvent::BpmChanged { bpm: next });

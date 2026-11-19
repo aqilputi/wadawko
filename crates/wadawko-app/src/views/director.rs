@@ -79,6 +79,20 @@ impl Shell {
                 "■ parado · Espaço toca · Esc sai"
             }),
         );
+        // count-in (antes de tocar ou entre as voltas): contagem gigante no meio da tela
+        let count = st.audio.as_ref().and_then(|a| {
+            let c = a.clock();
+            let snap = c.snapshot();
+            let spb = 60.0 / snap.bpm.max(1.0) as f64 * c.sample_rate as f64;
+            (snap.playing && snap.preroll_frames > 0 && spb > 0.0).then(|| (snap.preroll_frames as f64 / spb).ceil() as u32)
+        });
+        if let Some(n) = count {
+            return root
+                .child(
+                    div().flex_1().flex().items_center().justify_center().child(div().text_size(px(360.0)).font_weight(FontWeight::BOLD).text_color(accent).child(SharedString::from(n.to_string()))),
+                )
+                .into_any_element();
+        }
         match info {
             Some(i) => {
                 let mut dots = div().flex().gap(px(24.0));

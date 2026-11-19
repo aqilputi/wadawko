@@ -186,7 +186,7 @@ fn trainer_raises_bpm_each_lap() {
     let (mut eng, mut ctl) = pair(MasterMode::Clean);
     let mut song = one_track(&[(0, "don")], 2);
     song.tempo = 240.0;
-    let trainer = Some(TrainerOptions { start_pct: 0.5, step: 0.25 });
+    let trainer = Some(TrainerOptions::new(0.5, 0.25));
     // sem região o treino não vale (como no web app)
     ctl.set_song(&song, &CompileOptions::default());
     assert_eq!(ctl.play(PlayOptions { looping: true, trainer, ..Default::default() }), 240.0);
@@ -643,4 +643,19 @@ fn meters_report_channel_bus_and_master_peaks() {
     let m = Meters::take(&meters.master[0]);
     assert!(meters.take_clip(), "LED de clip (pico do master {m})");
     assert!(!meters.take_clip(), "zera ao ler");
+}
+
+#[test]
+fn trainer_laps_and_target() {
+    let (mut eng, mut ctl) = pair(MasterMode::Clean);
+    let mut song = one_track(&[(0, "don")], 1);
+    song.tempo = 200.0;
+    ctl.set_song(&song, &CompileOptions { region: Some(Region { start_bar: 0, end_bar: 1 }), ..Default::default() });
+    // começa em 50 % (100), sobe 10 % (20) a cada 2 voltas, para em 70 % (140)
+    let t = TrainerOptions { start_pct: 0.5, step: 0.1, target_pct: 0.7, laps: 2 };
+    assert_eq!(ctl.play(PlayOptions { looping: true, trainer: Some(t), ..Default::default() }), 100.0);
+    pump(&mut eng, 20.0);
+    let bpms: Vec<f32> = ctl.poll_events().iter().filter_map(|e| if let EngineEvent::BpmChanged { bpm } = *e { Some(bpm) } else { None }).collect();
+    assert_eq!(bpms, vec![120.0, 140.0], "sobe a cada 2 voltas e para no alvo");
+    assert_eq!(eng.bpm(), 140.0);
 }

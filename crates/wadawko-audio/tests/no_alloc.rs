@@ -69,7 +69,7 @@ fn realtime_path_does_not_allocate() {
     }
     let region = CompileOptions { region: Some(Region { start_bar: 0, end_bar: 2 }), ..Default::default() };
     ctl.set_song(&song, &region);
-    ctl.play(PlayOptions { looping: true, count_in: true, trainer: Some(TrainerOptions { start_pct: 0.6, step: 0.2 }), ..Default::default() });
+    ctl.play(PlayOptions { looping: true, count_in: true, trainer: Some(TrainerOptions::new(0.6, 0.2)), ..Default::default() });
     callback(&mut eng, 1500); // 16 s: contagem + várias voltas com o BPM subindo
 
     // edição durante o playback: schedules novos chegam e os velhos voltam pela fila de lixo

@@ -27,6 +27,17 @@ use crate::schedule::{CompileOptions, Compiler, EventKind, PREVIEW_KYAI_SLOT, PR
 pub struct TrainerOptions {
     pub start_pct: f64,
     pub step: f64,
+    /// fração do andamento onde o treino para de subir (1 = o andamento da música)
+    pub target_pct: f64,
+    /// voltas em cada degrau antes de subir
+    pub laps: u32,
+}
+
+impl TrainerOptions {
+    /// Treino clássico: sobe a cada volta até o andamento da música.
+    pub fn new(start_pct: f64, step: f64) -> Self {
+        TrainerOptions { start_pct, step, target_pct: 1.0, laps: 1 }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -181,7 +192,7 @@ impl Controller {
             looping: opts.looping,
             count_in: opts.count_in,
             count_in_loop: opts.count_in_loop,
-            trainer: trainer.map(|t| Trainer { base_bpm: base as f32, step: t.step as f32 }),
+            trainer: trainer.map(|t| Trainer { base_bpm: base as f32, step: t.step as f32, target_bpm: (base * t.target_pct).round() as f32, laps: t.laps.max(1) }),
         }));
         bpm
     }

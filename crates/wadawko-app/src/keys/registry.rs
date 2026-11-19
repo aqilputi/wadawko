@@ -160,6 +160,8 @@ pub static SPECS: &[Spec] = &[
     spec!("transport::SetBpm", "Definir BPM…", "Transporte", "tempo andamento"),
     spec!("transport::TrainerPct", "Treino: % inicial…", "Transporte", "trainer"),
     spec!("transport::TrainerStep", "Treino: passo por volta…", "Transporte", "trainer"),
+    spec!("transport::TrainerTarget", "Treino: andamento alvo (%)…", "Transporte", "trainer alvo meta"),
+    spec!("transport::TrainerLaps", "Treino: voltas por degrau (1 → 2 → 3 → 4)", "Transporte", "trainer voltas repetir degrau"),
     spec!("transport::ClearRegion", "Tocar a música inteira (limpar trecho de loop e seções selecionadas)", "Transporte", "região trecho loop limpar"),
     spec!("transport::PlayFue", "Fue 🌸 (Sakura Sakura)", "Transporte", "flauta easter egg"),
     spec!("project::Rename", "Renomear música…", "Música", "título"),

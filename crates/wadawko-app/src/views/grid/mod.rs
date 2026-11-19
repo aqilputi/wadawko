@@ -252,6 +252,8 @@ pub enum InputTarget {
     Bpm,
     TrainerPct,
     TrainerStep,
+    /// treino: andamento alvo, em %
+    TrainerTarget,
     /// padrão de acentos do metrônomo (`ABBB`, `A.B.`, `auto`)
     MetroPattern,
     /// volume do metrônomo, em %

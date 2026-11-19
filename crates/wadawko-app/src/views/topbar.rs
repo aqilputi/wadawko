@@ -226,11 +226,10 @@ impl Shell {
                 th.ink_soft
             })))
             .when(tp.trainer, |d| {
-                d.child(chip("tr-pct", format!("de {:.0}%", tp.trainer_pct * 100.0), Box::new(keys::transport::TrainerPct))).child(chip(
-                    "tr-step",
-                    format!("+{:.0}%/volta", tp.trainer_step * 100.0),
-                    Box::new(keys::transport::TrainerStep),
-                ))
+                d.child(chip("tr-pct", format!("de {:.0}%", tp.trainer_pct * 100.0), Box::new(keys::transport::TrainerPct)))
+                    .child(chip("tr-step", format!("+{:.0}%/volta", tp.trainer_step * 100.0), Box::new(keys::transport::TrainerStep)))
+                    .child(chip("tr-laps", format!("×{} volta{}", tp.trainer_laps, if tp.trainer_laps == 1 { "" } else { "s" }), Box::new(keys::transport::TrainerLaps)))
+                    .child(chip("tr-target", format!("até {:.0}%", tp.trainer_target * 100.0), Box::new(keys::transport::TrainerTarget)))
             })
             // estreita: o tema fica só na paleta (Ctrl+K)
             .when(!narrow, |d| d.child(div().w(px(1.0)).h(px(16.0)).flex_none().bg(th.line)).child(icon_btn("theme", if th.dark { "sun" } else { "moon" }, th, keys::view::ToggleTheme)));

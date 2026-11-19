@@ -93,6 +93,10 @@ pub struct Transport {
     pub trainer_pct: f64,
     /// treino: quanto sobe por volta (0.01..=0.5)
     pub trainer_step: f64,
+    /// treino: onde para de subir (fração do andamento, 0.3..=1.5)
+    pub trainer_target: f64,
+    /// treino: voltas em cada degrau antes de subir (1..=8)
+    pub trainer_laps: u32,
     /// ids das seções selecionadas para tocar (vazio = música inteira)
     pub selected: Vec<String>,
     /// trecho de loop em compassos `[start_bar, end_bar)` (F2): arraste na
@@ -113,6 +117,8 @@ impl Default for Transport {
             trainer: false,
             trainer_pct: 0.7,
             trainer_step: 0.05,
+            trainer_target: 1.0,
+            trainer_laps: 1,
             selected: Vec::new(),
             range: None,
             rehearse: None,
@@ -499,7 +505,7 @@ impl AppState {
         if self.audio_stale {
             self.sync_audio();
         }
-        let trainer = self.tp.trainer.then_some(TrainerOptions { start_pct: self.tp.trainer_pct, step: self.tp.trainer_step });
+        let trainer = self.tp.trainer.then_some(TrainerOptions { start_pct: self.tp.trainer_pct, step: self.tp.trainer_step, target_pct: self.tp.trainer_target, laps: self.tp.trainer_laps });
         let opts = PlayOptions { start_cell, looping: self.tp.looping, count_in: self.tp.count_in, count_in_loop: self.tp.count_in_loop, trainer };
         match self.audio.as_mut() {
             Some(audio) => {

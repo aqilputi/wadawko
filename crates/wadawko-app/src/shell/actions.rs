@@ -305,6 +305,14 @@ impl Shell {
             let v = format!("{:.0}", this.state.read(cx).tp.trainer_pct * 100.0);
             this.ask(InputTarget::TrainerPct, v, w, cx)
         });
+        let d = on!(d, cx, transport::TrainerTarget, |this, w, cx| {
+            let v = format!("{:.0}", this.state.read(cx).tp.trainer_target * 100.0);
+            this.ask(InputTarget::TrainerTarget, v, w, cx)
+        });
+        let d = on!(d, cx, transport::TrainerLaps, |this, w, cx| this.state.update(cx, |s, cx| {
+            s.tp.trainer_laps = s.tp.trainer_laps % 4 + 1;
+            cx.notify()
+        }));
         let d = on!(d, cx, transport::TrainerStep, |this, w, cx| {
             let v = format!("{:.0}", this.state.read(cx).tp.trainer_step * 100.0);
             this.ask(InputTarget::TrainerStep, v, w, cx)
@@ -498,7 +506,13 @@ impl Shell {
         let d = on!(d, cx, section::Group, |this, w, cx| this.sections_group(cx));
         let d = on!(d, cx, section::Ungroup, |this, w, cx| this.sections_ungroup(cx));
         let d = on!(d, cx, view::ToggleFollow, |this, w, cx| {
-            this.follow_on = !this.follow_on;
+            // pausado por edição: Scroll Lock retoma em vez de desligar
+            if this.follow_suspended {
+                this.follow_suspended = false;
+                this.follow_on = true;
+            } else {
+                this.follow_on = !this.follow_on;
+            }
             this.flash(if this.follow_on { "a grade segue o playhead" } else { "seguir desligado" }, cx)
         });
         let d = on!(d, cx, view::ToggleFollowCenter, |this, w, cx| {

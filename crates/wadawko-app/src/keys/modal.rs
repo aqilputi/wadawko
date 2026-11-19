@@ -308,6 +308,13 @@ impl Shell {
                 }),
                 None => self.flash("treino: % inicial entre 20 e 100", cx),
             },
+            InputTarget::TrainerTarget => match num {
+                Some(v) => self.state.update(cx, |s, cx| {
+                    s.tp.trainer_target = (v / 100.0).clamp(0.3, 1.5);
+                    cx.notify()
+                }),
+                None => self.flash("treino: alvo entre 30 e 150 (% do andamento)", cx),
+            },
             InputTarget::TrainerStep => match num {
                 Some(v) => self.state.update(cx, |s, cx| {
                     s.tp.trainer_step = (v / 100.0).clamp(0.01, 0.5);
@@ -549,6 +556,7 @@ impl Shell {
             PromptKind::Input(InputTarget::SongTitle) => ("música:", "Enter confirma · Esc cancela · Ctrl+Backspace limpa"),
             PromptKind::Input(InputTarget::Bpm) => ("BPM:", "30–300 · Enter confirma"),
             PromptKind::Input(InputTarget::TrainerPct) => ("treino, começa em %:", "20–100 · Enter confirma"),
+            PromptKind::Input(InputTarget::TrainerTarget) => ("treino, até %:", "30–150 · Enter confirma"),
             PromptKind::Input(InputTarget::TrainerStep) => ("treino, +% por volta:", "1–50 · Enter confirma"),
             PromptKind::Input(InputTarget::MetroPattern) => ("acentos:", "A forte · B fraco · . mudo (ex.: ABBB, A.B.) · vazio = automático"),
             PromptKind::Input(InputTarget::PracticeName(None)) => ("nome do trecho:", "ex.: solo do Ōdaiko · vazio = c3–c6 · Enter guarda"),
