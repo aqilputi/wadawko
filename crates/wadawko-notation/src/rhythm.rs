@@ -180,7 +180,38 @@ pub fn measure_rhythm(meas: &Measure, track_id: &str) -> TrackRhythm {
                 Some(res) => {
                     let value = meas.cell(track_id, ci).unwrap_or_default();
                     out.words[ci] = Some(strip_sfz(value).to_string());
-                    cell_events(&mut out, res, strip_sfz(value), ci, beat, cell_flags);
+                    // efeitos por célula (`wadawko_core::fx`): rulo vira a nota de rulo
+                    // (traços na haste) na figura da célula; força V0–V2 = ghost, entre parênteses
+                    let fx = meas.fx_at(track_id, ci).and_then(|t| wadawko_core::fx::parse(t).ok()).unwrap_or_default();
+                    let roll = fx.iter().find_map(|f| if let wadawko_core::fx::Fx::Roll(n, _) = f { Some(*n as usize) } else { None });
+                    let ghost = fx.iter().any(|f| matches!(f, wadawko_core::fx::Fx::Vel(0..=2)));
+                    let word = if ghost { format!("({})", strip_sfz(value)) } else { strip_sfz(value).to_string() };
+                    match roll {
+                        Some(n) => {
+                            let first = &res.hits[0];
+                            out.events.push(Event {
+                                cell: ci,
+                                pos: ci as f32,
+                                beat,
+                                flags: cell_flags,
+                                kind: EventKind::Note { hits: vec![NoteHit { index: 0, rim: first.zone == Zone::Rim, left: first.hand == Hand::L, accent: first.accent, sfz: first.sfz }], roll: n },
+                                label: Some(word),
+                            });
+                        }
+                        None => {
+                            let first_ev = out.events.len();
+                            cell_events(&mut out, res, strip_sfz(value), ci, beat, cell_flags);
+                            if ghost {
+                                for e in &mut out.events[first_ev..] {
+                                    if let Some(l) = e.label.as_mut()
+                                        && !l.starts_with('(')
+                                    {
+                                        *l = format!("({l})");
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
             ci += 1;
@@ -291,6 +322,24 @@ fn cell_events(out: &mut TrackRhythm, res: &CellResolution, word: &str, ci: usiz
                 out.events.push(note(idx, ci as f32 + *o as f32, flags));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod fx_tests {
+    use super::*;
+    use wadawko_core::Measure;
+
+    #[test]
+    fn rulo_e_ghost_dos_efeitos() {
+        let mut m = Measure::new(4, 2, ["a"]);
+        m.cells.get_mut("a").unwrap()[0] = Some("don".into());
+        m.cells.get_mut("a").unwrap()[2] = Some("don".into());
+        m.fx = Some([("a".to_string(), vec![Some("R4".to_string()), None, Some("V1".to_string()), None, None, None, None, None])].into_iter().collect());
+        let r = measure_rhythm(&m, "a");
+        let notes: Vec<&Event> = r.events.iter().filter(|e| e.is_note()).collect();
+        assert!(matches!(notes[0].kind, EventKind::Note { roll: 4, .. }));
+        assert_eq!(notes[1].label.as_deref(), Some("(don)"));
     }
 }
 
