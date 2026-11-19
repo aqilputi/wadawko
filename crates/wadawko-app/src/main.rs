@@ -1357,6 +1357,22 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 }
                 "hints" => s.start_hints(HintScope::All, window, cx),
                 "play" => s.toggle_play(false, cx),
+                // painel de seções com grupo e cores + efeitos numa célula (tracker)
+                "estrutura" => {
+                    let ids: Vec<String> = wadawko_core::ops::sections::section_ranges(s.state.read(cx).song()).into_iter().map(|r| r.id).collect();
+                    s.edit(cx, |song| {
+                        if ids.len() >= 3 {
+                            if let Some(g) = wadawko_core::ops::structure::group_sections(song, &ids[1..3], "Parte A") {
+                                wadawko_core::ops::structure::set_group_color(song, &g, Some("#5e9fd8"));
+                            }
+                            wadawko_core::ops::structure::set_section_color(song, &ids[0], Some("#d9775f"));
+                        }
+                        let t = song.tracks[0].id.clone();
+                        let _ = wadawko_core::ops::cells::set_fx(song, &t, 0, 0, Some("R4<"));
+                        let _ = wadawko_core::ops::cells::set_fx(song, &t, 0, 2, Some("F D+1"));
+                    });
+                    s.state.update(cx, |st, cx| st.select_section(&ids[1], false, cx));
+                }
                 // modo projeção tocando (F7d)
                 "director" => {
                     s.director = Some(false);
