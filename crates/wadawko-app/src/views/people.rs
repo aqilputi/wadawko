@@ -152,9 +152,8 @@ impl PeopleView {
         }
 
         // ── voz dos kiai (gravações masculinas / femininas) ──
-        let auto_sex = if wadawko_core::kyai::kyai_sex(song, &p.id, &wadawko_core::Track::default()) == wadawko_core::kyai::KyaiSex::Male { "m" } else { "f" };
         let mut voice = div().flex().items_center().gap(px(5.0)).child(div().text_size(px(11.0)).text_color(th.ink_soft).child("voz do kiai"));
-        for (label, code) in [(format!("auto ({auto_sex})"), None), ("masc".to_string(), Some("m")), ("fem".to_string(), Some("f"))] {
+        for (label, code) in [("da linha", None), ("animalese", Some("a")), ("masc", Some("m")), ("fem", Some("f"))] {
             let (st, pid) = (state.clone(), p.id.clone());
             let act: widgets::Act = Rc::new(move |_: &mut Window, cx: &mut App| widgets::edit(&st, cx, |song| ops::people::set_person_voice(song, &pid, code)));
             voice = voice.child(widgets::chip(format!("pp-voz-{}-{}", p.id, code.unwrap_or("a")), label, th, p.voice.as_deref() == code, act));

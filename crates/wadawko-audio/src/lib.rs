@@ -11,7 +11,8 @@
 //! | [`backend`] | `Audio`: `Controller` + stream do cpal |
 //! | [`offline`] | `render`: o mesmo engine sem dispositivo, com `lookahead_limit` |
 //! | [`dsp`] | biquads (convenções do WebAudio), compressor, soft clip, limiter, PRNG |
-//! | [`kyai_voice`] | grãos do kiai (animalese + ruído nas sibilantes) |
+//! | [`kyai_synth`] | kiai sintetizado (animalese com timbre de grito) |
+//! | [`kyai_voice`] | kiai com gravações reais (masc/fem) |
 //!
 //! ## Uso pela UI
 //!
@@ -34,6 +35,7 @@ pub mod controller;
 pub mod dsp;
 pub mod engine;
 mod fue;
+pub mod kyai_synth;
 pub mod kyai_voice;
 pub mod metronome;
 pub mod offline;

@@ -10,7 +10,7 @@
 //! lista de grãos é montada FORA do callback (na compilação do schedule ou no
 //! preview); o thread de áudio só toca.
 
-use wadawko_core::kyai::{KyaiNote, KyaiProfile, KyaiSex};
+use wadawko_core::kyai::{KyaiNote, KyaiProfile, KyaiTimbre};
 use wadawko_samples::SampleBank;
 use wadawko_samples::kiai::Voice;
 
@@ -23,10 +23,12 @@ const SAMPLE_GAIN: f64 = 1.2;
 /// Transposição máxima (semitons): mais que isso a voz gravada soa artificial.
 const MAX_SHIFT: f64 = 3.0;
 
-pub fn voice_of(sex: KyaiSex) -> Voice {
-    match sex {
-        KyaiSex::Male => Voice::Male,
-        KyaiSex::Female => Voice::Female,
+/// Voz gravada do timbre; `None` = animalese (sintetizado, ver [`crate::kyai_synth`]).
+pub fn voice_of(t: KyaiTimbre) -> Option<Voice> {
+    match t {
+        KyaiTimbre::Animalese => None,
+        KyaiTimbre::Male => Some(Voice::Male),
+        KyaiTimbre::Female => Some(Voice::Female),
     }
 }
 

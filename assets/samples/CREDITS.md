@@ -40,6 +40,15 @@ reais numa sala comunitária (Zoom H2, 2009).
 https://freesound.org/people/RutgerMuller/sounds/364847/, domínio público (CC0).
 `kane-head-*` = golpe aberto (1,8 s); `kane-rim-*` = o mesmo golpe abafado (0,35 s).
 
+## Animalese — CC BY 4.0
+
+`animalese.ogg` = "animalese.wav" do **animalese.js** de **Josh Simmons**
+(https://github.com/acedio/animalese.js), licença **CC BY 4.0**
+(https://creativecommons.org/licenses/by/4.0/). Convertido para Ogg Vorbis sem
+outras alterações: 26 letras (A–Z) de 0,15 s cada, em sequência. Usado na
+voz padrão dos kiai (kakegoe), recortado letra a letra e transposto em tempo real,
+com timbre de grito.
+
 ## Hira-daiko pequeno — derivado (CC BY-SA 4.0)
 
 `hira-head-<camada>-<variação>.ogg` são derivados de `chu-head-*` (SCC Taiko
@@ -51,7 +60,7 @@ A borda usa os mesmos `chu-rim-*`, um pouco mais aguda.
 
 ## Kiai (kakegoe) e contagem — CC0 / CC BY 3.0 / CC BY 4.0
 
-Gravações reais de vozes em `kiai/`, usadas nos kiai e na contagem falada do count-in.
+Gravações reais de vozes em `kiai/`, usadas nos kiai (vozes masc/fem, opcionais) e na contagem falada do count-in.
 Todas do Freesound (prévias HQ), recortadas na palavra (≈10 ms de folga antes,
 fade-out de 15 ms; até 150–200 ms nos sons longos truncados em 1,2 s),
 passa-altas de 70 Hz, pico normalizado em −1 dBFS, 48 kHz, estéreo (mono

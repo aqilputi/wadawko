@@ -324,6 +324,50 @@ pub static MANIFEST: [InstrumentManifest; BaseInstrument::COUNT] = [
     },
 ];
 
+/// Nome (sem extensão) do sample das letras do animalese (vozes dos kiai).
+pub const ANIMALESE: &str = "animalese";
+
+/// Dados estáticos do `animalese.ogg` (de `src/lib/kyai.ts`): 26 letras (a–z)
+/// de [`animalese::LETTER_SEC`] s cada, em sequência.
+pub mod animalese {
+    /// duração (s) de cada letra no arquivo.
+    pub const LETTER_SEC: f32 = 0.15;
+
+    /// início audível (s, dentro da fatia da letra) e força relativa.
+    #[derive(Clone, Copy, Debug, PartialEq)]
+    pub struct Letter {
+        pub start: f32,
+        pub gain: f32,
+    }
+
+    /// `LETTER[l]` do TS; `None` para letras que o kiai não usa.
+    pub fn letter(l: char) -> Option<Letter> {
+        let (start, gain) = match l {
+            'a' => (0.0, 1.0),
+            'b' => (0.0, 0.8),
+            'd' => (0.02, 1.6),
+            'e' => (0.0, 1.5),
+            'g' => (0.01, 2.0),
+            'i' => (0.008, 1.8),
+            'j' => (0.02, 2.5),
+            'k' => (0.03, 1.6),
+            'm' => (0.0, 3.0),
+            'n' => (0.0, 2.5),
+            'o' => (0.0, 0.8),
+            'p' => (0.02, 1.3),
+            'u' => (0.0, 3.5),
+            'w' => (0.02, 1.4),
+            _ => return None,
+        };
+        Some(Letter { start, gain })
+    }
+
+    /// offset (s) do início da fatia da letra no arquivo (`idx * LETTER_SEC`).
+    pub fn slice_offset(l: char) -> Option<f32> {
+        l.is_ascii_lowercase().then(|| (l as u8 - b'a') as f32 * LETTER_SEC)
+    }
+}
+
 /// Gravações de kiai (kakegoe) e da contagem em japonês, em `assets/samples/kiai/`
 /// (fontes e licenças em `CREDITS.md`, detalhes em `kiai/manifest.json`).
 pub mod kiai {

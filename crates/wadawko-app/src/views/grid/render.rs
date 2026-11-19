@@ -126,7 +126,7 @@ impl GridView {
         }
 
         let (pitch, vary, gain) = kyai::kyai_voice_or_default(track.kyai.as_ref());
-        let kyai_sex_code: Option<&'static str> = track.kyai.as_ref().and_then(|v| v.voice.as_deref()).and_then(kyai::KyaiSex::parse).map(kyai::KyaiSex::code);
+        let kyai_sex_code: Option<&'static str> = track.kyai.as_ref().and_then(|v| v.voice.as_deref()).and_then(kyai::KyaiTimbre::parse).map(kyai::KyaiTimbre::code).filter(|c| *c != "a");
         let voice = |id: &'static str, label: String, cx: &mut Context<Self>, delta: (f64, f64, f64)| {
             chip((id, t), th, false).child(SharedString::from(label)).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
                 this.track_edit(t, cx, |s, tid| {
@@ -260,7 +260,7 @@ impl GridView {
                     .child(val(format!("{gain:+.0} dB")))
                     .child(voice("kv-g+", "+".into(), cx, (0.0, 0.0, 1.0)))
                     .child(div().ml(px(6.0)).text_size(px(11.0)).text_color(th.ink_soft).child("voz"))
-                    .children([("kv-x-a", "auto", None), ("kv-x-m", "masc", Some("m")), ("kv-x-f", "fem", Some("f"))].map(|(id, label, code)| {
+                    .children([("kv-x-a", "animalese", None), ("kv-x-m", "masc", Some("m")), ("kv-x-f", "fem", Some("f"))].map(|(id, label, code)| {
                         click(
                             id,
                             label.into(),

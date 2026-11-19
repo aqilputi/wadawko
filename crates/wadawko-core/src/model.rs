@@ -263,7 +263,7 @@ pub struct Person {
     /// volume do barramento da pessoa em dB (default 0)
     #[serde(default, skip_serializing_if = "Option::is_none", serialize_with = "js_num_opt")]
     pub volume: Option<f64>,
-    /// voz dos kiai da pessoa: "m" (masculina) ou "f" (feminina); sem valor = sorteada pelo id
+    /// voz dos kiai da pessoa: "a" (animalese), "m" (gravação masculina) ou "f" (feminina); sem valor = a da linha
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub voice: Option<String>,
     #[serde(flatten)]
@@ -306,7 +306,7 @@ pub struct KyaiVoice {
     /// volume dos gritos em dB (default 0)
     #[serde(default, skip_serializing_if = "Option::is_none", serialize_with = "js_num_opt")]
     pub gain: Option<f64>,
-    /// voz das gravações: "m" ou "f" (vale para a linha toda; a da pessoa tem prioridade)
+    /// voz dos kiai: "a" (animalese, padrão), "m" ou "f" (gravações); a da pessoa tem prioridade
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub voice: Option<String>,
 }

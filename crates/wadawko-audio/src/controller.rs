@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use wadawko_core::kyai::{kyai_note, kyai_profile, kyai_sex, kyai_voice_or_default};
+use wadawko_core::kyai::{kyai_note, kyai_profile, kyai_timbre, kyai_voice_or_default};
 use wadawko_core::ops::kit::resolve_instrument;
 use wadawko_core::ops::people::person_audible;
 use wadawko_core::phrase::resolve_cell;
@@ -18,6 +18,7 @@ use wadawko_samples::{RoundRobin, SampleBank};
 use crate::dsp::Rng;
 use crate::engine::{Clock, Command, Engine, EngineConfig, EngineEvent, Garbage, Meters, PlayCmd, PreviewSeq, SampleSet, Trainer};
 use crate::fue::fue_total_secs;
+use crate::kyai_synth::kyai_grains;
 use crate::kyai_voice::{kiai_grain, plan_for, voice_of};
 use crate::schedule::{CompileOptions, Compiler, EventKind, PREVIEW_KYAI_SLOT, PREVIEW_SLOT, Schedule, channel_key, db_gain, hit_event, sfz_dyn, track_audible, zone_chain};
 
@@ -337,23 +338,33 @@ impl Controller {
         self.send(Command::SetChannelMix { slot, gain: db_gain(kyai_voice_or_default(track.kyai.as_ref()).2), pan: track.pan.unwrap_or(0.0) as f32, mute: false });
         let seed = seed_id.or(first).unwrap_or(&track.id);
         let prof = kyai_profile(seed, track);
-        let voice = voice_of(kyai_sex(song, seed, track));
+        let voice = voice_of(kyai_timbre(song, seed, track));
         let bank = self.compiler.bank().clone();
         let shout = |s: &str| s.ends_with('!');
         // agrupa em palavras como na música (quebra depois de cada "!")
-        let mut start = 0;
+        let (mut start, mut end) = (0, 0);
         let mut plan: Vec<Option<&'static str>> = Vec::new();
         let mut out = Vec::new();
         for (i, syl) in syls.iter().enumerate() {
             if i == 0 || shout(syls[i - 1]) {
                 start = i;
-                let mut end = i;
+                end = i;
                 while end < syls.len() - 1 && !shout(syls[end]) {
                     end += 1;
                 }
-                plan = plan_for(&bank, voice, &syls[start..=end]);
+                if let Some(v) = voice {
+                    plan = plan_for(&bank, v, &syls[start..=end]);
+                }
             }
-            let n = plan.len();
+            let n = end - start + 1;
+            let rng = &mut self.rng;
+            let Some(v) = voice else {
+                // animalese com timbre de grito
+                let gap = if i < syls.len() - 1 { unit_sec } else { f64::INFINITY };
+                let note = kyai_note(syl, i - start, n, shout(syl), gap, &prof, || rng.unit64());
+                kyai_grains(&note, &prof, bank.animalese_id().0, slot * 2, 0.03 + i as f64 * unit_sec, self.compiler.sample_rate(), rng, &mut out);
+                continue;
+            };
             let Some(word) = plan.get(i - start).copied().flatten() else { continue };
             let whole = n > 1 && i == start && plan.iter().skip(1).all(Option::is_none);
             let gap = if whole {
@@ -363,9 +374,8 @@ impl Controller {
             } else {
                 f64::INFINITY
             };
-            let rng = &mut self.rng;
             let note = kyai_note(syl, i - start, n, shout(syl) || whole, gap, &prof, || rng.unit64());
-            out.extend(kiai_grain(&bank, voice, word, &note, &prof, gap, slot * 2, 0.03 + i as f64 * unit_sec, rng));
+            out.extend(kiai_grain(&bank, v, word, &note, &prof, gap, slot * 2, 0.03 + i as f64 * unit_sec, rng));
         }
         for kind in out {
             self.send(Command::Trigger { kind, delay: 0.0 });

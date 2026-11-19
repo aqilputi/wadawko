@@ -94,12 +94,13 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   padrão — ou "Linha: próxima cor" na paleta.
 - **Dinâmica**: a faixa fina acima das células — clique para escolher pp…ff; `<` e `>` marcam
   crescendo/diminuendo. Há dinâmica geral do compasso e, por linha, a sub-linha de dinâmica.
-- **Kiai**: sub-linha de gritos (`Ctrl+Shift+K` na linha do cursor), uma sílaba por célula. Toca
-  com **gravações reais** de vozes masculinas e femininas: a palavra inteira quando ela foi
-  gravada (`ha!`, `hai!`, `iya!`, `yo!`, `sa!`, `hyo!`, `orya!`…), senão sílaba a sílaba pela
-  vogal (`so re!` → "yo"/"ho" + "ei"/"hai"). A voz é de quem toca a célula: escolha **masc/fem**
-  no cartão da pessoa (página Pessoas) ou no menu da linha ("voz"); em "auto" ela é sorteada pelo
-  nome, sempre a mesma.
+- **Kiai**: sub-linha de gritos (`Ctrl+Shift+K` na linha do cursor), uma sílaba por célula. A voz
+  padrão é o **animalese com timbre de grito** (mais agudo, áspero, com sopro e rouquidão no
+  "!"), que canta qualquer palavra. Também há **gravações reais** masculinas e femininas: a
+  palavra inteira quando ela foi gravada (`ha!`, `hai!`, `iya!`, `yo!`, `sa!`, `hyo!`, `orya!`…),
+  senão sílaba a sílaba pela vogal (`so re!` → "yo"/"ho" + "ei"/"hai"). Escolha
+  **animalese/masc/fem** no menu da linha ("voz") ou no cartão da pessoa (página Pessoas; "da
+  linha" segue a linha).
 - **Régua** (números 1 e 2 e…): clique para escolher de onde tocar; arraste para rolar. A
   **faixa fina em cima** da régua é a do loop por trecho (abaixo).
 - **Zoom**: `Ctrl+roda` ou os botões 🔍−/🔍+.

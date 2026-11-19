@@ -100,7 +100,7 @@ pub fn set_person_color(song: &mut Song, id: &str, color: &str) {
     }
 }
 
-/// Voz dos kiai da pessoa: `Some("m")`, `Some("f")` ou `None` (sorteada pelo id).
+/// Voz dos kiai da pessoa: `Some("a" | "m" | "f")` ou `None` (a da linha).
 pub fn set_person_voice(song: &mut Song, id: &str, voice: Option<&str>) {
     if let Some(p) = song.person_mut(id) {
         p.voice = voice.map(str::to_string);

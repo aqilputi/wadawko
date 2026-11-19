@@ -7,7 +7,7 @@
 
 use std::collections::HashMap;
 
-use wadawko_core::kyai::{kyai_events, kyai_lag, kyai_note, kyai_profile, kyai_seed, kyai_sex, kyai_voice_or_default};
+use wadawko_core::kyai::{kyai_events, kyai_lag, kyai_note, kyai_profile, kyai_seed, kyai_timbre, kyai_voice_or_default};
 use wadawko_core::ops::kit::resolve_instrument;
 use wadawko_core::ops::measures::bar_beat_starts;
 use wadawko_core::ops::people::{cell_owner_of, person_audible};
@@ -17,6 +17,7 @@ use wadawko_core::{Dynamic, InstrumentDef, InstrumentId, Song, ToneType, Track, 
 use wadawko_samples::{BaseInstrument, FilterKind, RoundRobin, SampleBank, Zone as SZone};
 
 use crate::dsp::{Biquad, FilterChain, FilterType, Rng};
+use crate::kyai_synth::kyai_grains;
 use crate::kyai_voice::{kiai_grain, plan_for, voice_of};
 
 /// Resolução do transport (ticks por semínima).
@@ -718,7 +719,9 @@ impl Compiler {
             }
         }
 
-        // kiai: gravações na voz (m/f) do dono da célula; a palavra decide as tomadas
+        // kiai: voz do dono da célula — animalese (sintetizado) ou gravações (m/f; a palavra decide as tomadas)
+        let animalese = self.bank.animalese_id().0;
+        let mut grains = Vec::new();
         let spb = 60.0 / bpm;
         let kev = kyai_events(song, &order, |f| swing_warp(f, swing));
         let mut plan: Vec<Option<&'static str>> = Vec::new();
@@ -727,8 +730,10 @@ impl Compiler {
             let track = &song.tracks[ti];
             let Some(meas) = song.measures.get(e.mi) else { continue };
             let seed = kyai_seed(track, meas, e.ci);
-            let voice = voice_of(kyai_sex(song, seed, track));
-            if e.idx == 0 || plan.len() != e.n {
+            let voice = voice_of(kyai_timbre(song, seed, track));
+            if let Some(voice) = voice
+                && (e.idx == 0 || plan.len() != e.n)
+            {
                 // a palavra são os `n` eventos seguidos da mesma linha (saída agrupada por linha)
                 let syls: Vec<&str> = kev[i..].iter().take_while(|x| x.track_index == ti).take(e.n).map(|x| x.syl.as_str()).collect();
                 plan = plan_for(&self.bank, voice, &syls);
@@ -741,12 +746,20 @@ impl Compiler {
             if opts.skip_inaudible && bus_person(track, owner).is_some_and(|p| !person_audible(song, Some(p))) {
                 continue;
             }
-            let Some(word) = plan.get(e.idx).copied().flatten() else { continue };
             let slot = channel(ti, owner, true);
             let prof = kyai_profile(seed, track);
             // variação determinística por (semente, linha, compasso tocado, célula)
             let mut rng = Rng::new(opts.seed ^ ((ti as u64) << 48) ^ ((e.u as u64) << 16) ^ e.ci as u64);
             let lag = kyai_lag(prof.vary, rng.unit64());
+            let Some(voice) = voice else {
+                let note = kyai_note(&e.syl, e.idx, e.n, e.shout, e.gap_beats * spb, &prof, || rng.unit64());
+                grains.clear();
+                kyai_grains(&note, &prof, animalese, (slot * 2) as u16, lag, self.sr, &mut rng, &mut grains);
+                let tick = e.beats * PPQ;
+                events.extend(grains.iter().map(|&kind| Event { tick, kind }));
+                continue;
+            };
+            let Some(word) = plan.get(e.idx).copied().flatten() else { continue };
             // a palavra inteira gravada vale até o fim da palavra (a próxima sílaba dela fica muda)
             let gap_beats = if e.idx == 0 && e.n > 1 && plan.iter().skip(1).all(Option::is_none) { kev[i..].iter().take(e.n).map(|x| x.gap_beats).sum::<f64>() } else { e.gap_beats };
             let note = kyai_note(&e.syl, e.idx, e.n, e.shout || gap_beats > e.gap_beats, gap_beats * spb, &prof, || rng.unit64());
