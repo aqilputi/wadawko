@@ -94,8 +94,13 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   padrão — ou "Linha: próxima cor" na paleta.
 - **Dinâmica**: a faixa fina acima das células — clique para escolher pp…ff; `<` e `>` marcam
   crescendo/diminuendo. Há dinâmica geral do compasso e, por linha, a sub-linha de dinâmica.
-- **Kiai**: sub-linha de gritos (`Ctrl+Shift+K` na linha do cursor) — o texto é cantado pelo
-  sintetizador de voz na hora certa.
+- **Kiai**: sub-linha de gritos (`Ctrl+Shift+K` na linha do cursor), uma sílaba por célula. A voz
+  padrão é o **animalese com timbre de grito** (mais agudo, áspero, com sopro e rouquidão no
+  "!"), que canta qualquer palavra. Também há **gravações reais** masculinas e femininas: a
+  palavra inteira quando ela foi gravada (`ha!`, `hai!`, `iya!`, `yo!`, `sa!`, `hyo!`, `orya!`…),
+  senão sílaba a sílaba pela vogal (`so re!` → "yo"/"ho" + "ei"/"hai"). Escolha
+  **animalese/masc/fem** no menu da linha ("voz") ou no cartão da pessoa (página Pessoas; "da
+  linha" segue a linha).
 - **Régua** (números 1 e 2 e…): clique para escolher de onde tocar; arraste para rolar. A
   **faixa fina em cima** da régua é a do loop por trecho (abaixo).
 - **Zoom**: `Ctrl+roda` ou os botões 🔍−/🔍+.
@@ -123,12 +128,90 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   canal 10 (bateria GM), com andamento, fórmulas de compasso e marcadores de seção. Notas: ōdaiko
   35, ō-nagadō 41, nagadō 43, chū 45, okedō 47, hira 50, shime 38, borda 37, kane 56/80.
 
+# Minimap e rolagem
+
+- À direita do editor vertical fica o **minimap** (como o do VS Code): a música inteira em
+  miniatura, com a faixa de cor de cada seção, as notas em tom suave da cor de cada linha (em
+  passagens densas, a densidade por tempo), o retângulo da área
+  visível e o playhead. Clique ou arraste nele para ir até ali. `Ctrl+K` → "Minimap" esconde.
+- Se você **rolar ou mover o cursor tocando**, o seguir pausa (para não puxar a tela de volta
+  enquanto edita); volta sozinho ao parar, ou com `Scroll Lock`.
+- Tocando, a grade **segue o playhead** virando a página; `space v shift-f` (ou a paleta) troca para
+  **centrado** (a linha que soa fica fixa e a música rola por baixo — mais suave, mais pesado), e
+  `Scroll Lock` / `space v f` liga/desliga o seguir.
+- A grade **acompanha o cursor e a seleção**: estender com `Shift+setas`, movimentos do vim,
+  clicar numa seção no painel — se o cursor sair da vista, a grade rola até ele. Arrastando para
+  selecionar, encostar o mouse na borda de cima ou de baixo rola sozinho e continua selecionando.
+
+# Teclado no editor vertical
+
+`↑`/`↓` andam no tempo e `←`/`→` entre as linhas (no vim, `j`/`k` e `h`/`l`). `Tab`/`Shift+Tab`
+confirmam o que está sendo digitado e vão para a linha seguinte/anterior (como no Renoise).
+`PgUp`/`PgDn` vão para o compasso anterior/seguinte, `Ctrl+↑/↓` andam por tempo, `Alt+PgUp/PgDn`
+por seção e `Ctrl+PgUp/PgDn` vão para a primeira/última linha. **Passo de edição** (`Alt+0`…`Alt+9`):
+quantas células o cursor desce ao confirmar uma sílaba — com passo 2 numa música em colcheias você
+escreve nos tempos; passo 0 fica na célula.
+
+# Painel de seções (à esquerda)
+
+- A lista de **seções** da música (`Ctrl+Shift+B` mostra/esconde): quadradinho de cor, nome,
+  ritornello (`2×`) e compassos; ▶ marca a que está tocando; ⟲, a que tem trecho de ensaio.
+- **Clique** seleciona a seção (é a região que toca) e leva o editor até ela; `Ctrl+clique`
+  junta/tira; `Shift+clique` pega o intervalo; **duplo clique** renomeia.
+- **Arraste** para reordenar (leva os compassos junto); com `Alt` arrastado, clona.
+- **Botão direito**: renomear, cor, ritornello ±, duplicar, copiar, colar depois, agrupar,
+  desfazer o grupo, tocar só esta, remover.
+- **Copiar/colar seções** (`⧉`/`⎘` no cabeçalho; vim `space s y` / `space s shift-p`): vai como texto
+  pela área de transferência, então dá para colar noutra música. Leva notas, donos, kiai,
+  dinâmicas e efeitos; as linhas casam pelo nome interno ou pela posição.
+- **Grupos** (`⊞` no cabeçalho ou "agrupar"; vim `space s g`): juntam seções seguidas sob um
+  nome (duplo clique renomeia), com cor própria herdada pelas seções sem cor, e recolhem com ▾.
+  Clicar no grupo seleciona todas as seções dele. Grupos só organizam: não mudam a ordem tocada.
+- **Cores**: clique no quadradinho da seção ou do grupo (8 cores, "sem cor" ou `#rrggbb`). A cor
+  aparece na linha do gutter do editor vertical. A cor dos **instrumentos** fica na página **Kit**
+  (cada linha herda a do instrumento, a menos que tenha cor própria no ⚙ da linha).
+- Os **trechos de ensaio** ficam embaixo, no mesmo painel.
+- A aba **LINHAS** (ao lado de SEÇÕES) lista os instrumentos como os cabeçalhos de faixa de uma
+  DAW: cor, nome, instrumento e M/S/★. Clique numa linha para levar o cursor até ela; a linha do
+  cursor abre com a cor (12 cores ou "herdar"), volume, pan, o que mostrar na grade (dinâmica,
+  kiai, efeitos), pessoas e ↑/↓, nome, som e remover.
+
+# Preencher a seleção
+
+Selecione células (ou deixe só o cursor: vale o compasso dele na linha) e use `Ctrl+Shift+I`
+(paleta filtrada em "Preencher") ou, no vim, `space e …`: **a cada 2** (`2`), **a cada 4** (`4`),
+**contratempo** (`c`), **euclidiano 3 em 8** (`3`) e **5 em 8** (`5`), **oroshi** (`o`, golpes cada
+vez mais próximos, terminando em acento). Escreve a sílaba da célula do cursor (vazia: `don`; no
+contratempo, `ka`), só nas células vazias, num passo de desfazer.
+
+# Efeitos por célula
+
+Como os comandos de um tracker, curtos e legíveis, até 3 por célula (ex.: `R4< D+1`):
+
+| Comando | Faz |
+|---|---|
+| `V0`–`V9` | força × n/10 (`V0` = ghost) |
+| `R2`–`R9`, `R4<`, `R4>` | rulo: repete o golpe n vezes na célula, mãos alternando; `<`/`>` crescendo/decrescendo |
+| `F` (`F1`–`F3`) | flam: um golpe de apoio antes, na outra mão |
+| `D+1`…`D+5`, `D-1`…`D-5` | atrasa/antecipa em décimos da célula |
+| `X` (`X1`–`X9`) | corte: abafa a pele no meio da célula (nota curta) |
+| `H0`–`H9` | humanização (`H0` = exato, para uníssonos) |
+
+No editor vertical a coluna **fx** aparece ao lado da nota nas linhas que têm efeito (ou em todas:
+`Ctrl+K` → "Efeitos: mostrar a coluna", vim `space v x`); clique nela para digitar. Atalhos na
+célula ou na seleção: `Ctrl+Shift+R` rulo (2 → 3 → 4 → 6 → 8 → nenhum), `Ctrl+Shift+F` flam,
+`Ctrl+Shift+.`/`,` atrasa/antecipa, `Ctrl+Shift+X` corte, `Ctrl+Shift+V` mais fraco, `Ctrl+Shift+0`
+limpa, `Ctrl+Shift+Y` digita; no vim, `space f …`. O inspector mostra os efeitos da célula com
+botões prontos. O áudio, a esteira e o MIDI tocam os efeitos; a partitura ainda não os desenha.
+
 # Tocar e ensaiar
 
 - `Space` toca/para (no modo simples, quando não está digitando). A grade acompanha o
   playhead; as células acendem quando a nota soa.
 - **Loop**, **metrônomo**, **count-in** e **reto/swing** na barra de cima.
-- **Treino** (🏃): começa numa % do BPM e acelera a cada volta (% inicial e passo editáveis).
+- **Treino**: começa numa % do BPM e acelera a cada volta. Com o treino ligado, os chips da barra
+  ajustam: % inicial, passo por degrau, **voltas por degrau** (×1 → ×4: repete cada andamento N
+  vezes antes de subir) e **até %** (o andamento onde para de subir — ex.: treinar até 90 %).
 - **Metrônomo com acentos**: com o 🎵 ligado aparecem dois chips. O do **padrão** (`auto`,
   `ABBB`…) abre um campo: `A` = forte, `B` = fraco, `.` = mudo, um caractere por tempo (até 16,
   repete se o compasso for maior; vazio = automático, forte no 1). Ex.: `A.B.` para marcar só
@@ -142,10 +225,19 @@ barra encolhe (some primeiro o texto, depois os botões de compasso — que segu
   renomeia, ✕ remove (Ctrl+Z volta). Ficam salvos na música e acompanham as seções.
 - **Count-in a cada volta** (⏱↺, aparece com o loop ligado): antes de cada repetição toca um
   compasso de contagem, para o grupo respirar entre as voltas. Combina com o treino.
+- **Contagem falada** (chip "sem voz / voz m / voz f" ao lado do count-in; vim `space t i`): o
+  count-in fala *ichi, ni, san, shi/yon…* junto com os cliques.
 - **Altura das linhas**: `Ctrl+Alt+↑/↓` (vim: `z k`/`z j`, `z =` volta ao padrão) — linhas
   baixas cabem mais na tela (abaixo de 32 px some o nome do instrumento). Fica salva.
+- **Ensaiar como…** (`Alt+P`, chip 👤 na barra de cima; vim `space p`): escolha uma pessoa e o som
+  toca **sem ela** (ela toca junto) ou **só ela**; as linhas das outras pessoas ficam esmaecidas e a
+  barra de status mostra `👤 sem Ana`. Não muda a música nem entra no desfazer. `Alt+Shift+P` volta
+  a todos; "Ensaiar como: ouvir sem / só" alterna.
+- **Visão por pessoa** (`Alt+V`; vim `space v v`): o editor mostra só as linhas de uma pessoa
+  (as outras somem, o cursor pula para a linha visível mais próxima); a barra de status mostra
+  `👁 Ana`. `Alt+Shift+V` (ou "Visão: todas as linhas") volta a mostrar tudo. Não muda a música.
 - **Modo projeção** (`F10`, ou `Ctrl+K` → "Modo projeção"): tela cheia em letras grandes para a TV
-  do ensaio — seção atual e a volta (`2/3`), compasso, os tempos acendendo, a próxima seção e o
+  do ensaio (durante o count-in, a contagem gigante 4… 3… 2… 1) — seção atual e a volta (`2/3`), compasso, os tempos acendendo, a próxima seção e o
   BPM que está soando; a lista de linhas com as cores embaixo. `Espaço` toca/para, `Esc` sai.
 - **Tap tempo**: bata no **TAP** (ou `Alt+T`; no vim `Space t .`) no ritmo — da 2ª batida em
   diante o BPM segue a média das últimas 8; parar 2 s recomeça. Um `Ctrl+Z` desfaz o tap inteiro.

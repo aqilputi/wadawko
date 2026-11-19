@@ -17,7 +17,8 @@ pub fn kitchen_sink() -> Song {
     chu.person_ids = Some(vec!["ana".into(), "bia".into()]);
     let mut shime = Track::new("shime", "Shime", InstrumentId::Shime);
     shime.person_ids = Some(vec!["caio".into()]);
-    let person = |id: &str, name: &str, color: &str| Person { id: id.into(), name: name.into(), color: Some(color.into()), muted: None, solo: None, volume: None, extra: Default::default() };
+    let person =
+        |id: &str, name: &str, color: &str| Person { id: id.into(), name: name.into(), color: Some(color.into()), muted: None, solo: None, volume: None, voice: None, extra: Default::default() };
     let mut m1 = Measure::new(4, 2, ["shime", "chu"]);
     m1.cells.insert("shime".into(), row(&["ten", "teke", "ten", "teke", "tsuku", "ten", "suko", "ten"]));
     m1.cells.insert("chu".into(), row(&["DON!", "", "doron", "ka", "dondondon", "kara", "dokodoko", "su"]));
@@ -39,7 +40,7 @@ pub fn kitchen_sink() -> Song {
     m4.cells.insert("shime".into(), row(&["ten", "ten"]));
     m4.cells.insert("chu".into(), row(&["DON", ""]));
     m4.hairpin = Some(Hairpin::Dim);
-    let sec = |id: &str, name: &str, start: usize, repeat: Option<u32>| Section { id: id.into(), name: name.into(), start, repeat, extra: Default::default() };
+    let sec = |id: &str, name: &str, start: usize, repeat: Option<u32>| Section { id: id.into(), name: name.into(), start, repeat, ..Default::default() };
     Song {
         title: "Tudo junto".into(),
         tempo: 120.0,

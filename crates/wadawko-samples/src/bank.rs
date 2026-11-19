@@ -8,6 +8,7 @@ use anyhow::{Context, Result, anyhow, bail};
 
 use crate::decode::{SampleData, decode_ogg};
 use crate::embedded::SAMPLE_NAMES;
+use crate::manifest::kiai::{TAKES, Voice};
 use crate::manifest::{ANIMALESE, BaseInstrument, MANIFEST, Zone, layer_velocity, select_layer};
 
 /// Índice de um sample no banco (posição em [`SAMPLE_NAMES`]). Barato de
@@ -43,6 +44,8 @@ pub struct SampleBank {
     samples: Vec<Arc<SampleData>>,
     /// [instrumento][zona][camada][rr] → SampleId
     table: Vec<[Vec<Vec<SampleId>>; 2]>,
+    /// ids das tomadas de [`TAKES`], na mesma ordem
+    kiai: Vec<SampleId>,
     animalese: SampleId,
 }
 
@@ -152,8 +155,9 @@ impl SampleBank {
             }
             table.push(zones);
         }
+        let kiai = TAKES.iter().map(|t| id_of(t.name).ok_or_else(|| anyhow!("{} fora de SAMPLE_NAMES", t.name))).collect::<Result<Vec<_>>>()?;
         let animalese = id_of(ANIMALESE).ok_or_else(|| anyhow!("animalese fora de SAMPLE_NAMES"))?;
-        Ok(SampleBank { samples, table, animalese })
+        Ok(SampleBank { samples, table, kiai, animalese })
     }
 
     // ───────────── lookup ─────────────
@@ -197,7 +201,7 @@ impl SampleBank {
         id_of(name)
     }
 
-    /// Letras do animalese (vozes dos kiai); ver [`crate::animalese`].
+    /// Letras do animalese (voz sintetizada dos kiai); ver [`crate::animalese`].
     pub fn animalese(&self) -> &Arc<SampleData> {
         &self.samples[self.animalese.index()]
     }
@@ -205,12 +209,24 @@ impl SampleBank {
         self.animalese
     }
 
+    /// Tomadas gravadas de `word` na voz `voice` (`count` = contagem, senão kiai).
+    pub fn kiai_takes(&self, voice: Voice, word: &str, count: bool) -> Vec<SampleId> {
+        TAKES.iter().zip(&self.kiai).filter(|(t, _)| t.voice == voice && t.count == count && t.word == word).map(|(_, id)| *id).collect()
+    }
+
+    /// Palavras de kiai gravadas na voz `voice`.
+    pub fn kiai_words(&self, voice: Voice) -> Vec<&'static str> {
+        let mut w: Vec<&str> = TAKES.iter().filter(|t| t.voice == voice && !t.count).map(|t| t.word).collect();
+        w.dedup();
+        w
+    }
+
     /// Todos os samples, indexáveis por [`SampleId`] (ordem de [`SAMPLE_NAMES`]).
     pub fn samples(&self) -> &[Arc<SampleData>] {
         &self.samples
     }
 
-    /// nº total de samples (72 golpes + animalese).
+    /// nº total de samples (72 golpes + animalese + kiai/contagem).
     pub fn len(&self) -> usize {
         self.samples.len()
     }

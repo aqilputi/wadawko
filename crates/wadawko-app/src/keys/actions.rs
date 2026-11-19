@@ -29,12 +29,18 @@ pub mod transport {
             SetBpm,
             TrainerPct,
             TrainerStep,
+            TrainerTarget,
+            TrainerLaps,
             MetroPattern,
             MetroSubdiv,
             MetroVolume,
             MetroSound,
+            CountVoice,
             ToggleCountInLoop,
             TapTempo,
+            RehearsePick,
+            RehearseOff,
+            RehearseListen,
             ClearRegion,
             LoopSelection,
             LoopStartHere,
@@ -45,7 +51,30 @@ pub mod transport {
 }
 pub mod view {
     use gpui_kit::actions;
-    actions!(view, [Grade, Partitura, Esteira, ToggleTheme, ZoomIn, ZoomOut, ZoomReset, RowTaller, RowShorter, RowReset, Director, ToggleNav]);
+    actions!(
+        view,
+        [
+            Grade,
+            Partitura,
+            Esteira,
+            ToggleTheme,
+            ZoomIn,
+            ZoomOut,
+            ZoomReset,
+            RowTaller,
+            RowShorter,
+            RowReset,
+            Director,
+            ViewPick,
+            ViewAll,
+            ToggleSections,
+            ToggleMinimap,
+            ToggleFollow,
+            ToggleFollowCenter,
+            ToggleNav,
+            ToggleLayout
+        ]
+    );
 }
 pub mod nav {
     use gpui_kit::actions;
@@ -63,13 +92,28 @@ pub mod project {
     use gpui_kit::actions;
     actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ImportLibrary, ExportMp3, ExportWav, ExportMidi, CancelExport]);
 }
+pub mod fill {
+    use gpui_kit::actions;
+    actions!(fill, [Open, Every2, Every4, Offbeat, Euclid3, Euclid5, Oroshi]);
+}
+pub mod step {
+    use gpui_kit::actions;
+    actions!(step, [Step0, Step1, Step2, Step3, Step4, Step5, Step6, Step7, Step8, Step9]);
+}
+pub mod fx {
+    use gpui_kit::actions;
+    actions!(fx, [Edit, Roll, RollCresc, Flam, Later, Earlier, Cut, Softer, Exact, Clear, ToggleColumn]);
+}
 pub mod practice {
     use gpui_kit::actions;
     actions!(practice, [Save]);
 }
 pub mod section {
     use gpui_kit::actions;
-    actions!(section, [Add, Clone, Remove, RepeatUp, RepeatDown, MeasureAdd, MeasureRemove, ToggleCollapse, ExpandAll, CollapseAll, MoveUp, MoveDown, Rename, ToggleSelect]);
+    actions!(
+        section,
+        [Add, Clone, Remove, Copy, Cut, Paste, Group, Ungroup, RepeatUp, RepeatDown, MeasureAdd, MeasureRemove, ToggleCollapse, ExpandAll, CollapseAll, MoveUp, MoveDown, Rename, ToggleSelect]
+    );
 }
 pub mod track {
     use gpui_kit::actions;
@@ -92,6 +136,8 @@ pub mod grid {
     actions!(
         grid,
         [
+            NextTrackCell,
+            PrevTrackCell,
             Left,
             Right,
             Up,

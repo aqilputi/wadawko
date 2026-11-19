@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::time::{Duration, Instant};
 
-use wadawko_core::kyai::{kyai_note, kyai_profile, kyai_voice_or_default};
+use wadawko_core::kyai::{kyai_note, kyai_profile, kyai_timbre, kyai_voice_or_default};
 use wadawko_core::ops::kit::resolve_instrument;
 use wadawko_core::ops::people::person_audible;
 use wadawko_core::phrase::resolve_cell;
@@ -18,7 +18,8 @@ use wadawko_samples::{RoundRobin, SampleBank};
 use crate::dsp::Rng;
 use crate::engine::{Clock, Command, Engine, EngineConfig, EngineEvent, Garbage, Meters, PlayCmd, PreviewSeq, SampleSet, Trainer};
 use crate::fue::fue_total_secs;
-use crate::kyai_voice::kyai_grains;
+use crate::kyai_synth::kyai_grains;
+use crate::kyai_voice::{kiai_grain, plan_for, voice_of};
 use crate::schedule::{CompileOptions, Compiler, EventKind, PREVIEW_KYAI_SLOT, PREVIEW_SLOT, Schedule, channel_key, db_gain, hit_event, sfz_dyn, track_audible, zone_chain};
 
 /// Treino (`opts.trainer` do TS): começa em `start_pct × tempo` e sobe
@@ -27,6 +28,17 @@ use crate::schedule::{CompileOptions, Compiler, EventKind, PREVIEW_KYAI_SLOT, PR
 pub struct TrainerOptions {
     pub start_pct: f64,
     pub step: f64,
+    /// fração do andamento onde o treino para de subir (1 = o andamento da música)
+    pub target_pct: f64,
+    /// voltas em cada degrau antes de subir
+    pub laps: u32,
+}
+
+impl TrainerOptions {
+    /// Treino clássico: sobe a cada volta até o andamento da música.
+    pub fn new(start_pct: f64, step: f64) -> Self {
+        TrainerOptions { start_pct, step, target_pct: 1.0, laps: 1 }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -181,7 +193,7 @@ impl Controller {
             looping: opts.looping,
             count_in: opts.count_in,
             count_in_loop: opts.count_in_loop,
-            trainer: trainer.map(|t| Trainer { base_bpm: base as f32, step: t.step as f32 }),
+            trainer: trainer.map(|t| Trainer { base_bpm: base as f32, step: t.step as f32, target_bpm: (base * t.target_pct).round() as f32, laps: t.laps.max(1) }),
         }));
         bpm
     }
@@ -314,7 +326,7 @@ impl Controller {
     /// Preview de um kiai ao escrever (`previewKyai`): as sílabas tocam uma por
     /// `unit_sec` (o passo da célula), com a voz do dono (`seed_id` = pessoa)
     /// e a entonação da palavra.
-    pub fn preview_kyai(&mut self, track: &Track, syls: &[&str], unit_sec: f64, seed_id: Option<&str>) {
+    pub fn preview_kyai(&mut self, song: &Song, track: &Track, syls: &[&str], unit_sec: f64, seed_id: Option<&str>) {
         if syls.is_empty() {
             return;
         }
@@ -324,27 +336,48 @@ impl Controller {
         let slot = self.schedule.channel_slot(&key).unwrap_or(PREVIEW_KYAI_SLOT);
         // como no TS, o preview desmuta o canal e aplica o volume da voz
         self.send(Command::SetChannelMix { slot, gain: db_gain(kyai_voice_or_default(track.kyai.as_ref()).2), pan: track.pan.unwrap_or(0.0) as f32, mute: false });
-        let prof = kyai_profile(seed_id.or(first).unwrap_or(&track.id), track);
-        let sr = self.compiler.sample_rate();
-        let animalese = self.compiler.bank().animalese_id().0;
+        let seed = seed_id.or(first).unwrap_or(&track.id);
+        let prof = kyai_profile(seed, track);
+        let voice = voice_of(kyai_timbre(song, seed, track));
+        let bank = self.compiler.bank().clone();
         let shout = |s: &str| s.ends_with('!');
         // agrupa em palavras como na música (quebra depois de cada "!")
-        let mut start = 0;
-        let mut grains = Vec::new();
+        let (mut start, mut end) = (0, 0);
+        let mut plan: Vec<Option<&'static str>> = Vec::new();
+        let mut out = Vec::new();
         for (i, syl) in syls.iter().enumerate() {
-            if i > 0 && shout(syls[i - 1]) {
+            if i == 0 || shout(syls[i - 1]) {
                 start = i;
+                end = i;
+                while end < syls.len() - 1 && !shout(syls[end]) {
+                    end += 1;
+                }
+                if let Some(v) = voice {
+                    plan = plan_for(&bank, v, &syls[start..=end]);
+                }
             }
-            let mut end = i;
-            while end < syls.len() - 1 && !shout(syls[end]) {
-                end += 1;
-            }
-            let gap = if i < syls.len() - 1 { unit_sec } else { f64::INFINITY };
+            let n = end - start + 1;
             let rng = &mut self.rng;
-            let note = kyai_note(syl, i - start, end - start + 1, shout(syl), gap, &prof, || rng.unit64());
-            kyai_grains(&note, &prof, animalese, slot * 2, 0.03 + i as f64 * unit_sec, sr, rng, &mut grains);
+            let Some(v) = voice else {
+                // animalese com timbre de grito
+                let gap = if i < syls.len() - 1 { unit_sec } else { f64::INFINITY };
+                let note = kyai_note(syl, i - start, n, shout(syl), gap, &prof, || rng.unit64());
+                kyai_grains(&note, &prof, bank.animalese_id().0, slot * 2, 0.03 + i as f64 * unit_sec, self.compiler.sample_rate(), rng, &mut out);
+                continue;
+            };
+            let Some(word) = plan.get(i - start).copied().flatten() else { continue };
+            let whole = n > 1 && i == start && plan.iter().skip(1).all(Option::is_none);
+            let gap = if whole {
+                unit_sec * n as f64
+            } else if i < syls.len() - 1 {
+                unit_sec
+            } else {
+                f64::INFINITY
+            };
+            let note = kyai_note(syl, i - start, n, shout(syl) || whole, gap, &prof, || rng.unit64());
+            out.extend(kiai_grain(&bank, v, word, &note, &prof, gap, slot * 2, 0.03 + i as f64 * unit_sec, rng));
         }
-        for kind in grains {
+        for kind in out {
             self.send(Command::Trigger { kind, delay: 0.0 });
         }
     }

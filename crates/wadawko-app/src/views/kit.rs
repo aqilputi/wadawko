@@ -378,14 +378,58 @@ impl KitView {
         ui::titled_card(
             &format!("instrumento · base: {}", def.base.label()),
             th,
-            div().child(head).child(div().flex().gap(px(10.0)).child(self.zone_editor(def, Zone::Head, th)).child(self.zone_editor(def, Zone::Rim, th))),
+            div().child(head).child(div().py(px(4.0)).child(self.color_row(song, def, th))).child(div().flex().gap(px(10.0)).child(self.zone_editor(def, Zone::Head, th)).child(self.zone_editor(
+                def,
+                Zone::Rim,
+                th,
+            ))),
         )
         .flex_1()
         .min_w(px(340.0))
         .max_w(px(560.0))
     }
 
-    fn builtin_row(&self, def: &InstrumentDef, th: &Theme) -> gpui_kit::Div {
+    /// Cor do instrumento (tracker §5.1): as linhas sem cor própria herdam dela.
+    /// 12 quadradinhos da paleta das linhas + "padrão" (a cor do instrumento base).
+    fn color_row(&self, song: &Song, def: &InstrumentDef, th: &Theme) -> gpui_kit::Div {
+        let cur = ops::structure::instrument_color(song, &def.id).map(str::to_ascii_lowercase);
+        let mut row = div().flex().items_center().gap(px(4.0)).child(div().text_size(px(10.5)).text_color(th.ink_faint).mr(px(2.0)).child("cor"));
+        for (i, c) in wadawko_core::model::TRACK_COLORS.iter().enumerate() {
+            let on = cur.as_deref() == Some(&c.to_ascii_lowercase());
+            let (st, did) = (self.state.clone(), def.id.clone());
+            let col = crate::theme::parse_color(c).unwrap_or(th.ink_faint);
+            row = row.child(
+                div()
+                    .id(SharedString::from(format!("kit-col-{}-{i}", def.id)))
+                    .size(px(14.0))
+                    .rounded(px(2.0))
+                    .bg(col)
+                    .cursor_pointer()
+                    .border_1()
+                    .border_color(if on { th.ink } else { gpui_kit::transparent_black() })
+                    .on_click(move |_, _, cx| widgets::edit(&st, cx, |song| ops::structure::set_instrument_color(song, &did, Some(c)))),
+            );
+        }
+        let (st, did) = (self.state.clone(), def.id.clone());
+        row.child(
+            div()
+                .id(SharedString::from(format!("kit-col-{}-def", def.id)))
+                .px(px(5.0))
+                .h(px(16.0))
+                .flex()
+                .items_center()
+                .rounded(px(ui::R1))
+                .border_1()
+                .border_color(if cur.is_none() { th.accent2 } else { th.line_strong })
+                .text_size(px(10.0))
+                .text_color(th.ink_soft)
+                .cursor_pointer()
+                .child("padrão")
+                .on_click(move |_, _, cx| widgets::edit(&st, cx, |song| ops::structure::set_instrument_color(song, &did, None))),
+        )
+    }
+
+    fn builtin_row(&self, song: &Song, def: &InstrumentDef, th: &Theme) -> gpui_kit::Div {
         let (st, did) = (self.state.clone(), def.id.clone());
         let on_dup: widgets::Act = Rc::new(move |_: &mut Window, cx: &mut App| {
             st.update(cx, |s, cx| {
@@ -412,6 +456,7 @@ impl KitView {
             .border_color(th.line)
             .child(div().w(px(150.0)).flex_none().text_size(px(13.0)).font_weight(FontWeight::BOLD).text_color(th.ink).child(SharedString::from(def.name.clone())))
             .child(div().w(px(100.0)).flex_none().text_size(px(11.0)).text_color(th.ink_soft).child(def.base.label()))
+            .child(self.color_row(song, def, th))
             .child(self.play_btn(format!("kit-bplay-head-{}", def.id), "▶ couro", &def.id, Zone::Head, th))
             .child(self.play_btn(format!("kit-bplay-rim-{}", def.id), "▶ borda", &def.id, Zone::Rim, th))
             .child(div().flex_1())
@@ -473,7 +518,7 @@ impl Render for KitView {
 
         let mut list = div().flex().flex_col().gap(px(5.0)).max_w(px(760.0));
         for def in ops::kit::palette_instruments(&song).into_iter().filter(|d| d.is_builtin()) {
-            list = list.child(self.builtin_row(def, &th));
+            list = list.child(self.builtin_row(&song, def, &th));
         }
         page.child(h3("PRONTOS")).child(list).child(div().text_size(px(11.0)).text_color(th.ink_faint).child(
             "Arraste os sliders (duplo clique volta ao neutro) · Ctrl+Space salta para um controle; num slider, ←/→ ajustam e Esc solta · clique no nome para renomear · ▶ toca uma batida da zona.",

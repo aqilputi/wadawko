@@ -106,6 +106,9 @@ pub fn set_subdivision(song: &mut Song, sub: usize) {
         if let Some(kyai) = &meas.kyai {
             meas.kyai = Some(resample(kyai, old_n, new_n));
         }
+        if let Some(fx) = &meas.fx {
+            meas.fx = Some(resample(fx, old_n, new_n));
+        }
         meas.cells = resample(&meas.cells, old_n, new_n);
         meas.subdivision = sub;
         meas.cell_owners = None;
@@ -139,6 +142,9 @@ pub fn set_measure_beats(song: &mut Song, mi: usize, beats: usize) -> bool {
     }
     if let Some(kyai) = meas.kyai.as_mut() {
         fit(kyai);
+    }
+    if let Some(fx) = meas.fx.as_mut() {
+        fit(fx);
     }
     meas.beats = beats;
     true

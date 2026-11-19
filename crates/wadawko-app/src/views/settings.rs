@@ -48,7 +48,7 @@ impl Shell {
             .flex()
             .flex_col()
             .gap(px(14.0))
-            .child(div().text_size(px(22.0)).font_family("Shippori Mincho").font_weight(FontWeight::BOLD).child("Configurações"))
+            .child(div().text_size(px(22.0)).font_family(crate::theme::UI_FONT).font_weight(FontWeight::BOLD).child("Configurações"))
             .child(
                 ui::titled_card(
                     "Teclado",

@@ -41,6 +41,12 @@ pub fn remove_track(song: &mut Song, track_id: &str) {
         if let Some(kyai) = meas.kyai.as_mut() {
             kyai.remove(track_id);
         }
+        if let Some(fx) = meas.fx.as_mut() {
+            fx.remove(track_id);
+            if fx.is_empty() {
+                meas.fx = None;
+            }
+        }
         if let Some(td) = meas.track_dynamics.as_mut() {
             td.remove(track_id);
             if td.is_empty() {

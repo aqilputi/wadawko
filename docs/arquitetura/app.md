@@ -176,6 +176,13 @@ das linhas (3 px sob o nome) são pintados nesse mesmo overlay com
 dentro da grade. O arrasto na faixa de loop da régua também é acompanhado por
 um overlay do Shell (`on_mouse_event` de mover/soltar em toda a janela).
 
+**Identidade visual (2026-11-18)**: tema escuro em grafites azulados, **rosa** (`accent`, `#ff5fa2`)
+para "ligado"/ação e notas de couro, **ciano** (`accent2`, `#3dd6e6`) para seleção, display e notas
+de borda; fonte da interface `theme::UI_FONT` = Inconsolata (registrada em `main.rs`); ícones SVG
+próprios em `crates/wadawko-app/assets/icons`, servidos por `icons::Assets` (`with_assets`) e
+desenhados com `ui::icon(nome, tamanho).text_color(...)`; botões em relevo com `ui::relief`
+(gradiente), `ui::raised`/`ui::sunken` (sombras; `.active` afunda) e `ui::glow` (aceso).
+
 Tokens e formas: `theme.rs` tem os cinzas neutros em níveis (`chrome` < `bg` <
 `paper`), uma cor de "ligado" (`accent`) e uma de seleção (`accent2`), `warn`
 (mudo), `danger` (clip) e `meter_lo/mid/hi`; `ui::R0` (0 px: superfícies) e
@@ -203,6 +210,9 @@ padrão do instrumento) e `Theme::on_track_color()` para texto sobre ela.
   que mudou (`cx.notify()` / `entity.update(cx, |_, cx| cx.notify())`).
 - Só peça `request_animation_frame` enquanto algo realmente anima (ex.: o bloco
   arrastado para de pedir frames quando assenta — `drag_ghost::Swing::settled`).
+- Seguir centrado (`Shell::follow_center`): rolar a área move as seções em cache, que são
+  redesenhadas a cada frame (medido em 2026-11-18: 12 seções/frame, +0,9 ms/frame contra 0,03 ms
+  do seguir por página) — por isso o padrão é por página. `--demo playstat-tracker|playstat-centro`.
 - Medir: `--demo playstat-grade|playstat-esteira` (frames e render em 6 s tocando),
   `--demo hoverstat` (200 hovers alternando entre dois botões ★: renders da grade e
   das seções; medido em 2026-11-18: 2,67 ms → 0,04 ms + 0,20 ms de uma seção),

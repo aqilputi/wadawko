@@ -479,7 +479,7 @@ fn kiai_silabacao_e_contorno() {
     assert_eq!(p, kyai::kyai_profile("person-1", &track));
     assert_ne!(p, kyai::kyai_profile("person-2", &track));
     assert!((-4.0..5.0).contains(&p.pitch) && (0.85..1.2).contains(&p.speed) && p.vary == 0.5);
-    track.kyai = Some(wadawko_core::KyaiVoice { pitch: Some(3.0), vary: Some(0.1), gain: None });
+    track.kyai = Some(wadawko_core::KyaiVoice { pitch: Some(3.0), vary: Some(0.1), gain: None, voice: None });
     let q = kyai::kyai_profile("person-1", &track);
     assert!((q.pitch - p.pitch - 3.0).abs() < 1e-12 && q.vary == 0.1);
 }

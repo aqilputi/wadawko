@@ -67,12 +67,19 @@ impl Shell {
     }
 
     /// Altura das linhas da grade (F16): `Some(Δ)` soma, `None` volta ao padrão. Fica salva.
+    /// No editor vertical, a altura da linha-tempo (`tracker_row_h`, passo de 4 px).
     pub(crate) fn set_row_h(&mut self, delta: Option<f32>, cx: &mut Context<Self>) {
-        use crate::views::grid::{CELL_H, CELL_H_MAX, CELL_H_MIN};
+        use crate::views::grid::{CELL_H, CELL_H_MAX, CELL_H_MIN, Layout, ROW_H, ROW_H_MAX, ROW_H_MIN, ROW_H_STEP};
         let h = self.grid.update(cx, |g, cx| {
-            g.cell_h = delta.map_or(CELL_H, |d| (g.cell_h + d).clamp(CELL_H_MIN, CELL_H_MAX));
+            let h = if g.layout == Layout::Vertical {
+                g.row_h = delta.map_or(ROW_H, |d| (g.row_h + ROW_H_STEP.copysign(d)).clamp(ROW_H_MIN, ROW_H_MAX));
+                g.row_h
+            } else {
+                g.cell_h = delta.map_or(CELL_H, |d| (g.cell_h + d).clamp(CELL_H_MIN, CELL_H_MAX));
+                g.cell_h
+            };
             cx.notify();
-            g.cell_h
+            h
         });
         self.save_settings(cx);
         self.flash(format!("linhas: {h:.0} px"), cx);
@@ -183,7 +190,7 @@ impl Shell {
     }
 
     pub(crate) fn actions(&self, d: gpui_kit::Stateful<gpui_kit::Div>, cx: &mut Context<Self>) -> gpui_kit::Stateful<gpui_kit::Div> {
-        use crate::keys::{grid as ga, hints, keys as kb, measure, nav, practice, project, section, song, track, transport, view, vim};
+        use crate::keys::{fill, fx, grid as ga, hints, keys as kb, measure, nav, practice, project, section, song, step, track, transport, view, vim};
         let d = on!(d, cx, transport::TogglePlay, |this, w, cx| this.toggle_play(false, cx));
         let d = on!(d, cx, transport::PlayHere, |this, w, cx| this.toggle_play(true, cx));
         let d = on!(d, cx, transport::PlayFromStart, |this, w, cx| this.state.update(cx, |s, cx| {
@@ -247,6 +254,37 @@ impl Shell {
             this.save_settings(cx);
             this.flash(format!("metrônomo: som de {}", m.sound.name()), cx)
         });
+        let d = on!(d, cx, transport::CountVoice, |this, w, cx| {
+            let mut m = this.state.read(cx).tp.metro;
+            m.voice = m.voice.next();
+            this.state.update(cx, |s, cx| s.set_metronome_config(m, cx));
+            this.save_settings(cx);
+            this.flash(format!("count-in: {}", m.voice.name()), cx)
+        });
+        let d = on!(d, cx, transport::RehearsePick, |this, w, cx| {
+            if this.song(cx).people().is_empty() {
+                this.flash("a música não tem pessoas (página Pessoas)", cx);
+            } else {
+                this.open_palette(w, cx);
+                if let Some(p) = this.palette.as_mut() {
+                    p.query = "ensaiar como".into();
+                }
+            }
+        });
+        let d = on!(d, cx, transport::RehearseOff, |this, w, cx| {
+            this.state.update(cx, |s, cx| s.set_rehearse(None, cx));
+            this.flash("ensaiar como: todos", cx)
+        });
+        let d = on!(d, cx, transport::RehearseListen, |this, w, cx| {
+            let r = this.state.read(cx).tp.rehearse.clone();
+            match r {
+                Some(mut r) => {
+                    r.listen = if r.listen == crate::state::Listen::Without { crate::state::Listen::Only } else { crate::state::Listen::Without };
+                    this.state.update(cx, |s, cx| s.set_rehearse(Some(r), cx));
+                }
+                None => this.flash("escolha a pessoa primeiro (Alt+P)", cx),
+            }
+        });
         let d = on!(d, cx, transport::TapTempo, |this, w, cx| this.tap_tempo(cx));
         let d = on!(d, cx, transport::ToggleTrainer, |this, w, cx| this.state.update(cx, |s, cx| {
             s.tp.trainer = !s.tp.trainer;
@@ -274,6 +312,14 @@ impl Shell {
             let v = format!("{:.0}", this.state.read(cx).tp.trainer_pct * 100.0);
             this.ask(InputTarget::TrainerPct, v, w, cx)
         });
+        let d = on!(d, cx, transport::TrainerTarget, |this, w, cx| {
+            let v = format!("{:.0}", this.state.read(cx).tp.trainer_target * 100.0);
+            this.ask(InputTarget::TrainerTarget, v, w, cx)
+        });
+        let d = on!(d, cx, transport::TrainerLaps, |this, w, cx| this.state.update(cx, |s, cx| {
+            s.tp.trainer_laps = s.tp.trainer_laps % 4 + 1;
+            cx.notify()
+        }));
         let d = on!(d, cx, transport::TrainerStep, |this, w, cx| {
             let v = format!("{:.0}", this.state.read(cx).tp.trainer_step * 100.0);
             this.ask(InputTarget::TrainerStep, v, w, cx)
@@ -300,18 +346,70 @@ impl Shell {
             let dark = !this.theme(cx).dark;
             this.set_theme(dark, cx)
         });
-        let d = on!(d, cx, view::ZoomIn, |this, w, cx| this.g(cx, |g, cx, _| {
-            g.zoom_at(1.25, 0.0);
-            cx.notify()
-        }));
-        let d = on!(d, cx, view::ZoomOut, |this, w, cx| this.g(cx, |g, cx, _| {
-            g.zoom_at(0.8, 0.0);
-            cx.notify()
-        }));
-        let d = on!(d, cx, view::ZoomReset, |this, w, cx| this.g(cx, |g, cx, _| {
-            g.zoom_reset();
-            cx.notify()
-        }));
+        let d = on!(d, cx, view::ZoomIn, |this, w, cx| {
+            this.g(cx, |g, cx, _| {
+                g.zoom_at(1.25, 0.0);
+                cx.notify()
+            });
+            this.save_settings(cx)
+        });
+        let d = on!(d, cx, view::ZoomOut, |this, w, cx| {
+            this.g(cx, |g, cx, _| {
+                g.zoom_at(0.8, 0.0);
+                cx.notify()
+            });
+            this.save_settings(cx)
+        });
+        let d = on!(d, cx, view::ZoomReset, |this, w, cx| {
+            this.g(cx, |g, cx, _| {
+                g.zoom_reset();
+                cx.notify()
+            });
+            this.save_settings(cx)
+        });
+        let d = on!(d, cx, view::ToggleLayout, |this, w, cx| {
+            let layout = this.grid.update(cx, |g, cx| {
+                let l = g.layout.toggled();
+                g.set_layout(l, cx);
+                l
+            });
+            this.save_settings(cx);
+            this.flash(format!("editor: {}", layout.name()), cx);
+            this.reveal_cursor(cx)
+        });
+        let d = on!(d, cx, fx::Edit, |this, w, cx| this.fx_edit(w, cx));
+        let d = on!(d, cx, fill::Open, |this, w, cx| {
+            this.open_palette(w, cx);
+            if let Some(p) = this.palette.as_mut() {
+                p.query = "preencher".into();
+            }
+        });
+        let d = on!(d, cx, fill::Every2, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Every(2), cx));
+        let d = on!(d, cx, fill::Every4, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Every(4), cx));
+        let d = on!(d, cx, fill::Offbeat, |this, w, cx| {
+            let sub = this.grid.read(cx).cursor.and_then(|c| this.song(cx).measures.get(c.m).map(|m| m.subdivision)).unwrap_or(2);
+            this.fill_action(wadawko_core::ops::cells::FillPattern::Offbeat(sub), cx)
+        });
+        let d = on!(d, cx, fill::Euclid3, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Euclid(3, 8), cx));
+        let d = on!(d, cx, fill::Euclid5, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Euclid(5, 8), cx));
+        let d = on!(d, cx, fill::Oroshi, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Oroshi, cx));
+        let d = on!(d, cx, fx::Roll, |this, w, cx| this.fx_action("roll", cx));
+        let d = on!(d, cx, fx::RollCresc, |this, w, cx| this.fx_action("roll_cresc", cx));
+        let d = on!(d, cx, fx::Flam, |this, w, cx| this.fx_action("flam", cx));
+        let d = on!(d, cx, fx::Later, |this, w, cx| this.fx_action("later", cx));
+        let d = on!(d, cx, fx::Earlier, |this, w, cx| this.fx_action("earlier", cx));
+        let d = on!(d, cx, fx::Cut, |this, w, cx| this.fx_action("cut", cx));
+        let d = on!(d, cx, fx::Softer, |this, w, cx| this.fx_action("softer", cx));
+        let d = on!(d, cx, fx::Exact, |this, w, cx| this.fx_action("exact", cx));
+        let d = on!(d, cx, fx::Clear, |this, w, cx| this.fx_action("clear", cx));
+        let d = on!(d, cx, fx::ToggleColumn, |this, w, cx| {
+            let on = this.grid.update(cx, |g, cx| {
+                g.show_fx_all = !g.show_fx_all;
+                cx.notify();
+                g.show_fx_all
+            });
+            this.flash(if on { "coluna de efeitos em todas as linhas" } else { "coluna de efeitos só onde há efeito" }, cx)
+        });
         let d = on!(d, cx, view::Director, |this, w, cx| {
             if this.director.is_some() {
                 this.director_close = true;
@@ -409,6 +507,44 @@ impl Shell {
                 ops::sections::append_section(s, None);
             });
         });
+        let d = on!(d, cx, section::Copy, |this, w, cx| this.sections_copy(false, cx));
+        let d = on!(d, cx, section::Cut, |this, w, cx| this.sections_copy(true, cx));
+        let d = on!(d, cx, section::Paste, |this, w, cx| this.sections_paste(cx));
+        let d = on!(d, cx, section::Group, |this, w, cx| this.sections_group(cx));
+        let d = on!(d, cx, section::Ungroup, |this, w, cx| this.sections_ungroup(cx));
+        let d = on!(d, cx, view::ToggleFollow, |this, w, cx| {
+            // pausado por edição: Scroll Lock retoma em vez de desligar
+            if this.follow_suspended {
+                this.follow_suspended = false;
+                this.follow_on = true;
+            } else {
+                this.follow_on = !this.follow_on;
+            }
+            this.flash(if this.follow_on { "a grade segue o playhead" } else { "seguir desligado" }, cx)
+        });
+        let d = on!(d, cx, view::ToggleFollowCenter, |this, w, cx| {
+            this.follow_center = !this.follow_center;
+            this.flash(if this.follow_center { "seguir: centrado" } else { "seguir: por página" }, cx)
+        });
+        let d = on!(d, cx, view::ViewPick, |this, w, cx| {
+            if this.song(cx).people().is_empty() {
+                this.flash("a música não tem pessoas (página Pessoas)", cx);
+            } else {
+                this.open_palette(w, cx);
+                if let Some(p) = this.palette.as_mut() {
+                    p.query = "visão".into();
+                }
+            }
+        });
+        let d = on!(d, cx, view::ViewAll, |this, w, cx| {
+            this.grid.update(cx, |g, cx| {
+                g.view_person = None;
+                cx.notify();
+            });
+            this.flash("visão: todas as linhas", cx)
+        });
+        let d = on!(d, cx, view::ToggleMinimap, |this, w, cx| this.mini_open = !this.mini_open);
+        let d = on!(d, cx, view::ToggleSections, |this, w, cx| this.sec_panel_open = !this.sec_panel_open);
         let d = on!(d, cx, section::Clone, |this, w, cx| this.sec_edit(cx, |s, id| {
             ops::sections::clone_section(s, id);
         }));
@@ -555,6 +691,18 @@ impl Shell {
         // do Tab do gpui_kit, que só trocava o foco e deixava a grade sem teclado)
         let d = on!(d, cx, ga::NextCell, |this, w, cx| this.tab_cell(M::Right, cx));
         let d = on!(d, cx, ga::PrevCell, |this, w, cx| this.tab_cell(M::Left, cx));
+        let d = on!(d, cx, ga::NextTrackCell, |this, w, cx| this.tab_cell(M::Down, cx));
+        let d = on!(d, cx, ga::PrevTrackCell, |this, w, cx| this.tab_cell(M::Up, cx));
+        let d = on!(d, cx, step::Step0, |this, w, cx| this.set_edit_step(0, cx));
+        let d = on!(d, cx, step::Step1, |this, w, cx| this.set_edit_step(1, cx));
+        let d = on!(d, cx, step::Step2, |this, w, cx| this.set_edit_step(2, cx));
+        let d = on!(d, cx, step::Step3, |this, w, cx| this.set_edit_step(3, cx));
+        let d = on!(d, cx, step::Step4, |this, w, cx| this.set_edit_step(4, cx));
+        let d = on!(d, cx, step::Step5, |this, w, cx| this.set_edit_step(5, cx));
+        let d = on!(d, cx, step::Step6, |this, w, cx| this.set_edit_step(6, cx));
+        let d = on!(d, cx, step::Step7, |this, w, cx| this.set_edit_step(7, cx));
+        let d = on!(d, cx, step::Step8, |this, w, cx| this.set_edit_step(8, cx));
+        let d = on!(d, cx, step::Step9, |this, w, cx| this.set_edit_step(9, cx));
         let d = on!(d, cx, ga::Up, |this, w, cx| {
             this.mv(M::Up, false, cx);
             this.reveal_cursor(cx)
@@ -798,6 +946,12 @@ impl Shell {
             cx.notify();
         });
         self.reveal_cursor(cx);
+    }
+
+    /// Passo de edição (Alt+0…9): quantas células o cursor anda ao confirmar.
+    pub(crate) fn set_edit_step(&mut self, n: usize, cx: &mut Context<Self>) {
+        self.grid.update(cx, |g, _| g.edit_step = n);
+        self.flash(if n == 0 { "passo de edição 0: o cursor fica na célula".to_string() } else { format!("passo de edição: {n}") }, cx);
     }
 
     pub fn project_pos(&self, cx: &gpui_kit::App) -> (usize, usize) {

@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-18T20:35:04Z
+  at: 2026-11-19T03:48:34Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -79,6 +79,21 @@ Valem na área do editor (grade, partitura, esteira), com ou sem vim.
 | `Shift+Tab` | `grid::PrevCell` | grava e volta uma célula |
 | `Ctrl+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
 | `Alt+T` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
+| `Ctrl+Shift+B` | `view::ToggleSections` | Painel de seções: mostrar/esconder |
+| `Ctrl+Shift+I` | `fill::Open` | Preencher a seleção… (padrões) |
+| `Alt+P` | `transport::RehearsePick` | Ensaiar como… (escolher a pessoa) |
+| `Alt+V` | `view::ViewPick` | Visão por pessoa… (só as linhas dela) |
+| `Alt+Shift+V` | `view::ViewAll` | Visão: todas as linhas |
+| `Alt+Shift+P` | `transport::RehearseOff` | Ensaiar como: todos (desligar) |
+| `scrolllock` | `view::ToggleFollow` | Seguir o playhead: ligar/desligar |
+| `Ctrl+Shift+R` | `fx::Roll` | Efeito: rulo (×2 → 3 → 4 → 6 → 8 → nenhum) |
+| `Ctrl+Shift+F` | `fx::Flam` | Efeito: flam (liga/desliga) |
+| `Ctrl+Shift+X` | `fx::Cut` | Efeito: corte / abafar (liga/desliga) |
+| `Ctrl+Shift+.` | `fx::Later` | Efeito: atrasar 10 % |
+| `Ctrl+Shift+,` | `fx::Earlier` | Efeito: antecipar 10 % |
+| `Ctrl+Shift+V` | `fx::Softer` | Efeito: mais fraco (força 9 → 0 = ghost) |
+| `Ctrl+Shift+0` | `fx::Clear` | Efeitos: limpar |
+| `Ctrl+Shift+Y` | `fx::Edit` | Efeitos da célula… (V R F D X H) |
 | `Ctrl+Alt+↑` | `view::RowTaller` | Linhas mais altas |
 | `f10` | `view::Director` | Modo projeção (tela cheia para a TV do ensaio) |
 | `Ctrl+Alt+↓` | `view::RowShorter` | Linhas mais baixas (cabem mais linhas) |
@@ -164,11 +179,37 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `t` `m` | `transport::ToggleMetronome` | Metrônomo: ligar/desligar |
 | `Space` `t` `c` | `transport::ToggleCountIn` | Count-in: ligar/desligar |
 | `Space` `t` `r` | `transport::ToggleCountInLoop` | Count-in a cada volta do loop: ligar/desligar |
+| `Space` `p` | `transport::RehearsePick` | Ensaiar como… (escolher a pessoa) |
+| `Space` `s` `g` | `section::Group` | Seções: agrupar as selecionadas |
+| `Space` `s` `Shift+G` | `section::Ungroup` | Seções: desfazer o grupo |
+| `Space` `s` `y` | `section::Copy` | Seções: copiar as selecionadas (cola noutra música também) |
+| `Space` `s` `Shift+P` | `section::Paste` | Seções: colar depois da selecionada |
+| `Space` `e` `2` | `fill::Every2` | Preencher: a cada 2 células |
+| `Space` `e` `4` | `fill::Every4` | Preencher: a cada 4 células |
+| `Space` `e` `c` | `fill::Offbeat` | Preencher: contratempo |
+| `Space` `e` `3` | `fill::Euclid3` | Preencher: euclidiano 3 em 8 |
+| `Space` `e` `5` | `fill::Euclid5` | Preencher: euclidiano 5 em 8 |
+| `Space` `e` `o` | `fill::Oroshi` | Preencher: oroshi (cada vez mais rápido) |
+| `Space` `f` `r` | `fx::Roll` | Efeito: rulo (×2 → 3 → 4 → 6 → 8 → nenhum) |
+| `Space` `f` `Shift+R` | `fx::RollCresc` | Efeito: rulo crescendo / decrescendo |
+| `Space` `f` `f` | `fx::Flam` | Efeito: flam (liga/desliga) |
+| `Space` `f` `d` | `fx::Later` | Efeito: atrasar 10 % |
+| `Space` `f` `Shift+D` | `fx::Earlier` | Efeito: antecipar 10 % |
+| `Space` `f` `x` | `fx::Cut` | Efeito: corte / abafar (liga/desliga) |
+| `Space` `f` `v` | `fx::Softer` | Efeito: mais fraco (força 9 → 0 = ghost) |
+| `Space` `f` `h` | `fx::Exact` | Efeito: exato, sem humanização (liga/desliga) |
+| `Space` `f` `c` | `fx::Clear` | Efeitos: limpar |
+| `Space` `f` `e` | `fx::Edit` | Efeitos da célula… (V R F D X H) |
+| `Space` `v` `x` | `fx::ToggleColumn` | Efeitos: mostrar a coluna em todas as linhas |
+| `Space` `v` `v` | `view::ViewPick` | Visão por pessoa… (só as linhas dela) |
+| `Space` `v` `f` | `view::ToggleFollow` | Seguir o playhead: ligar/desligar |
+| `Space` `v` `Shift+F` | `view::ToggleFollowCenter` | Seguir: centrado / por página |
 | `Space` `t` `g` | `practice::Save` | Trechos: guardar o trecho de loop com um nome… |
 | `Space` `t` `a` | `transport::MetroPattern` | Metrônomo: padrão de acentos… (ABBB) |
 | `Space` `t` `d` | `transport::MetroSubdiv` | Metrônomo: subdivisão (1 → 2 → 3 → 4 por tempo) |
 | `Space` `t` `v` | `transport::MetroVolume` | Metrônomo: volume… |
 | `Space` `t` `k` | `transport::MetroSound` | Metrônomo: timbre (bipe → shime → kane) |
+| `Space` `t` `i` | `transport::CountVoice` | Count-in: contagem falada (sem voz → masculina → feminina) |
 | `Space` `t` `.` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
 | `Space` `t` `t` | `transport::ToggleTrainer` | Treino (rampa de tempo): ligar/desligar |
 | `Space` `t` `w` | `transport::ToggleSwing` | Reto / swing |
@@ -202,6 +243,7 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `v` `p` | `view::Partitura` | Ver: partitura |
 | `Space` `v` `e` | `view::Esteira` | Ver: esteira |
 | `Space` `v` `t` | `view::ToggleTheme` | Tema: claro/escuro |
+| `Space` `v` `l` | `view::ToggleLayout` | Editor: vertical / horizontal |
 | `Space` `g` `e` | `nav::Editor` | Ir para Editor |
 | `Space` `g` `m` | `nav::Mixer` | Ir para Mixer |
 | `Space` `g` `p` | `nav::Pessoas` | Ir para Pessoas |
@@ -310,6 +352,56 @@ Com a paleta aberta. Tab/Shift+Tab e ↑/↓ andam na lista, Enter executa, Esc 
 | `Tab` | `keys::PaletteNext` | próximo comando |
 | `Shift+Tab` | `keys::PalettePrev` | comando anterior |
 
+## Contexto `Workspace && layout == vertical`
+
+| Tecla | Comando | Ação |
+|---|---|---|
+| `↓` | `grid::Right` | célula → |
+| `↑` | `grid::Left` | célula ← |
+| `→` | `grid::Down` | linha ↓ |
+| `←` | `grid::Up` | linha ↑ |
+| `Shift+↓` | `grid::ExtendRight` | estender seleção → |
+| `Shift+↑` | `grid::ExtendLeft` | estender seleção ← |
+| `Shift+→` | `grid::ExtendDown` | estender seleção ↓ |
+| `Shift+←` | `grid::ExtendUp` | estender seleção ↑ |
+| `Alt+↓` | `grid::MoveSelRight` | Mover seleção → |
+| `Alt+↑` | `grid::MoveSelLeft` | Mover seleção ← |
+| `Alt+→` | `grid::MoveSelDown` | Mover seleção ↓ |
+| `Alt+←` | `grid::MoveSelUp` | Mover seleção ↑ |
+| `Alt+Shift+↓` | `grid::CloneSelRight` | Clonar seleção → |
+| `Alt+Shift+↑` | `grid::CloneSelLeft` | Clonar seleção ← |
+| `Alt+Shift+→` | `grid::CloneSelDown` | Clonar seleção ↓ |
+| `Alt+Shift+←` | `grid::CloneSelUp` | Clonar seleção ↑ |
+| `Tab` | `grid::NextTrackCell` | Confirmar e ir para a próxima linha (instrumento) |
+| `Shift+Tab` | `grid::PrevTrackCell` | Confirmar e ir para a linha anterior |
+| `PgDn` | `grid::NextMeasure` | próximo compasso |
+| `PgUp` | `grid::PrevMeasure` | compasso anterior |
+| `Ctrl+↓` | `grid::NextBeat` | próximo tempo |
+| `Ctrl+↑` | `grid::PrevBeat` | tempo anterior |
+| `Alt+PgDn` | `grid::NextSection` | próxima seção |
+| `Alt+PgUp` | `grid::PrevSection` | seção anterior |
+| `Ctrl+PgDn` | `grid::LastTrack` | última linha |
+| `Ctrl+PgUp` | `grid::FirstTrack` | primeira linha |
+| `Alt+0` | `step::Step0` | Passo de edição: 0 (fica na célula) |
+| `Alt+1` | `step::Step1` | Passo de edição: 1 |
+| `Alt+2` | `step::Step2` | Passo de edição: 2 |
+| `Alt+3` | `step::Step3` | Passo de edição: 3 |
+| `Alt+4` | `step::Step4` | Passo de edição: 4 |
+| `Alt+5` | `step::Step5` | Passo de edição: 5 |
+| `Alt+6` | `step::Step6` | Passo de edição: 6 |
+| `Alt+7` | `step::Step7` | Passo de edição: 7 |
+| `Alt+8` | `step::Step8` | Passo de edição: 8 |
+| `Alt+9` | `step::Step9` | Passo de edição: 9 |
+
+## Contexto `Workspace && layout == vertical && (mode == normal || mode == visual || mode == vline)`
+
+| Tecla | Comando | Ação |
+|---|---|---|
+| `j` | `grid::Right` | célula → |
+| `k` | `grid::Left` | célula ← |
+| `l` | `grid::Down` | linha ↓ |
+| `h` | `grid::Up` | linha ↑ |
+
 ## Prefixos (which-key)
 
 Apertar o prefixo e esperar mostra as continuações possíveis.
@@ -326,6 +418,8 @@ Apertar o prefixo e esperar mostra as continuações possíveis.
 | `Space` `d` | dinâmica |
 | `Space` `m` | música |
 | `Space` `z` | zoom |
+| `Space` `f` | efeitos |
+| `Space` `e` | preencher |
 | `g` | ir |
 | `z` | zoom/dobrar |
 | `d` | apagar |

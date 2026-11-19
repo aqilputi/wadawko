@@ -300,7 +300,7 @@ pub fn chip(id: impl Into<SharedString>, label: impl Into<SharedString>, th: &Th
 
 /// Título de página (mesmo estilo das Configurações).
 pub fn page_title(text: &'static str) -> gpui_kit::Div {
-    div().text_size(px(22.0)).font_family("Shippori Mincho").font_weight(FontWeight::BOLD).child(text)
+    div().text_size(px(22.0)).font_family(crate::theme::UI_FONT).font_weight(FontWeight::BOLD).child(text)
 }
 
 // ───────────────────────────── teclado ─────────────────────────────
@@ -321,21 +321,24 @@ fn page_prefix(page: Page) -> Option<&'static str> {
 /// for da página atual.
 /// Esc tira o foco (sem consumir o Esc).
 pub fn bind(d: gpui_kit::Stateful<gpui_kit::Div>, cx: &mut Context<Shell>) -> gpui_kit::Stateful<gpui_kit::Div> {
+    // no editor vertical as setas chegam remapeadas (↓ = grid::Right, → = grid::Down…):
+    // o slider continua andando pela tecla física (→/↑ = +1, ←/↓ = −1)
     macro_rules! arrow {
-        ($d:expr, $a:ty, $n:expr) => {
+        ($d:expr, $a:ty, $n:expr, $nv:expr) => {
             $d.capture_action(cx.listener(|shell: &mut Shell, _: &$a, w, cx| {
                 if let Some(p) = page_prefix(shell.page) {
-                    if nudge(p, $n, w, cx) {
+                    let vertical = shell.grid.read(cx).layout == crate::views::grid::Layout::Vertical;
+                    if nudge(p, if vertical { $nv } else { $n }, w, cx) {
                         cx.stop_propagation();
                     }
                 }
             }))
         };
     }
-    let d = arrow!(d, keys::grid::Left, -1);
-    let d = arrow!(d, keys::grid::Down, -1);
-    let d = arrow!(d, keys::grid::Right, 1);
-    let d = arrow!(d, keys::grid::Up, 1);
+    let d = arrow!(d, keys::grid::Left, -1, 1);
+    let d = arrow!(d, keys::grid::Down, -1, 1);
+    let d = arrow!(d, keys::grid::Right, 1, -1);
+    let d = arrow!(d, keys::grid::Up, 1, -1);
     d.capture_action(cx.listener(|_: &mut Shell, _: &keys::keys::Cancel, w, _| {
         if clear_focus() {
             w.refresh();

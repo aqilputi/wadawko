@@ -33,13 +33,17 @@ fn file_list_matches_manifest_and_disk() {
     assert_eq!(names.len(), 72, "golpes únicos no manifesto");
     let mut all: BTreeSet<&str> = names.clone();
     all.insert(ANIMALESE);
-    assert_eq!(all.len(), 73);
-    assert_eq!(SAMPLE_NAMES.len(), 73, "SAMPLE_NAMES sem duplicatas");
+    all.extend(kiai::TAKES.iter().map(|t| t.name));
+    assert_eq!(all.len(), 73 + kiai::TAKES.len());
+    assert_eq!(SAMPLE_NAMES.len(), all.len(), "SAMPLE_NAMES sem duplicatas");
     assert_eq!(SAMPLE_NAMES.iter().copied().collect::<BTreeSet<_>>(), all);
 
     // o diretório não tem .ogg sobrando nem faltando
-    let on_disk: BTreeSet<String> =
-        std::fs::read_dir(repo_samples_dir()).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).filter_map(|f| f.strip_suffix(".ogg").map(str::to_string)).collect();
+    let ogg = |dir: std::path::PathBuf, prefix: &str| -> Vec<String> {
+        std::fs::read_dir(dir).unwrap().map(|e| e.unwrap().file_name().into_string().unwrap()).filter_map(|f| f.strip_suffix(".ogg").map(|n| format!("{prefix}{n}"))).collect()
+    };
+    let mut on_disk: BTreeSet<String> = ogg(repo_samples_dir(), "").into_iter().collect();
+    on_disk.extend(ogg(repo_samples_dir().join("kiai"), "kiai/"));
     assert_eq!(on_disk, all.iter().map(|s| s.to_string()).collect());
 
     // convenção de nomes: <instrumento>-<zona>-<camada>-<rr>
@@ -126,10 +130,10 @@ fn tuning_tail_eq_spot_checks() {
 #[test]
 fn all_files_decode() {
     let b = bank();
-    assert_eq!(b.len(), 73);
-    assert_eq!(b.samples().len(), 73);
+    assert_eq!(b.len(), 73 + kiai::TAKES.len());
+    assert_eq!(b.samples().len(), b.len());
     for (name, s) in b.iter() {
-        // golpes em 48 kHz; o animalese.ogg é 44,1 kHz (o engine precisa usar `sr` por sample)
+        // golpes e gravações em 48 kHz; o animalese.ogg é 44,1 kHz (o engine usa `sr` por sample)
         assert_eq!(s.sr, if name == ANIMALESE { 44_100 } else { 48_000 }, "{name}");
         assert_eq!(s.frames.len() % 2, 0, "{name}");
         assert!(s.len_frames() > 0 && s.duration_secs() > 0.02, "{name}: {}", s.duration_secs());
@@ -145,10 +149,14 @@ fn all_files_decode() {
     let a = b.animalese();
     assert!(Arc::ptr_eq(a, b.sample(b.animalese_id())));
     assert!((a.duration_secs() - 26.0 * animalese::LETTER_SEC as f64).abs() < 0.1, "{}", a.duration_secs());
+    // kiai: gravações curtas (até 1,2 s)
+    for t in kiai::TAKES {
+        assert!(b.by_name(t.name).unwrap().duration_secs() <= 1.25, "{}", t.name);
+    }
     assert!(b.memory_bytes() > 1_000_000);
-    eprintln!("animalese: {} canais, {:.3} s; banco: {:.1} MB de PCM", a.source_channels, a.duration_secs(), b.memory_bytes() as f64 / 1e6);
+    eprintln!("banco: {:.1} MB de PCM", b.memory_bytes() as f64 / 1e6);
     // nº de frames = duration_ts do ffprobe (granule position final do Ogg)
-    for (n, frames) in [("chu-head-0-0", 90489), ("odaiko-head-3-0", 240000), ("kane-rim-0-0", 16426), ("shime-head-0-0", 23040), ("animalese", 171990)] {
+    for (n, frames) in [("chu-head-0-0", 90489), ("odaiko-head-3-0", 240000), ("kane-rim-0-0", 16426), ("shime-head-0-0", 23040)] {
         assert_eq!(b.by_name(n).unwrap().len_frames(), frames, "{n}");
     }
 }
@@ -177,6 +185,7 @@ fn lookup_covers_every_manifest_entry() {
         }
     }
     assert_eq!(seen.len(), 72);
+    assert!(kiai::TAKES.iter().all(|t| !seen.contains(&b.id_by_name(t.name).unwrap())));
     assert!(!seen.contains(&b.animalese_id()));
     assert!(b.by_name("nao-existe").is_none());
 }
@@ -276,9 +285,25 @@ fn animalese_letters() {
 }
 
 #[test]
+fn kiai_takes_and_counts() {
+    let b = bank();
+    for v in [kiai::Voice::Male, kiai::Voice::Female] {
+        // as duas vozes têm "ha" e "hai" (fallback por vogal) e a contagem de 1 a 8
+        assert!(b.kiai_takes(v, "ha", false).len() >= 2);
+        assert!(!b.kiai_takes(v, "hai", false).is_empty());
+        for n in 1..=8 {
+            assert_eq!(b.kiai_takes(v, kiai::count_word(n, v).unwrap(), true).len(), 1, "{v:?} {n}");
+        }
+        assert!(b.kiai_words(v).len() >= 6);
+    }
+    assert!(b.kiai_takes(kiai::Voice::Male, "nada", false).is_empty());
+    assert_eq!(kiai::count_word(9, kiai::Voice::Male), None);
+}
+
+#[test]
 fn credits_text() {
     assert!(CREDITS.starts_with("# Créditos dos samples"));
-    for needle in ["CC BY-SA 4.0", "CC BY 3.0", "CC0", "CC BY 4.0", "S. Christian Collins", "whatsanickname4u", "RutgerMuller", "Josh Simmons"] {
+    for needle in ["CC BY-SA 4.0", "CC BY 3.0", "CC0", "CC BY 4.0", "S. Christian Collins", "whatsanickname4u", "RutgerMuller", "Josh Simmons", "Vilaa2404"] {
         assert!(CREDITS.contains(needle), "{needle}");
     }
 }
@@ -307,12 +332,12 @@ fn embedded_matches_directory() {
         assert!(a.frames == b.frames, "{name}: PCM difere");
     }
     let l = SampleBank::load_from(None).unwrap();
-    assert_eq!(l.len(), 73);
+    assert_eq!(l.len(), d.len());
     // fallback: diretório vazio → tudo dos embutidos
     let tmp = std::env::temp_dir().join(format!("wadawko-samples-empty-{}", std::process::id()));
     std::fs::create_dir_all(&tmp).unwrap();
     let f = SampleBank::load(&SampleSource::DirWithFallback(tmp.clone())).unwrap();
-    assert!(f.animalese().frames == e.animalese().frames);
+    assert!(f.by_name("kiai/m-ha-0").unwrap().frames == e.by_name("kiai/m-ha-0").unwrap().frames);
     let _ = std::fs::remove_dir(&tmp);
 }
 

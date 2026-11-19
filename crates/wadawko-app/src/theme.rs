@@ -6,6 +6,9 @@
 
 use gpui_kit::{Hsla, rgb};
 
+/// Fonte da interface (identidade visual): Inconsolata (`assets/fonts`, OFL).
+pub const UI_FONT: &str = "Inconsolata";
+
 #[derive(Clone, Copy)]
 pub struct Theme {
     pub dark: bool,
@@ -27,6 +30,10 @@ pub struct Theme {
     pub cell_empty: Hsla,
     /// célula com nota
     pub cell_filled: Hsla,
+    /// editor vertical: 1ª linha de cada tempo (destaque de tempo)
+    pub cell_beat: Hsla,
+    /// editor vertical: fundo do cabeçalho de colunas (fixo)
+    pub col_head: Hsla,
     /// texto principal (não é branco puro)
     pub ink: Hsla,
     /// texto secundário, rótulos, ícones
@@ -67,8 +74,8 @@ impl Theme {
     pub fn light() -> Self {
         // o plano pedia #b8860b, mas o "M" branco sobre ele dava 3,25: mais escuro (4,95)
         let warn: Hsla = rgb(0x946808).into();
-        // o plano pedia #d9503c, mas com texto branco dá 4,07 (< 4,5): um tom mais escuro
-        let accent: Hsla = rgb(0xc94531).into();
+        // rosa da identidade, escurecido para o texto branco passar de 4,5
+        let accent: Hsla = rgb(0xc2185b).into();
         Theme {
             dark: false,
             chrome: rgb(0xf6f6f6).into(),
@@ -80,6 +87,8 @@ impl Theme {
             paper_hover: rgb(0xe2e2e2).into(),
             cell_empty: rgb(0xe6e6e6).into(),
             cell_filled: rgb(0xffffff).into(),
+            cell_beat: rgb(0xe9e9e9).into(),
+            col_head: rgb(0xf0f0f0).into(),
             ink: rgb(0x1f1f1f).into(),
             ink_soft: rgb(0x5a5a5a).into(),
             ink_faint: rgb(0x9a9a9a).into(),
@@ -88,53 +97,58 @@ impl Theme {
             line_beat: rgb(0xd2d2d2).into(),
             line_bar: rgb(0x9a9a9a).into(),
             accent,
-            accent_wash: rgb(0xfbe3de).into(),
-            accent2: rgb(0x2f6fb0).into(),
-            accent2_wash: rgb(0xdfeafa).into(),
+            accent_wash: rgb(0xfde0ec).into(),
+            accent2: rgb(0x0b7a87).into(),
+            accent2_wash: rgb(0xd6f3f6).into(),
             on_accent: rgb(0xffffff).into(),
             playhead: rgb(0x1f1f1f).into(),
             warn,
             danger: rgb(0xd32f2f).into(),
-            meter_lo: rgb(0x2e9e52).into(),
+            meter_lo: rgb(0x0b7a87).into(),
             meter_mid: warn,
             meter_hi: accent,
         }
     }
 
-    /// Tema padrão (bancos sem tema salvo abrem escuros).
+    /// Tema padrão (bancos sem tema salvo abrem escuros) — identidade WaDAWko:
+    /// grafites azulados em camadas, **rosa** para "ligado"/ação (play, loop,
+    /// cursor, couro) e **ciano** para seleção/borda/display; o resto é cinza.
     pub fn dark() -> Self {
-        let warn: Hsla = rgb(0xe2b53e).into();
-        let accent: Hsla = rgb(0xee6b5a).into();
+        let warn: Hsla = rgb(0xffc266).into();
+        let pink: Hsla = rgb(0xff5fa2).into();
+        let cyan: Hsla = rgb(0x3dd6e6).into();
         Theme {
             dark: true,
-            chrome: rgb(0x1c1c1c).into(),
-            header: rgb(0x161616).into(),
-            display: rgb(0x0f0f0f).into(),
-            bg: rgb(0x262626).into(),
-            paper: rgb(0x303030).into(),
-            paper_raise: rgb(0x3b3b3b).into(),
-            paper_hover: rgb(0x474747).into(),
-            cell_empty: rgb(0x2b2b2b).into(),
-            cell_filled: rgb(0x363636).into(),
-            ink: rgb(0xe6e6e6).into(),
-            ink_soft: rgb(0xa6a6a6).into(),
-            ink_faint: rgb(0x707070).into(),
-            line: rgb(0x3a3a3a).into(),
-            line_strong: rgb(0x525252).into(),
-            line_beat: rgb(0x1a1a1a).into(),
-            line_bar: rgb(0x0f0f0f).into(),
-            accent,
-            accent_wash: rgb(0x4a2c27).into(),
-            accent2: rgb(0x5a9be0).into(),
-            accent2_wash: rgb(0x253a52).into(),
-            // texto ESCURO sobre o botão aceso (lâmpada), como nas DAWs
-            on_accent: rgb(0x141414).into(),
-            playhead: rgb(0xf4f4f4).into(),
+            chrome: rgb(0x14171c).into(),
+            header: rgb(0x101317).into(),
+            display: rgb(0x0a0c10).into(),
+            bg: rgb(0x1a1e24).into(),
+            paper: rgb(0x22272f).into(),
+            paper_raise: rgb(0x2b313b).into(),
+            paper_hover: rgb(0x353c48).into(),
+            cell_empty: rgb(0x1f242b).into(),
+            cell_filled: rgb(0x2a3039).into(),
+            cell_beat: rgb(0x242a32).into(),
+            col_head: rgb(0x171b21).into(),
+            ink: rgb(0xe9edf3).into(),
+            ink_soft: rgb(0x9ba6b5).into(),
+            ink_faint: rgb(0x636d7b).into(),
+            line: rgb(0x2d333c).into(),
+            line_strong: rgb(0x434a56).into(),
+            line_beat: rgb(0x13161b).into(),
+            line_bar: rgb(0x0a0c10).into(),
+            accent: pink,
+            accent_wash: rgb(0x46213a).into(),
+            accent2: cyan,
+            accent2_wash: rgb(0x143b43).into(),
+            // texto ESCURO sobre o botão aceso (lâmpada)
+            on_accent: rgb(0x0b0d11).into(),
+            playhead: rgb(0xf2f7fb).into(),
             warn,
-            danger: rgb(0xff4a4a).into(),
-            meter_lo: rgb(0x7fc53a).into(),
+            danger: rgb(0xff4d6a).into(),
+            meter_lo: cyan,
             meter_mid: warn,
-            meter_hi: accent,
+            meter_hi: pink,
         }
     }
 
@@ -162,6 +176,8 @@ impl Theme {
             ("paper_hover", self.paper_hover),
             ("cell_empty", self.cell_empty),
             ("cell_filled", self.cell_filled),
+            ("cell_beat", self.cell_beat),
+            ("col_head", self.col_head),
             ("ink", self.ink),
             ("ink_soft", self.ink_soft),
             ("ink_faint", self.ink_faint),
@@ -184,11 +200,17 @@ impl Theme {
     }
 }
 
-/// Cor da linha (F1): o campo `color` da linha, ou a cor padrão do instrumento
-/// base (`wadawko_core::model::default_track_color`). Uma cor ilegível cai na
-/// padrão do instrumento.
-pub fn track_color(track: &wadawko_core::Track) -> Hsla {
-    track.color.as_deref().and_then(parse_color).or_else(|| parse_color(wadawko_core::model::default_track_color(track.instrument))).unwrap_or_else(|| rgb(0x8d99a6).into())
+/// Cor da linha (F1 + tracker §5.1), em três níveis: a da linha, senão a do
+/// instrumento (Kit), senão a padrão do instrumento base
+/// (`wadawko_core::model::default_track_color`). Cor ilegível cai no nível seguinte.
+pub fn track_color(song: &wadawko_core::Song, track: &wadawko_core::Track) -> Hsla {
+    track
+        .color
+        .as_deref()
+        .and_then(parse_color)
+        .or_else(|| wadawko_core::ops::structure::track_color(song, track).and_then(parse_color))
+        .or_else(|| parse_color(wadawko_core::model::default_track_color(track.instrument)))
+        .unwrap_or_else(|| rgb(0x8d99a6).into())
 }
 
 /// `#rrggbb` (cor de pessoa do JSON) → Hsla.
@@ -247,11 +269,11 @@ mod tests {
     fn track_color_falls_back_to_instrument_default() {
         use wadawko_core::model::{InstrumentId, Track, default_track_color};
         let mut t = Track::new("a", "A", InstrumentId::Odaiko);
-        assert_eq!(track_color(&t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
+        assert_eq!(track_color(&wadawko_core::Song::default(), &t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
         t.color = Some("#123456".into());
-        assert_eq!(track_color(&t), parse_color("#123456").unwrap());
+        assert_eq!(track_color(&wadawko_core::Song::default(), &t), parse_color("#123456").unwrap());
         t.color = Some("roxo".into());
-        assert_eq!(track_color(&t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
+        assert_eq!(track_color(&wadawko_core::Song::default(), &t), parse_color(default_track_color(InstrumentId::Odaiko)).unwrap());
     }
 
     /// O texto escuro sobre qualquer cor de linha lê bem (cabeçalho do strip do mixer).

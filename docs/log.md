@@ -2,6 +2,18 @@
 
 ## 2026-11-18
 
+**Criação** da [pesquisa de UX em DAWs e apps de ensaio](/planejamento/ux-pesquisa.md): 22
+recomendações priorizadas (ensaiar como uma pessoa, preencher seleção, visão por pessoa, partes
+individuais, pacote de ensaio "sem mim", roteiro de ensaio…).
+
+**Criação** do plano [editor vertical estilo tracker](/planejamento/tracker.md): pesquisa do
+pattern editor do Renoise, dos trackers modernos (Polyend, M8, Furnace, OpenMPT, SunVox) e de
+como apps de percussão marcam acento, ghost, flam e rulo; modelo mental do editor vertical
+(tempo para baixo, coluna por instrumento, células de 28 × 96 px); painel de seções à esquerda
+com grupos, cores, copiar/colar e arrastar; efeitos por célula legíveis (`V R F D X H`) no campo
+`fx` do compasso; cor por instrumento, seção e grupo; evolução do sistema de design com
+wireframes; mapa de teclas; plano de implementação T0–T10 e perguntas em aberto.
+
 **Atualização**: parte 4 do [plano DAW](/planejamento/daw.md): trechos de ensaio, modelos, export
 MIDI, altura de linha, som do metrônomo, modo projeção e grade em cache por seção —
 [guia de uso](/guias/uso.md), [formato da música](/referencia/formato-da-musica.md) (`practice`),

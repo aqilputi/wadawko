@@ -125,7 +125,8 @@ pub fn clone_section(song: &mut Song, id: &str) -> Option<String> {
     }
     let new_id = new_section_id();
     let idx = sections.iter().position(|s| s.id == id)?;
-    sections.insert(idx + 1, Section { id: new_id.clone(), name: format!("{} (cópia)", r.name), start: at, repeat: r.repeat.filter(|&x| x != 0), ..Default::default() });
+    let (color, group) = sections.get(idx).map(|s| (s.color.clone(), s.group.clone())).unwrap_or_default();
+    sections.insert(idx + 1, Section { id: new_id.clone(), name: format!("{} (cópia)", r.name), start: at, repeat: r.repeat.filter(|&x| x != 0), color, group, ..Default::default() });
     Some(new_id)
 }
 

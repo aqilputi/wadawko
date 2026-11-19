@@ -52,6 +52,8 @@ generated:
    wadawko-cli --db /tmp/fix.db import-backup crates/wadawko-core/tests/fixtures/backup-localstorage-2026-10-02.json
    tools/headless.sh --db /tmp/fix.db --mute --demo probe | grep PROBE
    ```
+   Para repetir, copie de novo **apagando antes `fix.db-wal` e `fix.db-shm`**: o SQLite reaplica o
+   WAL que sobrou ao lado da cópia, e o probe começa com as edições da rodada anterior.
 5. **Página de atalhos** — depois de mudar teclas ou títulos de comandos:
    ```sh
    python3 tools/gen-atalhos.py          # regenera docs/referencia/atalhos.md

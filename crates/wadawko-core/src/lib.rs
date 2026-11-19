@@ -18,6 +18,7 @@
 //! desconhecidas incluídas); onde o TS e este crate divergirem, o TS manda.
 
 pub mod demo;
+pub mod fx;
 pub mod ids;
 pub mod kyai;
 pub mod model;
@@ -27,7 +28,9 @@ pub mod templates;
 pub mod timeline;
 pub mod vocab;
 
-pub use model::{Dynamic, DynamicMark, Hairpin, InstrumentDef, InstrumentId, InstrumentTone, KyaiVoice, Measure, Person, Section, Song, SongError, TempoMark, ToneType, Track, Zone, ZoneParams};
+pub use model::{
+    Dynamic, DynamicMark, Hairpin, InstrumentDef, InstrumentId, InstrumentTone, KyaiVoice, Measure, Person, Section, SectionGroup, Song, SongError, TempoMark, ToneType, Track, Zone, ZoneParams,
+};
 pub use ops::CellPos;
 
 /// `\s` do JavaScript (≈ `char::is_whitespace`, com U+FEFF e sem U+0085).

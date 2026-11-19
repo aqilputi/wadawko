@@ -308,6 +308,13 @@ impl Shell {
                 }),
                 None => self.flash("treino: % inicial entre 20 e 100", cx),
             },
+            InputTarget::TrainerTarget => match num {
+                Some(v) => self.state.update(cx, |s, cx| {
+                    s.tp.trainer_target = (v / 100.0).clamp(0.3, 1.5);
+                    cx.notify()
+                }),
+                None => self.flash("treino: alvo entre 30 e 150 (% do andamento)", cx),
+            },
             InputTarget::TrainerStep => match num {
                 Some(v) => self.state.update(cx, |s, cx| {
                     s.tp.trainer_step = (v / 100.0).clamp(0.01, 0.5);
@@ -339,6 +346,28 @@ impl Shell {
             }
             InputTarget::PracticeName(Some(id)) if !t.trim().is_empty() => {
                 self.edit(cx, |s| ops::practice::rename_spot(s, &id, t));
+            }
+            InputTarget::CellFx(m, ti, k) => match wadawko_core::fx::normalize(t) {
+                Ok(norm) => {
+                    let tid = self.song(cx).tracks.get(ti).map(|x| x.id.clone()).unwrap_or_default();
+                    self.edit(cx, |s| {
+                        let _ = ops::cells::set_fx(s, &tid, m, k, norm.as_deref());
+                    });
+                    self.flash(norm.map_or_else(|| "efeitos removidos".to_string(), |n| format!("efeitos: {n}")), cx);
+                }
+                Err(e) => self.flash(format!("efeito inválido — {e}"), cx),
+            },
+            InputTarget::GroupName(id) if !t.trim().is_empty() => {
+                self.edit(cx, |s| ops::structure::rename_group(s, &id, t));
+            }
+            InputTarget::Color(target) => {
+                let c = t.trim();
+                let c = if c.starts_with('#') { c.to_string() } else { format!("#{c}") };
+                if ops::structure::is_hex_color(&c) {
+                    self.apply_color(target, Some(c), cx);
+                } else {
+                    self.flash("cor: use #rrggbb (ex.: #5e9fd8)", cx);
+                }
             }
             InputTarget::MetroVolume => match num {
                 Some(v) => {
@@ -527,10 +556,14 @@ impl Shell {
             PromptKind::Input(InputTarget::SongTitle) => ("música:", "Enter confirma · Esc cancela · Ctrl+Backspace limpa"),
             PromptKind::Input(InputTarget::Bpm) => ("BPM:", "30–300 · Enter confirma"),
             PromptKind::Input(InputTarget::TrainerPct) => ("treino, começa em %:", "20–100 · Enter confirma"),
+            PromptKind::Input(InputTarget::TrainerTarget) => ("treino, até %:", "30–150 · Enter confirma"),
             PromptKind::Input(InputTarget::TrainerStep) => ("treino, +% por volta:", "1–50 · Enter confirma"),
             PromptKind::Input(InputTarget::MetroPattern) => ("acentos:", "A forte · B fraco · . mudo (ex.: ABBB, A.B.) · vazio = automático"),
             PromptKind::Input(InputTarget::PracticeName(None)) => ("nome do trecho:", "ex.: solo do Ōdaiko · vazio = c3–c6 · Enter guarda"),
             PromptKind::Input(InputTarget::PracticeName(Some(_))) => ("trecho:", "Enter confirma · Esc cancela"),
+            PromptKind::Input(InputTarget::CellFx(..)) => ("efeitos:", "V0–9 força · R2–9 rulo (< >) · F flam · D±5 atraso · X corte · H0–9 humano · vazio limpa"),
+            PromptKind::Input(InputTarget::GroupName(_)) => ("grupo:", "Enter confirma · Esc cancela"),
+            PromptKind::Input(InputTarget::Color(_)) => ("cor:", "#rrggbb · Enter confirma"),
             PromptKind::Input(InputTarget::MetroVolume) => ("metrônomo, volume %:", "0–200 · Enter confirma"),
         };
         div()

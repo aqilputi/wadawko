@@ -74,7 +74,7 @@ impl Shell {
                     .font_weight(FontWeight::BOLD)
                     .child("太"),
             )
-            .child(icon_btn("hamb", "☰", th, keys::view::ToggleNav))
+            .child(icon_btn("hamb", "menu", th, keys::view::ToggleNav))
             .child(
                 // clique no título = renomear a música
                 abtn("title", th, keys::project::Rename)
@@ -84,7 +84,7 @@ impl Shell {
                     .px(px(6.0))
                     .min_w_0()
                     .text_size(px(16.0))
-                    .font_family("Shippori Mincho")
+                    .font_family(crate::theme::UI_FONT)
                     .font_weight(FontWeight::BOLD)
                     .child(div().truncate().child(title)),
             );
@@ -95,14 +95,16 @@ impl Shell {
             abtn_bare("play", th, keys::transport::TogglePlay)
                 .w(px(72.0))
                 .px(px(0.0))
-                .bg(acc)
-                .border_color(acc)
+                .bg(ui::relief(acc))
+                .shadow(ui::glow(acc))
+                .border_color(ui::shade(acc, -0.08))
                 .text_color(th.on_accent)
                 .font_weight(FontWeight::BOLD)
-                .hover(move |s| s.bg(Theme::alpha(acc, 0.9)))
-                .child("■ parar")
+                .hover(move |s| s.bg(ui::relief(ui::shade(acc, 0.04))))
+                .child(ui::icon("stop", 13.0).text_color(th.on_accent))
+                .child("parar")
         } else {
-            abtn("play", th, keys::transport::TogglePlay).w(px(72.0)).px(px(0.0)).text_color(th.accent).font_weight(FontWeight::BOLD).child("▶ tocar")
+            abtn("play", th, keys::transport::TogglePlay).w(px(72.0)).px(px(0.0)).text_color(th.accent).font_weight(FontWeight::BOLD).child(ui::icon("play", 13.0).text_color(th.accent)).child("tocar")
         };
         let acc2 = th.accent2;
         let display = div()
@@ -161,9 +163,9 @@ impl Shell {
             .flex()
             .items_center()
             .gap(px(6.0))
-            .child(icon_btn("gostart", "⏮", th, keys::transport::GoToStart))
+            .child(icon_btn("gostart", "to-start", th, keys::transport::GoToStart))
             .child(play)
-            .child(atoggle("loop", th, tp.looping, keys::transport::ToggleLoop).w(px(30.0)).px(px(0.0)).child("↺"))
+            .child(atoggle("loop", th, tp.looping, keys::transport::ToggleLoop).w(px(30.0)).px(px(0.0)).child(ui::icon("loop", 15.0).text_color(if tp.looping { th.on_accent } else { th.ink_soft })))
             .child(display)
             .when(!narrow, |d| d.child(segmented("swing", th, vec![("reto", Box::new(keys::transport::Straight)), ("swing", Box::new(keys::transport::SwingOn))], (song.swing() > 0.0) as usize, true)))
             .when(narrow, |d| d.child(atoggle("swing1", th, song.swing() > 0.0, keys::transport::ToggleSwing).px(px(8.0)).child("swing")));
@@ -177,26 +179,62 @@ impl Shell {
             .items_center()
             .justify_end()
             .gap(px(6.0))
-            .child(atoggle("metro", th, tp.metronome, keys::transport::ToggleMetronome).w(px(30.0)).px(px(0.0)).child("🎵"))
+            .child(atoggle("metro", th, tp.metronome, keys::transport::ToggleMetronome).w(px(30.0)).px(px(0.0)).child(ui::icon("metronome", 15.0).text_color(if tp.metronome {
+                th.on_accent
+            } else {
+                th.ink_soft
+            })))
             .when(tp.metronome, |d| {
                 // padrão de acentos (clique = editar) e subdivisão (clique = 1 → 2 → 3 → 4)
                 d.child(chip("m-pat", tp.metro.pattern_text(), Box::new(keys::transport::MetroPattern)))
                     .when(!narrow, |d| d.child(chip("m-sub", format!("÷{}", tp.metro.subdiv.clamp(1, 4)), Box::new(keys::transport::MetroSubdiv))))
                     .when(!narrow, |d| d.child(chip("m-snd", tp.metro.sound.name().to_string(), Box::new(keys::transport::MetroSound))))
             })
-            .child(atoggle("countin", th, tp.count_in, keys::transport::ToggleCountIn).w(px(30.0)).px(px(0.0)).child("⏱"))
+            // ensaiar como… (Alt+P): 👤 todos / 👤 sem Ana (âmbar quando ligado)
+            .when(!song.people().is_empty(), |d| {
+                let label = match &tp.rehearse {
+                    Some(r) => format!("{} {}", r.listen.label(), song.person(&r.person).map_or(r.person.as_str(), |p| p.name.as_str())),
+                    None => "todos".into(),
+                };
+                let on = tp.rehearse.is_some();
+                let warn = th.warn;
+                d.child(
+                    chip("rehearse", label, Box::new(keys::transport::RehearsePick))
+                        .gap(px(4.0))
+                        .child(ui::icon("user", 13.0).text_color(if on { warn } else { th.ink_soft }))
+                        .when(on, |c| c.bg(Theme::alpha(warn, 0.22)).border_color(warn).text_color(warn)),
+                )
+            })
+            .child(atoggle("countin", th, tp.count_in, keys::transport::ToggleCountIn).w(px(30.0)).px(px(0.0)).child(ui::icon("countin", 15.0).text_color(if tp.count_in {
+                th.on_accent
+            } else {
+                th.ink_soft
+            })))
+            // contagem falada no count-in (sem voz → masculina → feminina)
+            .when(tp.count_in && !narrow, |d| d.child(chip("ci-voz", tp.metro.voice.name().to_string(), Box::new(keys::transport::CountVoice))))
             // count-in a cada volta: só faz sentido com loop (economiza espaço em janela estreita)
-            .when(tp.looping || tp.count_in_loop, |d| d.child(atoggle("countin-loop", th, tp.count_in_loop, keys::transport::ToggleCountInLoop).w(px(30.0)).px(px(0.0)).child("⏱↺")))
-            .child(atoggle("trainer", th, tp.trainer, keys::transport::ToggleTrainer).w(px(30.0)).px(px(0.0)).child("🏃"))
+            .when(tp.looping || tp.count_in_loop, |d| {
+                d.child(
+                    atoggle("countin-loop", th, tp.count_in_loop, keys::transport::ToggleCountInLoop).w(px(30.0)).px(px(0.0)).child(ui::icon("countin-loop", 15.0).text_color(if tp.count_in_loop {
+                        th.on_accent
+                    } else {
+                        th.ink_soft
+                    })),
+                )
+            })
+            .child(atoggle("trainer", th, tp.trainer, keys::transport::ToggleTrainer).w(px(30.0)).px(px(0.0)).child(ui::icon("trainer", 15.0).text_color(if tp.trainer {
+                th.on_accent
+            } else {
+                th.ink_soft
+            })))
             .when(tp.trainer, |d| {
-                d.child(chip("tr-pct", format!("de {:.0}%", tp.trainer_pct * 100.0), Box::new(keys::transport::TrainerPct))).child(chip(
-                    "tr-step",
-                    format!("+{:.0}%/volta", tp.trainer_step * 100.0),
-                    Box::new(keys::transport::TrainerStep),
-                ))
+                d.child(chip("tr-pct", format!("de {:.0}%", tp.trainer_pct * 100.0), Box::new(keys::transport::TrainerPct)))
+                    .child(chip("tr-step", format!("+{:.0}%/volta", tp.trainer_step * 100.0), Box::new(keys::transport::TrainerStep)))
+                    .child(chip("tr-laps", format!("×{} volta{}", tp.trainer_laps, if tp.trainer_laps == 1 { "" } else { "s" }), Box::new(keys::transport::TrainerLaps)))
+                    .child(chip("tr-target", format!("até {:.0}%", tp.trainer_target * 100.0), Box::new(keys::transport::TrainerTarget)))
             })
             // estreita: o tema fica só na paleta (Ctrl+K)
-            .when(!narrow, |d| d.child(div().w(px(1.0)).h(px(16.0)).flex_none().bg(th.line)).child(icon_btn("theme", if th.dark { "☀" } else { "☾" }, th, keys::view::ToggleTheme)));
+            .when(!narrow, |d| d.child(div().w(px(1.0)).h(px(16.0)).flex_none().bg(th.line)).child(icon_btn("theme", if th.dark { "sun" } else { "moon" }, th, keys::view::ToggleTheme)));
 
         div().h(px(44.0)).flex_none().w_full().px(px(10.0)).flex().items_center().gap(px(10.0)).bg(th.chrome).border_b_1().border_color(th.line).child(left).child(center).child(right)
     }

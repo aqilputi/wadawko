@@ -10,6 +10,12 @@
 
 mod paint;
 mod render;
+pub(crate) mod vgeom;
+mod vpaint;
+mod vrender;
+pub use vrender::{COL_HEAD_RENDERS, COL_HEAD_US};
+
+pub use vgeom::{COL_HEAD_H, COL_W, COL_W_MAX, COL_W_MIN, COL_W_STEP, Cols, LEFT_W, Layout, ROW_H, ROW_H_MAX, ROW_H_MIN, ROW_H_STEP, measure_y, section_body_h};
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
@@ -68,6 +74,10 @@ pub struct Rows {
     pub y: Vec<f32>,
     pub dynr: Vec<bool>,
     pub kyai: Vec<bool>,
+    /// sub-coluna de efeitos (editor vertical): a linha tem efeitos ou foi ligada
+    pub fx: Vec<bool>,
+    /// visão por pessoa (editor vertical): linha escondida (largura zero)
+    pub hidden: Vec<bool>,
     pub h: f32,
     /// altura da célula (linha principal) — `CELL_H` por padrão
     pub cell_h: f32,
@@ -222,6 +232,13 @@ pub struct Geom {
     /// recuo do texto dos rótulos de linha (listra + trilhos de pessoa), para o
     /// mini-medidor do overlay
     pub label_pad: f32,
+    /// editor vertical: layout desenhado, colunas (com a largura efetiva da nota),
+    /// altura da linha, área visível do editor (posta pelo Shell) e o cabeçalho de colunas
+    pub layout: Layout,
+    pub cols: Cols,
+    pub row_h: f32,
+    pub viewport: Bounds<Pixels>,
+    pub col_head: Bounds<Pixels>,
 }
 
 /// O que a grade pede ao Shell para perguntar ao usuário (prompt de texto).
@@ -237,16 +254,26 @@ pub enum InputTarget {
     Bpm,
     TrainerPct,
     TrainerStep,
+    /// treino: andamento alvo, em %
+    TrainerTarget,
     /// padrão de acentos do metrônomo (`ABBB`, `A.B.`, `auto`)
     MetroPattern,
     /// volume do metrônomo, em %
     MetroVolume,
     /// nome do trecho de ensaio: `None` = guardar o trecho de loop atual; `Some(id)` = renomear
     PracticeName(Option<String>),
+    /// texto de efeitos de uma célula (compasso, linha, célula)
+    CellFx(usize, usize, usize),
+    /// nome de um grupo de seções
+    GroupName(String),
+    /// cor em hex (`#rrggbb`) para seção, grupo ou instrumento
+    Color(crate::views::sections_panel::ColorTarget),
 }
 
 pub enum GridEvent {
     Ask(InputTarget, String),
+    /// tamanhos do editor mudaram (Ctrl+roda): o Shell grava o settings.json
+    SettingsChanged,
 }
 
 /// Popover aberto sobre a grade.
@@ -355,6 +382,12 @@ pub struct GridView {
     /// linhas com a sub-linha de dinâmica / kiai aberta à mão (por id da linha)
     pub show_dyn: HashSet<String>,
     pub show_kyai: HashSet<String>,
+    /// linhas com a sub-coluna de efeitos ligada (ela também aparece sozinha onde há efeito)
+    pub show_fx: HashSet<String>,
+    /// sub-coluna de efeitos em todas as linhas (`fx::ToggleColumn`)
+    pub show_fx_all: bool,
+    /// visão por pessoa (ux #3): só as linhas desta pessoa no editor vertical
+    pub view_person: Option<String>,
     /// registradores: '"' sem nome, '0' último yank, 'a'..'z', '+' área de transferência
     pub registers: HashMap<char, Register>,
     /// registrador escolhido com `"x` para a próxima operação
@@ -374,6 +407,20 @@ pub struct GridView {
     pub hover_sec: Option<usize>,
     /// altura da célula das linhas (F16), em px
     pub cell_h: f32,
+    /// passo de edição: quantas células o cursor anda ao confirmar uma sílaba (0 = fica)
+    pub edit_step: usize,
+    /// editor vertical (padrão) ou grade horizontal
+    pub layout: Layout,
+    /// editor vertical: altura da linha e largura pedida da coluna de nota
+    pub row_h: f32,
+    pub col_w: f32,
+    /// largura da coluna de nota no último render ("ajustar à largura")
+    pub col_w_eff: f32,
+    /// coluna cujo cabeçalho está sob o mouse
+    pub hover_col: Option<usize>,
+    /// cabeçalho de colunas (view em cache) e a chave do último desenho
+    pub(crate) col_head_view: Option<Entity<vrender::ColHeadView>>,
+    col_head_key: u64,
     /// uma view em cache por seção (`render::SectionView`)
     pub(crate) sec_views: Vec<Entity<render::SectionView>>,
     /// chave do último desenho de cada seção
@@ -394,6 +441,8 @@ pub enum Hit {
     Cell(Cur),
     TrackDyn(usize, usize, DynPart, Point<Pixels>),
     Kyai(Cur),
+    /// sub-coluna de efeitos da célula (editor vertical)
+    Fx(Cur),
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -446,6 +495,9 @@ impl GridView {
             collapsed: HashSet::new(),
             show_dyn: HashSet::new(),
             show_kyai: HashSet::new(),
+            show_fx: HashSet::new(),
+            show_fx_all: false,
+            view_person: None,
             registers: HashMap::new(),
             reg_sel: None,
             insert_log: Vec::new(),
@@ -457,6 +509,14 @@ impl GridView {
             hover_sec: None,
             sec_views: Vec::new(),
             cell_h: CELL_H,
+            edit_step: 1,
+            layout: Layout::Vertical,
+            row_h: ROW_H,
+            col_w: COL_W,
+            col_w_eff: COL_W,
+            hover_col: None,
+            col_head_view: None,
+            col_head_key: 0,
             sec_keys: Vec::new(),
             drag_over: None,
             dragging: false,
@@ -493,7 +553,36 @@ impl GridView {
     }
 
     pub fn rows(&self) -> Rows {
-        Rows::new(&self.song, &self.show_dyn, &self.show_kyai, self.cell_h)
+        let mut r = Rows::new(&self.song, &self.show_dyn, &self.show_kyai, self.cell_h);
+        r.fx = self.song.tracks.iter().map(|t| self.show_fx_all || self.show_fx.contains(&t.id) || ops::cells::track_has_fx(&self.song, &t.id)).collect();
+        r.hidden = (0..self.song.tracks.len()).map(|t| !self.track_visible(t)).collect();
+        r
+    }
+
+    /// Visão por pessoa (ux #3): a linha `t` aparece? Só filtra no editor vertical;
+    /// sem pessoa escolhida (ou se a pessoa não toca nada), tudo aparece.
+    pub fn track_visible(&self, t: usize) -> bool {
+        let Some(p) = self.view_person.as_deref().filter(|_| self.layout == Layout::Vertical) else { return true };
+        if !self.song.tracks.iter().any(|tr| tr.person_ids().iter().any(|x| x == p)) {
+            return true;
+        }
+        self.song.tracks.get(t).is_none_or(|tr| tr.person_ids().iter().any(|x| x == p))
+    }
+
+    /// Linha visível mais próxima de `t` (para quem troca a visão).
+    pub fn nearest_visible_pub(&self, t: usize) -> usize {
+        self.nearest_visible(t, 1)
+    }
+
+    /// Linha visível mais próxima de `t` (na direção `dir`; senão na outra).
+    fn nearest_visible(&self, t: usize, dir: i32) -> usize {
+        let n = self.song.tracks.len();
+        if n == 0 || self.track_visible(t) {
+            return t;
+        }
+        let fwd = (t..n).find(|&i| self.track_visible(i));
+        let back = (0..=t.min(n - 1)).rev().find(|&i| self.track_visible(i));
+        (if dir >= 0 { fwd.or(back) } else { back.or(fwd) }).unwrap_or(t)
     }
 
     pub fn is_collapsed(&self, sec: &Sec) -> bool {
@@ -511,7 +600,47 @@ impl GridView {
 
     pub fn grid_height(&self) -> f32 {
         let body = self.rows().body_h();
-        self.song.secs().iter().map(|sec| SEC_HEAD_H + if self.is_collapsed(sec) { 0.0 } else { body } + SEC_GAP).sum::<f32>() + 20.0
+        let vertical = self.layout == Layout::Vertical;
+        self.song
+            .secs()
+            .iter()
+            .enumerate()
+            .map(|(s, sec)| {
+                SEC_HEAD_H
+                    + if self.is_collapsed(sec) {
+                        0.0
+                    } else if vertical {
+                        section_body_h(&self.song, s, self.row_h)
+                    } else {
+                        body
+                    }
+                    + SEC_GAP
+            })
+            .sum::<f32>()
+            + 20.0
+    }
+
+    /// Colunas do editor vertical com a largura de nota do último render.
+    pub fn cols(&self) -> Cols {
+        Cols::new(&self.rows(), self.col_w_eff)
+    }
+
+    /// Troca o layout do editor (vertical ⇄ horizontal); cursor e seleção ficam.
+    pub fn set_layout(&mut self, layout: Layout, cx: &mut Context<Self>) {
+        if self.layout == layout {
+            return;
+        }
+        self.commit_edit_in_place(cx);
+        self.layout = layout;
+        self.menu = None;
+        self.loop_drag = None;
+        self.hover_col = None;
+        self.offset = 0.0;
+        self.offset_target = 0.0;
+        if let Some(c) = self.cursor {
+            self.ensure_visible(c);
+        }
+        cx.notify();
     }
 
     pub fn reset_for_song(&mut self) {
@@ -563,6 +692,9 @@ impl GridView {
     }
 
     fn max_offset(&self, cw: f32) -> f32 {
+        if self.layout == Layout::Vertical {
+            return (LEFT_W + self.cols().w - self.view_w()).max(0.0);
+        }
         let song = &self.song;
         let widest = song.secs().iter().map(|sec| (sec.start..sec.end).map(|m| song.mlen(m) as f32 * cw + MEASURE_GAP).sum::<f32>()).fold(0.0, f32::max);
         (widest + CELL_X0 - self.view_w() * 0.6).max(0.0)
@@ -592,6 +724,18 @@ impl GridView {
     }
 
     pub fn zoom_at(&mut self, factor: f32, anchor_x: f32) {
+        if self.layout == Layout::Vertical {
+            // vertical: zoom = largura da coluna, em passos de COL_W_STEP
+            let step = if factor > 1.0 {
+                COL_W_STEP
+            } else if factor < 1.0 {
+                -COL_W_STEP
+            } else {
+                0.0
+            };
+            self.col_w = (self.col_w + step).clamp(COL_W_MIN, COL_W_MAX);
+            return;
+        }
         let new_cw = (self.cw_target * factor).clamp(14.0, 140.0);
         let snapped = if (new_cw - BASE_CW).abs() < 1.5 { BASE_CW } else { new_cw };
         self.zoom_anchor = anchor_x;
@@ -599,11 +743,19 @@ impl GridView {
     }
 
     pub fn zoom_reset(&mut self) {
+        if self.layout == Layout::Vertical {
+            self.col_w = COL_W;
+            self.row_h = ROW_H;
+            return;
+        }
         self.zoom_anchor = 0.0;
         self.cw_target = BASE_CW;
     }
 
     pub fn zoom_pct(&self) -> u32 {
+        if self.layout == Layout::Vertical {
+            return (self.col_w / COL_W * 100.0).round() as u32;
+        }
         (self.cw_target / BASE_CW * 100.0).round() as u32
     }
 
@@ -621,6 +773,9 @@ impl GridView {
     }
 
     pub fn hit(&self, s: usize, pos: Point<Pixels>) -> Option<Hit> {
+        if self.layout == Layout::Vertical {
+            return self.vhit(s, pos);
+        }
         let g = self.geom.borrow();
         let b = *g.sections.get(s)?;
         let x = f32::from(pos.x) - f32::from(b.origin.x) + self.offset;
@@ -686,6 +841,38 @@ impl GridView {
     }
 
     /// Seção cujo canvas contém a ordenada `y` (janela).
+    /// Arrastando para selecionar (não é bloco nem faixa de loop)?
+    pub fn is_drag_selecting(&self) -> bool {
+        self.dragging && self.move_drag.is_none() && self.loop_drag.is_none() && self.pan.is_none()
+    }
+
+    /// Estende a seleção do arrasto até a célula sob `pos` (janela) — usado pela
+    /// rolagem automática: a grade andou, o ponteiro não.
+    pub fn drag_select_at(&mut self, pos: Point<Pixels>, cx: &mut Context<Self>) {
+        if !self.is_drag_selecting() {
+            return;
+        }
+        if let Some(s) = self.section_at_y(f32::from(pos.y)) {
+            let ev = MouseMoveEvent { position: pos, pressed_button: Some(MouseButton::Left), modifiers: Default::default() };
+            self.mouse_move(s, &ev, cx);
+        }
+    }
+
+    /// Editor vertical: a faixa (janela) da linha do tempo sob `pos` — (y, altura, x0, x1).
+    pub fn vrow_band(&self, pos: Point<Pixels>) -> Option<(f32, f32, f32, f32)> {
+        if self.layout != Layout::Vertical {
+            return None;
+        }
+        let s = self.section_at_y(f32::from(pos.y))?;
+        let g = self.geom.borrow();
+        let b = *g.sections.get(s)?;
+        let ly = f32::from(pos.y) - f32::from(b.origin.y);
+        let (m, k) = vgeom::row_at(&self.song, s, g.row_h, ly)?;
+        let y = f32::from(b.origin.y) + vgeom::measure_y(&self.song, s, m, g.row_h)? + k as f32 * g.row_h;
+        let x0 = f32::from(b.origin.x) + vgeom::LOOP_X + vgeom::LOOP_W;
+        Some((y, g.row_h, x0, (x0 + vgeom::LEFT_W + g.cols.w - g.offset).min(f32::from(b.origin.x) + f32::from(b.size.width))))
+    }
+
     pub fn section_at_y(&self, y: f32) -> Option<usize> {
         let g = self.geom.borrow();
         g.sections.iter().position(|b| f32::from(b.size.width) > 0.0 && y >= f32::from(b.origin.y) && y < f32::from(b.origin.y) + f32::from(b.size.height))
@@ -706,16 +893,51 @@ impl GridView {
         Some(f32::from(b.origin.x) + lx - self.offset)
     }
 
-    /// Aperto na faixa de loop da régua da seção `s` (F2).
+    /// Compasso da seção `s` sob o ponto (janela), no eixo do tempo do layout
+    /// (x na grade horizontal, y no editor vertical), preso às pontas da seção.
+    pub fn measure_at(&self, s: usize, pos: Point<Pixels>) -> Option<usize> {
+        if self.layout == Layout::Horizontal {
+            return self.measure_at_x(s, f32::from(pos.x));
+        }
+        let g = self.geom.borrow();
+        let b = *g.sections.get(s)?;
+        if f32::from(b.size.height) <= 0.0 {
+            return None;
+        }
+        let (a, end) = self.song.section_range(s);
+        if end <= a {
+            return None;
+        }
+        let ly = f32::from(pos.y) - f32::from(b.origin.y);
+        let ys = vgeom::measure_ys(&self.song, s, g.row_h);
+        Some(a + ys.iter().rposition(|&my| ly >= my).unwrap_or(0))
+    }
+
+    /// Posição (no eixo do tempo, janela) do início do compasso `bar` da seção `s`.
+    pub fn bar_pos(&self, s: usize, bar: usize) -> Option<f32> {
+        if self.layout == Layout::Horizontal {
+            return self.bar_x(s, bar);
+        }
+        let g = self.geom.borrow();
+        let b = *g.sections.get(s)?;
+        let (a, end) = self.song.section_range(s);
+        if bar < a || bar > end || end <= a {
+            return None;
+        }
+        let ly = if bar == end { vgeom::section_body_h(&self.song, s, g.row_h) } else { vgeom::measure_y(&self.song, s, bar, g.row_h)? };
+        Some(f32::from(b.origin.y) + ly)
+    }
+
+    /// Aperto na faixa de loop da régua da seção `s` (F2; no vertical, a faixa do gutter).
     fn loop_lane_down(&mut self, s: usize, ev: &MouseDownEvent, cx: &mut Context<Self>) {
-        let x = f32::from(ev.position.x);
-        let Some(m) = self.measure_at_x(s, x) else { return };
+        let x = if self.layout == Layout::Horizontal { f32::from(ev.position.x) } else { f32::from(ev.position.y) };
+        let Some(m) = self.measure_at(s, ev.position) else { return };
         let range = self.state.read(cx).tp.range;
         let handle = range.and_then(|r| {
-            let (x0, x1) = (self.bar_x(s, r.start_bar)?, self.bar_x(s, r.end_bar)?);
+            let (x0, x1) = (self.bar_pos(s, r.start_bar)?, self.bar_pos(s, r.end_bar)?);
             grab_handle(x, x0, x1).map(|end| (r, end))
         });
-        let grab = (x, f32::from(ev.position.y));
+        let grab = (f32::from(ev.position.x), f32::from(ev.position.y));
         self.loop_drag = Some(match handle {
             Some((r, false)) => LoopDrag { sec: s, anchor: r.end_bar - 1, cur: r.start_bar, grab, moved: false, alt: ev.modifiers.alt, inside: true },
             Some((r, true)) => LoopDrag { sec: s, anchor: r.start_bar, cur: r.end_bar - 1, grab, moved: false, alt: ev.modifiers.alt, inside: true },
@@ -733,10 +955,10 @@ impl GridView {
         }
         d.moved = true;
         let sec = self.section_at_y(y).unwrap_or(d.sec);
-        let cur = self.measure_at_x(sec, x).or_else(|| self.measure_at_x(d.sec, x));
+        let cur = self.measure_at(sec, pos).or_else(|| self.measure_at(d.sec, pos));
         if let Some(cur) = cur {
             d.cur = cur;
-            d.sec = if self.measure_at_x(sec, x).is_some() { sec } else { d.sec };
+            d.sec = if self.measure_at(sec, pos).is_some() { sec } else { d.sec };
         }
         if Some(d) != self.loop_drag {
             self.loop_drag = Some(d);
@@ -864,10 +1086,15 @@ impl GridView {
                 let s = if at_start { s0.saturating_sub(n) } else { (s0 + 1).saturating_sub(n) };
                 (c.t, song.flat(secs[s].start.min(song.measures.len() - 1), 0))
             }
-            Motion::FirstTrack => (0, g),
-            Motion::LastTrack => (tracks - 1, g),
+            Motion::FirstTrack => (self.nearest_visible(0, 1), g),
+            Motion::LastTrack => (self.nearest_visible(tracks - 1, -1), g),
             Motion::HalfRight => (c.t, (g + half * n).min(total - 1)),
             Motion::HalfLeft => (c.t, g.saturating_sub(half * n)),
+        };
+        // visão por pessoa: pula as linhas escondidas
+        let t = match mo {
+            Motion::Up => self.nearest_visible(t, -1),
+            _ => self.nearest_visible(t, 1),
         };
         self.set_cursor_flat(t, g2);
         if !extend && matches!(self.vmode, VMode::Normal | VMode::Insert | VMode::Simple) {
@@ -883,6 +1110,9 @@ impl GridView {
     }
 
     pub fn ensure_visible(&mut self, c: Cur) {
+        if self.layout == Layout::Vertical {
+            return self.vensure_visible(c);
+        }
         let song = self.song.clone();
         let s = song.section_of(c.m);
         let secs = song.secs();
@@ -949,7 +1179,7 @@ impl GridView {
                 && let Some(a) = st.audio.as_mut()
             {
                 let refs: Vec<&str> = syls.iter().map(String::as_str).collect();
-                a.preview_kyai(track, &refs, unit, seed.as_deref());
+                a.preview_kyai(&song, track, &refs, unit, seed.as_deref());
             }
         });
     }
@@ -986,7 +1216,10 @@ impl GridView {
         if let Some(c) = self.commit_edit_in_place(cx) {
             self.cursor = Some(c);
         }
-        self.motion(Motion::Right, 1, false, cx);
+        // passo de edição (como o edit step do Renoise): 0 = fica na célula
+        if self.edit_step > 0 {
+            self.motion(Motion::Right, self.edit_step, false, cx);
+        }
         true
     }
 
@@ -1503,9 +1736,28 @@ impl GridView {
                 self.cursor = Some(c);
                 self.dragging = true;
             }
+            Some(Hit::Fx(c)) => {
+                // clique na sub-coluna de efeitos: o cursor vai para a célula e abre o campo
+                self.commit_edit_in_place(cx);
+                self.lane = Lane::Cells;
+                self.anchor = None;
+                self.cursor = Some(c);
+                if ev.button == MouseButton::Right {
+                    self.edit(cx, |s| {
+                        let _ = ops::cells::set_fx(s, &s.tracks[c.t].id.clone(), c.m, c.k, None);
+                    });
+                    return;
+                }
+                let cur = self.song.measures.get(c.m).and_then(|m| m.fx_at(&self.song.tracks[c.t].id, c.k)).unwrap_or("").to_string();
+                cx.emit(GridEvent::Ask(InputTarget::CellFx(c.m, c.t, c.k), cur));
+                cx.notify();
+            }
             Some(Hit::LoopLane) if ev.button == MouseButton::Left => self.loop_lane_down(s, ev, cx),
             Some(Hit::Timeline(cell)) if ev.button == MouseButton::Left => {
-                self.pan = Some((f32::from(ev.position.x), self.offset_target));
+                // horizontal: arrastar a régua rola a grade; vertical: o gutter só marca o início
+                if self.layout == Layout::Horizontal {
+                    self.pan = Some((f32::from(ev.position.x), self.offset_target));
+                }
                 if let Some((m, k)) = cell {
                     let g = self.song.flat(m, k);
                     self.state.update(cx, |st, cx| {
@@ -1679,6 +1931,9 @@ impl GridView {
 
     /// Alvos de salto das células visíveis: `track` = só a linha do cursor; `beats` = só inícios de tempo.
     pub fn visible_cells(&self, beats: bool, track: bool) -> Vec<(Cur, Bounds<Pixels>)> {
+        if self.layout == Layout::Vertical {
+            return self.vvisible_cells(beats, track);
+        }
         let g = self.geom.borrow();
         let song = &self.song;
         let mut out = Vec::new();
@@ -1718,6 +1973,9 @@ impl GridView {
 
     /// Bounds (em coordenadas de janela) da célula `c`, pela geometria do último frame.
     pub fn cell_bounds(&self, c: Cur) -> Option<Bounds<Pixels>> {
+        if self.layout == Layout::Vertical {
+            return self.vcell_bounds(c);
+        }
         let g = self.geom.borrow();
         let song = &self.song;
         let s = song.section_of(c.m);

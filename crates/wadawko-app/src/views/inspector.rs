@@ -188,7 +188,7 @@ impl Shell {
                     .flex_none()
                     .size(px(14.0))
                     .rounded(px(ui::R1))
-                    .bg(track_color(track))
+                    .bg(track_color(&song, track))
                     .cursor_pointer()
                     .on_click(|_: &ClickEvent, w, cx| w.dispatch_action(Box::new(keys::track::CycleColor), cx)),
                 "ins-color",
@@ -213,6 +213,30 @@ impl Shell {
         let (t1, t2, t3) = (tid.clone(), tid.clone(), tid.clone());
         body = body
             .child(row().child(swatch).child(bold(track.name.clone())).child(ibtn("ins-trk-ren", "✎", Box::new(keys::track::Rename))).child(ibtn("ins-trk-set", "⚙", Box::new(keys::track::Settings))))
+            .child({
+                // origem da cor (tracker §5.1): própria → do instrumento → padrão do base
+                let def = ops::kit::resolve_instrument(&song, track);
+                let inst = ops::structure::instrument_color(&song, &def.id).is_some();
+                let origin = if track.color.is_some() {
+                    "cor própria da linha"
+                } else if inst {
+                    "cor do instrumento (Kit)"
+                } else {
+                    "cor padrão do instrumento"
+                };
+                let tid4 = tid.clone();
+                row().child(lbl("cor")).child(soft(origin.to_string())).when(track.color.is_some(), |d| {
+                    d.child(chip(
+                        "ins-col-inherit".into(),
+                        "herdar".into(),
+                        false,
+                        Rc::new(move |sh, cx| {
+                            let id = tid4.clone();
+                            sh.edit(cx, |s| ops::tracks::set_track_color(s, &id, None));
+                        }),
+                    ))
+                })
+            })
             .child(
                 row()
                     .child(div().flex_1().min_w_0().child(soft(ops::kit::instrument_label(&song, track).to_string())))
@@ -348,6 +372,33 @@ impl Shell {
                     .child(ibtn("ins-unacc", "a", Box::new(keys::grid::Unaccent)))
                     .child(ibtn("ins-del", "× apagar", Box::new(keys::grid::DeleteCell))),
             );
+            // efeitos por célula (tracker §4.4): o texto (clique = editar) e os prontos
+            let fxt = meas.fx_at(&tid, c.k).map(str::to_string);
+            let desc = fxt.as_deref().and_then(|t| wadawko_core::fx::parse(t).ok()).map(|v| v.iter().map(|f| f.label()).collect::<Vec<_>>().join(" · "));
+            body = body
+                .child(
+                    row()
+                        .child(lbl("efeitos"))
+                        .child(ibtn("ins-fx", "✎", Box::new(keys::fx::Edit)))
+                        .child(
+                            div()
+                                .text_size(px(11.5))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(if fxt.is_some() { th2.accent2 } else { th2.ink_faint })
+                                .child(SharedString::from(fxt.clone().unwrap_or_else(|| "nenhum".into()))),
+                        )
+                        .when_some(desc, |d, t| d.child(div().w_full().text_size(px(10.5)).text_color(th2.ink_soft).child(SharedString::from(t)))),
+                )
+                .child(
+                    row()
+                        .child(ibtn("ins-fx-r", "rulo", Box::new(keys::fx::Roll)))
+                        .child(ibtn("ins-fx-f", "flam", Box::new(keys::fx::Flam)))
+                        .child(ibtn("ins-fx-d", "atrasa", Box::new(keys::fx::Later)))
+                        .child(ibtn("ins-fx-x", "corte", Box::new(keys::fx::Cut)))
+                        .child(ibtn("ins-fx-v", "fraco", Box::new(keys::fx::Softer)))
+                        .child(ibtn("ins-fx-h", "exato", Box::new(keys::fx::Exact)))
+                        .when(fxt.is_some(), |d| d.child(ibtn("ins-fx-c", "× limpar", Box::new(keys::fx::Clear)))),
+                );
         }
         body
     }

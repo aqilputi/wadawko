@@ -7,6 +7,7 @@
 
 extern crate gpui_kit as gpui;
 
+mod icons;
 mod keys;
 mod shell;
 mod song_ext;
@@ -30,7 +31,7 @@ use shell::{HintScope, RENDERS, Shell};
 use song_ext::SongExt;
 use state::AppState;
 use theme::Theme;
-use views::grid::{Cur, Lane, Motion, VMode};
+use views::grid::{Cur, Lane, Layout, Motion, VMode};
 
 const HELP: &str = "\
 WaDAWko — editor/DAW de taiko
@@ -165,13 +166,18 @@ fn main() {
     let dark = args.dark.unwrap_or_else(|| !matches!(store.theme(), Ok(Some(wadawko_store::Theme::Light))));
     let theme = if dark { Theme::dark() } else { Theme::light() };
 
-    gpui_kit::application().run(move |cx: &mut App| {
+    gpui_kit::application().with_assets(icons::Assets).run(move |cx: &mut App| {
         gpui_kit::init(cx);
         let fonts: Vec<Cow<'static, [u8]>> = vec![
             Cow::Borrowed(include_bytes!("../../../assets/fonts/ZenKakuGothicNew-Regular.ttf")),
             Cow::Borrowed(include_bytes!("../../../assets/fonts/ZenKakuGothicNew-Medium.ttf")),
             Cow::Borrowed(include_bytes!("../../../assets/fonts/ZenKakuGothicNew-Bold.ttf")),
             Cow::Borrowed(include_bytes!("../../../assets/fonts/ShipporiMincho-Bold.ttf")),
+            // fonte da interface (identidade visual): Inconsolata, OFL
+            Cow::Borrowed(include_bytes!("../../../assets/fonts/Inconsolata-Regular.ttf")),
+            Cow::Borrowed(include_bytes!("../../../assets/fonts/Inconsolata-Medium.ttf")),
+            Cow::Borrowed(include_bytes!("../../../assets/fonts/Inconsolata-SemiBold.ttf")),
+            Cow::Borrowed(include_bytes!("../../../assets/fonts/Inconsolata-Bold.ttf")),
         ];
         cx.text_system().add_fonts(fonts).expect("registrar fontes");
 
@@ -408,7 +414,13 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         let up = |p, m: Modifiers| PlatformInput::MouseUp(MouseUpEvent { button: MouseButton::Left, position: p, modifiers: m, click_count: 1 });
         let mv = |p, m: Modifiers| PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: Some(MouseButton::Left), modifiers: m });
 
+        // troca o layout do editor (o probe passa pelos dois; os passos com régua usam o horizontal)
+        let set_layout = |l: Layout, cx: &mut AsyncApp| {
+            cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| g.set_layout(l, cx)));
+        };
+        let vertical = |cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).layout == Layout::Vertical);
         report("início", cx);
+        println!("PROBE layout do editor: {}", if vertical(cx) { "vertical" } else { "horizontal" });
         // linha 2 da música aberta (use uma com notas no compasso 0 dessa linha)
         let (Some(a), Some(b)) = (cell(0, 2, 0, cx), cell(0, 2, 1, cx)) else {
             println!("PROBE sem geometria de células");
@@ -477,7 +489,11 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         println!("PROBE Esc no meio do arrasto: {} · arrasto={:?}", row(cx), drag_state(cx));
         check("Esc no meio do arrasto não muda nada", row(cx) == row0 && drag_state(cx).0.is_none());
         // 6) soltar FORA da grade (no painel da direita) também larga o bloco
-        let outside = gpui_kit::point(gpui_kit::px(900.0), gpui_kit::px(500.0));
+        // no painel da direita (no editor vertical, x = 900 ainda é grade)
+        let outside = {
+            let vw = w.update(cx, |_, window, _| f32::from(window.viewport_size().width)).unwrap_or(1600.0);
+            gpui_kit::point(gpui_kit::px(vw - 140.0), gpui_kit::px(500.0))
+        };
         mouse(down(b, none), cx);
         sweep(b, e2, none, cx);
         wait(cx, 120).await; // como na vida real: a janela desenha frames durante o arrasto
@@ -705,7 +721,8 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             println!("PROBE inspector: célula (0,2,0) em {c:?} · slider em {p:?}");
             report("inspector: depois do clique na grade", cx);
             let k0 = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| c.k));
-            key("right", cx);
+            // no editor vertical o tempo anda com ↓ (→ é linha/sub-coluna)
+            key(if vertical(cx) { "down" } else { "right" }, cx);
             wait(cx, 80).await;
             let v3 = vol(cx);
             let k1 = cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| c.k));
@@ -786,6 +803,10 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                     })
                 })
             };
+            // a faixa de loop vertical (no gutter) é da T3b: este passo roda na grade horizontal
+            let was_vertical = vertical(cx);
+            set_layout(Layout::Horizontal, cx);
+            wait(cx, 250).await;
             zoom_to(16.0, 1, cx);
             wait(cx, 200).await;
             match (lane(1, cx), lane(2, cx)) {
@@ -808,7 +829,10 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 _ => println!("PROBE sem compassos 2–3 para testar a faixa de loop"),
             }
             zoom_to(views::grid::BASE_CW, 0, cx);
-            wait(cx, 200).await;
+            if was_vertical {
+                set_layout(Layout::Vertical, cx);
+            }
+            wait(cx, 250).await;
             // Loop: seleção — arrasto numa célula vazia seleciona no compasso 0; a ação faz
             // o trecho c1; limpar (ação da barra) volta a tocar a música inteira
             if let (Some(e2), Some(e3)) = (cell(0, 2, 2, cx), cell(0, 2, 3, cx)) {
@@ -943,8 +967,13 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
         {
             let h = |cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).cell_bounds(Cur { m: 0, t: 2, k: 1 }).map(|b| f32::from(b.size.height)));
             cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            // vertical: 28 → 24 (uma vez); horizontal: 36 → 28 (duas)
+            let vert = vertical(cx);
+            let (want, default) = if vert { (24.0, views::grid::ROW_H) } else { (28.0, views::grid::CELL_H) };
             key("ctrl-alt-down", cx);
-            key("ctrl-alt-down", cx);
+            if !vert {
+                key("ctrl-alt-down", cx);
+            }
             wait(cx, 250).await;
             let h1 = h(cx);
             let mut hit = None;
@@ -961,7 +990,7 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             wait(cx, 250).await;
             let h2 = h(cx);
             println!("PROBE altura das linhas: {h1:?} · clique em (0,2,1) → {hit:?} · padrão {h2:?}");
-            check("altura das linhas: Ctrl+Alt+↓ encolhe, clique acerta, padrão volta", h1 == Some(28.0) && hit == Some((0, 2, 1)) && h2 == Some(views::grid::CELL_H));
+            check("altura das linhas: Ctrl+Alt+↓ encolhe, clique acerta, padrão volta", h1 == Some(want) && hit == Some((0, 2, 1)) && h2 == Some(default));
         }
         // modo projeção (F7d): F10 abre por cima de tudo; Esc fecha
         {
@@ -973,6 +1002,283 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             let closed = cx.update(|cx| shell.read(cx).director.is_none());
             println!("PROBE modo projeção: abriu {open} · Esc fechou {closed}");
             check("modo projeção: F10 abre e Esc fecha", open && closed);
+        }
+        // efeitos por célula (tracker T8): Ctrl+Shift+R duas vezes = R3 na célula do cursor → 3 golpes; Ctrl+Z volta
+        {
+            let target = cx.update(|cx| {
+                let song = state.read(cx).song().clone();
+                // 1ª célula com nota (linha 0 em diante)
+                (0..song.tracks.len()).find_map(|t| (0..song.measures.first().map_or(0, |m| m.cell_count())).find(|&k| song.cell(t, 0, k).is_some()).map(|k| Cur { m: 0, t, k }))
+            });
+            if let Some(c) = target {
+                cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                    g.cursor = Some(c);
+                    g.anchor = None;
+                    cx.notify();
+                }));
+                let fx_of = |cx: &mut AsyncApp| cx.update(|cx| {
+                    let song = state.read(cx).song().clone();
+                    song.measures[0].fx_at(&song.tracks[c.t].id, c.k).map(str::to_string)
+                });
+                let count = |cx: &mut AsyncApp| cx.update(|cx| {
+                    state.update(cx, |s, _| s.sync_audio());
+                    let st = state.read(cx);
+                    let cell = st.song().flat(0, c.k) as u32;
+                    st.schedule.hits().filter(|(_, h)| h.track as usize == c.t && h.cell == cell).count()
+                });
+                let n0 = count(cx);
+                key("ctrl-shift-r", cx);
+                key("ctrl-shift-r", cx);
+                wait(cx, 120).await;
+                let (f1, n1) = (fx_of(cx), count(cx));
+                // cada toque é um passo de desfazer
+                key("ctrl-z", cx);
+                key("ctrl-z", cx);
+                wait(cx, 120).await;
+                let (f2, n2) = (fx_of(cx), count(cx));
+                println!("PROBE efeitos: célula {c:?} · {n0} golpe(s) → {f1:?} {n1} golpes → Ctrl+Z {f2:?} {n2}");
+                check("efeitos: Ctrl+Shift+R ×2 = R3 (3 golpes) e Ctrl+Z ×2 volta", f1.as_deref() == Some("R3") && n1 == 3 && f2.is_none() && n2 == n0);
+            }
+        }
+        // painel de seções (tracker T5/T6): clique seleciona, Ctrl+clique junta, agrupar e Ctrl+Z, copiar/colar e Ctrl+Z
+        {
+            let ids = cx.update(|cx| wadawko_core::ops::sections::section_ranges(state.read(cx).song()).into_iter().map(|r| r.id).collect::<Vec<_>>());
+            // as linhas do painel são alvos `sec-{i}` (na ordem tocada)
+            let row = |id: &str| {
+                let i = ids.iter().position(|x| x == id)?;
+                keys::HINTS.with(|h| h.borrow().targets.get(format!("sec-{i}").as_str()).map(|t| t.bounds.center()))
+            };
+            if ids.len() >= 2
+                && let (Some(p0), Some(p1)) = (row(&ids[0]), row(&ids[1]))
+            {
+                let sel = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).tp.selected.clone());
+                let groups = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().section_groups.as_ref().map_or(0, Vec::len));
+                let nsec = |cx: &mut AsyncApp| cx.update(|cx| state.read(cx).song().sections().len());
+                cx.update(|cx| state.update(cx, |s, _| s.tp.selected.clear()));
+                click(p0, none, cx).await;
+                let s1 = sel(cx);
+                let ctrl = Modifiers { control: true, ..Default::default() };
+                let p1 = row(&ids[1]).unwrap_or(p1);
+                click(p1, ctrl, cx).await;
+                let s2 = sel(cx);
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::section::Group), cx));
+                wait(cx, 150).await;
+                let g1 = groups(cx);
+                key("ctrl-z", cx);
+                wait(cx, 120).await;
+                let g2 = groups(cx);
+                // copiar a 1ª e colar depois dela
+                cx.update(|cx| state.update(cx, |s, cx| s.select_section(&ids[0], false, cx)));
+                let n0 = nsec(cx);
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::section::Copy), cx));
+                wait(cx, 150).await;
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::section::Paste), cx));
+                wait(cx, 200).await;
+                let n1 = nsec(cx);
+                key("ctrl-z", cx);
+                wait(cx, 150).await;
+                let n2 = nsec(cx);
+                cx.update(|cx| state.update(cx, |s, _| s.tp.selected.clear()));
+                println!("PROBE painel de seções: clique → {} sel · Ctrl+clique → {} · agrupar {g1} → Ctrl+Z {g2} · colar {n0} → {n1} → Ctrl+Z {n2}", s1.len(), s2.len());
+                check("painel de seções: seleção, agrupar/desfazer, copiar/colar/desfazer", s1 == vec![ids[0].clone()] && s2.len() == 2 && g1 == 1 && g2 == 0 && n1 == n0 + 1 && n2 == n0);
+            } else {
+                println!("PROBE painel de seções: linhas não encontradas ({} seções)", ids.len());
+                check("painel de seções: linhas visíveis", false);
+            }
+        }
+        // a grade acompanha a seleção: Shift+↓ ×40 estende e o cursor continua visível;
+        // minimap: clicar perto do fim rola o editor para baixo
+        if cx.update(|cx| shell.read(cx).grid.read(cx).layout == views::grid::Layout::Vertical) {
+            cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                g.cursor = Some(Cur { m: 0, t: 0, k: 0 });
+                g.anchor = None;
+                cx.notify();
+            }));
+            wait(cx, 200).await;
+            for _ in 0..40 {
+                key("shift-down", cx);
+            }
+            wait(cx, 300).await;
+            let visible = cx.update(|cx| {
+                let sh = shell.read(cx);
+                let vb = sh.scroll.bounds();
+                sh.grid.read(cx).cursor.and_then(|c| sh.grid.read(cx).cell_bounds(c)).map(|b| {
+                    let y = f32::from(b.origin.y);
+                    (y, f32::from(vb.origin.y), f32::from(vb.origin.y) + f32::from(vb.size.height))
+                })
+            });
+            let anchor_ok = cx.update(|cx| shell.read(cx).grid.read(cx).anchor.is_some());
+            println!("PROBE seleção acompanhada: cursor y/vista {visible:?} · âncora {anchor_ok}");
+            check("a grade acompanha a seleção (Shift+↓ ×40 mantém o cursor visível)", anchor_ok && visible.is_some_and(|(y, t, b)| y >= t - 1.0 && y <= b));
+            key("escape", cx);
+            // minimap
+            let mini = cx.update(|cx| shell.read(cx).mini_geom.get().bounds);
+            if let Some(mb) = mini {
+                cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+                wait(cx, 150).await;
+                let y0 = cx.update(|cx| f32::from(shell.read(cx).scroll.offset().y));
+                let k = cx.update(|cx| shell.read(cx).mini_geom.get().k);
+                let content_h = cx.update(|cx| shell.read(cx).grid.read(cx).grid_height());
+                // ~80 % do conteúdo, dentro do desenho do minimap
+                let py = f32::from(mb.origin.y) + (content_h * k * 0.8).min(f32::from(mb.size.height) - 4.0);
+                let p = gpui_kit::point(mb.center().x, gpui_kit::px(py));
+                mouse(PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: None, modifiers: none }), cx);
+                mouse(down(p, none), cx);
+                wait(cx, 60).await;
+                mouse(up(p, none), cx);
+                wait(cx, 200).await;
+                let y1 = cx.update(|cx| f32::from(shell.read(cx).scroll.offset().y));
+                println!("PROBE minimap: rolagem {y0} → {y1} (k {k:.3})");
+                check("minimap: clicar perto do fim rola o editor", y1 < y0 - 50.0);
+                cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            } else {
+                check("minimap visível no editor vertical", false);
+            }
+        }
+        // teclado do editor vertical (T4): passo 2 → "don" + Enter grava e desce 2 células; Tab troca de linha
+        if cx.update(|cx| shell.read(cx).grid.read(cx).layout == views::grid::Layout::Vertical) {
+            let empty = cx.update(|cx| {
+                let song = state.read(cx).song().clone();
+                (0..song.measures.first().map_or(0, |m| m.cell_count())).find(|&k| song.cell(0, 0, k).is_none() && k + 2 < song.mlen(0))
+            });
+            if let Some(k0) = empty {
+                cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                    g.cursor = Some(Cur { m: 0, t: 0, k: k0 });
+                    g.anchor = None;
+                    cx.notify();
+                }));
+                key("alt-2", cx);
+                if cx.update(|cx| shell.read(cx).vim_on) {
+                    key("i", cx);
+                }
+                for k in ["d", "o", "n", "enter"] {
+                    key(k, cx);
+                }
+                wait(cx, 120).await;
+                let (c1, wrote) = cx.update(|cx| (shell.read(cx).grid.read(cx).cursor, state.read(cx).song().cell(0, 0, k0).map(str::to_string)));
+                key("tab", cx);
+                wait(cx, 80).await;
+                let c2 = cx.update(|cx| shell.read(cx).grid.read(cx).cursor);
+                key("ctrl-z", cx);
+                key("alt-1", cx);
+                key("escape", cx);
+                println!("PROBE teclado vertical: gravou {wrote:?} · cursor → {c1:?} · Tab → {c2:?}");
+                check("teclado vertical: passo 2 desce 2 células; Tab vai para a próxima linha", wrote.as_deref() == Some("don") && c1.is_some_and(|c| c.k == k0 + 2 && c.t == 0) && c2.is_some_and(|c| c.t == 1));
+            }
+        }
+        // faixa de loop no gutter do editor vertical (T3b): arrastar c1→c2 cria o trecho; Alt+clique limpa
+        if cx.update(|cx| shell.read(cx).grid.read(cx).layout == views::grid::Layout::Vertical) {
+            cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            cx.update(|cx| state.update(cx, |s, cx| s.set_range(None, cx)));
+            wait(cx, 200).await;
+            let pt = |m: usize, cx: &mut AsyncApp| {
+                cx.update(|cx| {
+                    let g = shell.read(cx).grid.read(cx);
+                    let s = g.song.section_of(m);
+                    let b = *g.geom.borrow().sections.get(s)?;
+                    let y = g.bar_pos(s, m)? + g.row_h / 2.0;
+                    Some(gpui_kit::point(b.origin.x + gpui_kit::px(views::grid::vgeom::LOOP_X + 3.0), gpui_kit::px(y)))
+                })
+            };
+            if let (Some(p0), Some(p1)) = (pt(0, cx), pt(1, cx)) {
+                mouse(PlatformInput::MouseMove(MouseMoveEvent { position: p0, pressed_button: None, modifiers: none }), cx);
+                mouse(down(p0, none), cx);
+                wait(cx, 60).await;
+                sweep(p0, p1, none, cx);
+                mouse(up(p1, none), cx);
+                wait(cx, 150).await;
+                let r1 = cx.update(|cx| state.read(cx).tp.range);
+                let p0 = pt(0, cx).unwrap_or(p0);
+                click(p0, alt, cx).await;
+                let r2 = cx.update(|cx| state.read(cx).tp.range);
+                println!("PROBE loop no gutter: arrasto c1→c2 = {r1:?} · Alt+clique = {r2:?}");
+                check("loop no gutter do editor vertical: arrastar cria c1–c2; Alt+clique limpa", r1 == Some(wadawko_core::timeline::Region { start_bar: 0, end_bar: 2 }) && r2.is_none());
+            }
+        }
+        // ensaiar como… (ux #1): Alt+P abre a paleta filtrada; Enter liga; Alt+Shift+P desliga
+        {
+            // garante uma pessoa na música (as fixtures podem não ter)
+            let had = cx.update(|cx| !state.read(cx).song().people().is_empty());
+            if !had {
+                cx.update(|cx| state.update(cx, |s, cx| {
+                    s.edit(cx, |song| {
+                        song.people = Some(vec![wadawko_core::model::Person { id: "probe-ana".into(), name: "Ana".into(), ..Default::default() }]);
+                    });
+                }));
+                wait(cx, 100).await;
+            }
+            key("alt-p", cx);
+            wait(cx, 150).await;
+            let q = cx.update(|cx| shell.read(cx).palette.as_ref().map(|p| p.query.clone()));
+            key("enter", cx);
+            wait(cx, 150).await;
+            let on = cx.update(|cx| state.read(cx).tp.rehearse.clone());
+            key("alt-shift-p", cx);
+            wait(cx, 100).await;
+            let off = cx.update(|cx| state.read(cx).tp.rehearse.is_none());
+            if !had {
+                key("ctrl-z", cx);
+                wait(cx, 100).await;
+            }
+            println!("PROBE ensaiar como: paleta {q:?} → {on:?} → desligado {off}");
+            check("ensaiar como: Alt+P + Enter liga; Alt+Shift+P desliga", q.as_deref() == Some("ensaiar como") && on.is_some() && off);
+        }
+        // preencher (ux #2): "a cada 2" no compasso do cursor escreve nas vazias; um Ctrl+Z desfaz
+        {
+            let target = cx.update(|cx| {
+                let song = state.read(cx).song().clone();
+                (0..song.measures.len().min(8)).find_map(|m| (0..song.tracks.len()).find(|&t| (0..song.mlen(m)).step_by(2).any(|k| song.cell(t, m, k).is_none())).map(|t| Cur { m, t, k: 0 }))
+            });
+            if let Some(c) = target {
+                let count = |cx: &mut AsyncApp| cx.update(|cx| {
+                    let song = state.read(cx).song().clone();
+                    (0..song.mlen(c.m)).filter(|&k| song.cell(c.t, c.m, k).is_some()).count()
+                });
+                cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                    g.cursor = Some(c);
+                    g.anchor = None;
+                    cx.notify();
+                }));
+                let n0 = count(cx);
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::fill::Every2), cx));
+                wait(cx, 120).await;
+                let n1 = count(cx);
+                key("ctrl-z", cx);
+                wait(cx, 120).await;
+                let n2 = count(cx);
+                println!("PROBE preencher a cada 2: {c:?} · {n0} → {n1} → Ctrl+Z {n2}");
+                check("preencher: a cada 2 escreve nas vazias e um Ctrl+Z desfaz", n1 > n0 && n2 == n0);
+            }
+        }
+        // visão por pessoa (ux #3): Alt+V + Enter mostra só as linhas da pessoa; Alt+Shift+V volta
+        if cx.update(|cx| shell.read(cx).grid.read(cx).layout == views::grid::Layout::Vertical && state.read(cx).song().tracks.len() >= 2) {
+            cx.update(|cx| state.update(cx, |s, cx| {
+                s.edit(cx, |song| {
+                    song.people = Some(vec![wadawko_core::model::Person { id: "probe-vis".into(), name: "Visão".into(), ..Default::default() }]);
+                    let t0 = song.tracks[0].id.clone();
+                    wadawko_core::ops::people::toggle_track_person(song, &t0, "probe-vis");
+                });
+            }));
+            wait(cx, 120).await;
+            key("alt-v", cx);
+            wait(cx, 150).await;
+            key("enter", cx);
+            wait(cx, 200).await;
+            let (vp, w1) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.view_person.clone(), g.cols().group_w.get(1).copied())
+            });
+            key("alt-shift-v", cx);
+            wait(cx, 150).await;
+            let (vp2, w2) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.view_person.clone(), g.cols().group_w.get(1).copied())
+            });
+            key("ctrl-z", cx);
+            wait(cx, 100).await;
+            println!("PROBE visão por pessoa: {vp:?} largura linha 1 {w1:?} → {vp2:?} {w2:?}");
+            check("visão por pessoa: Alt+V esconde as outras linhas; Alt+Shift+V volta", vp.is_some() && w1 == Some(0.0) && vp2.is_none() && w2.is_some_and(|w| w > 0.0));
         }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
@@ -1005,6 +1311,52 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             cx.update(|cx| state.update(cx, |s, cx| s.set_range(None, cx)));
             println!("PROBE trechos: {before} → {} ({saved:?}) · clique na lista → {r1:?} · Ctrl+Z → {undone}", after.len());
             check("trechos: guardar com nome, clicar põe em loop, Ctrl+Z desfaz", after.len() == before + 1 && saved.as_deref() == Some("entrada") && r1 == Some(r0) && undone == before);
+        }
+        // editor vertical (T3a): clique numa célula põe o cursor; ↓ desce no tempo, → muda de
+        // linha; ToggleLayout alterna (a célula continua a mesma) e volta
+        {
+            set_layout(Layout::Vertical, cx);
+            cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
+            let _ = w.update(cx, |_, window, _| window.refresh());
+            wait(cx, 250).await;
+            let cur = |cx: &mut AsyncApp| cx.update(|cx| shell.read(cx).grid.read(cx).cursor.map(|c| (c.m, c.t, c.k)));
+            let ctx_ok = w.update(cx, |_, window, _| window.context_stack().iter().any(|c| format!("{c:?}").contains("layout=vertical"))).unwrap_or(false);
+            let mut clicked = None;
+            if let Some(p) = cell(0, 1, 2, cx) {
+                mouse(PlatformInput::MouseMove(MouseMoveEvent { position: p, pressed_button: None, modifiers: none }), cx);
+                wait(cx, 50).await;
+                click(p, none, cx).await;
+                clicked = cur(cx);
+            }
+            key("down", cx);
+            wait(cx, 80).await;
+            let after_down = cur(cx);
+            key("right", cx);
+            wait(cx, 80).await;
+            let after_right = cur(cx);
+            // bounds de células vizinhas no tempo ficam uma embaixo da outra
+            let (b0, b1) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.cell_bounds(Cur { m: 0, t: 1, k: 2 }), g.cell_bounds(Cur { m: 0, t: 1, k: 3 }))
+            });
+            let stacked = matches!((b0, b1), (Some(a), Some(b)) if a.origin.x == b.origin.x && b.origin.y > a.origin.y);
+            let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::view::ToggleLayout), cx));
+            wait(cx, 250).await;
+            let (l1, c1) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.layout, g.cursor.map(|c| (c.m, c.t, c.k)))
+            });
+            let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::view::ToggleLayout), cx));
+            wait(cx, 250).await;
+            let (l2, c2) = cx.update(|cx| {
+                let g = shell.read(cx).grid.read(cx);
+                (g.layout, g.cursor.map(|c| (c.m, c.t, c.k)))
+            });
+            println!("PROBE editor vertical: contexto layout=vertical {ctx_ok} · clique (0,1,2) → {clicked:?} · ↓ → {after_down:?} · → → {after_right:?} · células empilhadas {stacked} · ToggleLayout → {l1:?} {c1:?} → {l2:?} {c2:?}");
+            check(
+                "editor vertical: clique põe o cursor; ↓ desce no tempo; ToggleLayout alterna e a célula continua a mesma",
+                ctx_ok && clicked == Some((0, 1, 2)) && after_down == Some((0, 1, 3)) && after_right == Some((0, 2, 3)) && stacked && l1 == Layout::Horizontal && c1 == after_right && l2 == Layout::Vertical && c2 == after_right,
+            );
         }
         key("ctrl-k", cx);
         wait(cx, 100).await;
@@ -1146,6 +1498,7 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
             // ponto neutro entre os dois (célula/rótulo sem hover próprio)
             let (g0, u0, r0) = (shell::DBG_GRID_RENDERS.load(Ordering::Relaxed), shell::GRID_RENDER_US.load(Ordering::Relaxed), RENDERS.load(Ordering::Relaxed));
             let (sn0, su0) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
+            let (ch0, chu0) = (views::grid::COL_HEAD_RENDERS.load(Ordering::Relaxed), views::grid::COL_HEAD_US.load(Ordering::Relaxed));
             for i in 0..200 {
                 let p = pts[i % 2];
                 let _ = w.update(cx, |_, window, cx| {
@@ -1157,6 +1510,8 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
             let n = (g1 - g0).max(1);
             let (sn1, su1) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
             println!("STAT hover: {} renders de seção (média {:.2} ms)", sn1 - sn0, (su1 - su0) as f64 / (sn1 - sn0).max(1) as f64 / 1000.0);
+            let (ch1, chu1) = (views::grid::COL_HEAD_RENDERS.load(Ordering::Relaxed), views::grid::COL_HEAD_US.load(Ordering::Relaxed));
+            println!("STAT hover: {} renders do cabeçalho de colunas (editor vertical; média {:.2} ms)", ch1 - ch0, (chu1 - chu0) as f64 / (ch1 - ch0).max(1) as f64 / 1000.0);
             println!(
                 "STAT hover: 200 movimentos · {} renders da grade (média {:.2} ms, total {:.1} ms) · {} renders da raiz",
                 g1 - g0,
@@ -1174,14 +1529,22 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 if tab == "esteira" {
                     window.dispatch_action(Box::new(keys::view::Esteira), cx);
                 }
+                // `grade` = grade horizontal (linha de base); `tracker` = editor vertical
+                // `centro` = editor vertical com o seguir centrado (T3b)
+                let layout = if tab == "tracker" || tab == "centro" { Layout::Vertical } else { Layout::Horizontal };
+                shell.read(cx).grid.clone().update(cx, |g, cx| g.set_layout(layout, cx));
+                shell.update(cx, |s: &mut Shell, _| s.follow_center = tab == "centro");
                 shell.update(cx, |s: &mut Shell, cx| s.toggle_play(false, cx));
             });
             cx.background_executor().timer(Duration::from_millis(2000)).await;
             let (r0, u0, t0) = (RENDERS.load(Ordering::Relaxed), shell::RENDER_US.load(Ordering::Relaxed), Instant::now());
+            let (sn0, su0) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
             println!("STAT início");
             cx.background_executor().timer(Duration::from_millis(6000)).await;
             let (r1, u1, secs) = (RENDERS.load(Ordering::Relaxed), shell::RENDER_US.load(Ordering::Relaxed), t0.elapsed().as_secs_f32());
             println!("STAT fim · {} frames em {secs:.1} s ({:.0} fps) · Shell::render média {:.2} ms", r1 - r0, (r1 - r0) as f32 / secs, (u1 - u0) as f64 / (r1 - r0).max(1) as f64 / 1000.0);
+            let (sn1, su1) = (shell::SEC_RENDERS.load(Ordering::Relaxed), shell::SEC_RENDER_US.load(Ordering::Relaxed));
+            println!("STAT seções · {} renders ({:.1} por frame) · {:.2} ms por frame", sn1 - sn0, (sn1 - sn0) as f64 / (r1 - r0).max(1) as f64, (su1 - su0) as f64 / (r1 - r0).max(1) as f64 / 1000.0);
             cx.update(|cx| cx.quit());
             return;
         }
@@ -1199,6 +1562,30 @@ fn run_demo(demo: String, state: Entity<AppState>, shell: Entity<Shell>, w: Win,
                 }
                 "hints" => s.start_hints(HintScope::All, window, cx),
                 "play" => s.toggle_play(false, cx),
+                // painel de seções com grupo e cores + efeitos numa célula (tracker)
+                "estrutura" => {
+                    let ids: Vec<String> = wadawko_core::ops::sections::section_ranges(s.state.read(cx).song()).into_iter().map(|r| r.id).collect();
+                    s.edit(cx, |song| {
+                        if ids.len() >= 3 {
+                            if let Some(g) = wadawko_core::ops::structure::group_sections(song, &ids[1..3], "Parte A") {
+                                wadawko_core::ops::structure::set_group_color(song, &g, Some("#5e9fd8"));
+                            }
+                            wadawko_core::ops::structure::set_section_color(song, &ids[0], Some("#d9775f"));
+                        }
+                        let t = song.tracks[0].id.clone();
+                        let _ = wadawko_core::ops::cells::set_fx(song, &t, 0, 0, Some("R4<"));
+                        let _ = wadawko_core::ops::cells::set_fx(song, &t, 0, 2, Some("F D+1"));
+                    });
+                    s.state.update(cx, |st, cx| st.select_section(&ids[1], false, cx));
+                }
+                // aba LINHAS do painel da esquerda, com a 2ª linha aberta
+                "linhas" => {
+                    s.left_tab = views::tracks_panel::LeftTab::Tracks;
+                    s.grid.update(cx, |g, cx| {
+                        g.cursor = Some(Cur { m: 0, t: 1, k: 0 });
+                        cx.notify();
+                    });
+                }
                 // modo projeção tocando (F7d)
                 "director" => {
                     s.director = Some(false);

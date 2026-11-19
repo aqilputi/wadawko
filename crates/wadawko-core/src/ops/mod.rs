@@ -18,6 +18,7 @@ pub mod measures;
 pub mod people;
 pub mod practice;
 pub mod sections;
+pub mod structure;
 pub mod tracks;
 
 /// Posição de uma célula: compasso `mi`, célula `ci` dentro dele.

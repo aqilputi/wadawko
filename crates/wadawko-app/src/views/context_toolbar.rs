@@ -60,9 +60,9 @@ impl Shell {
             .child(abtn("addsec", th, keys::section::Add).child("+ seção"))
             .child(abtn("inst", th, keys::track::CycleInstrument).w(px(150.0)).justify_between().child(SharedString::from(inst_name)).child(div().text_color(th.ink_faint).child("▾")))
             .child(abtn("addline", th, keys::track::Add).child("+ linha"))
-            .child(abtn("zout", th, keys::view::ZoomOut).child("🔍−"))
+            .child(abtn("zout", th, keys::view::ZoomOut).child(crate::ui::icon("zoom-out", 15.0).text_color(th.ink_soft)))
             .child(div().w(px(44.0)).flex().justify_center().text_size(px(12.0)).text_color(th.ink_soft).child(SharedString::from(format!("{zoom_pct}%"))))
-            .child(abtn("zin", th, keys::view::ZoomIn).child("🔍+"));
+            .child(abtn("zin", th, keys::view::ZoomIn).child(crate::ui::icon("zoom-in", 15.0).text_color(th.ink_soft)));
 
         // caneta de pessoa
         if !song.people().is_empty() {

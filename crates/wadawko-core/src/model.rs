@@ -174,6 +174,9 @@ pub struct InstrumentDef {
     /// ajustes da borda (fuchi/rim)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rim: Option<ZoneParams>,
+    /// cor do instrumento (`#rrggbb`); as linhas sem cor própria herdam dela
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
     #[serde(flatten)]
     pub extra: Extra,
 }
@@ -207,7 +210,7 @@ fn zone(pitch: Option<f64>, gain: Option<f64>, tone: Option<(ToneType, f64, f64)
 pub static BUILTIN_INSTRUMENTS: LazyLock<Vec<InstrumentDef>> = LazyLock::new(|| {
     let mut v: Vec<InstrumentDef> =
         InstrumentId::ALL.into_iter().map(|base| InstrumentDef { id: base.as_str().into(), name: base.label().into(), base, builtin: Some(true), ..Default::default() }).collect();
-    let preset = |id: &str, name: &str, base, head, rim| InstrumentDef { id: id.into(), name: name.into(), base, builtin: Some(true), head, rim, extra: Extra::new() };
+    let preset = |id: &str, name: &str, base, head, rim| InstrumentDef { id: id.into(), name: name.into(), base, builtin: Some(true), head, rim, color: None, extra: Extra::new() };
     v.push(preset(
         "preset-shime-agudo",
         "Shime agudo",
@@ -260,6 +263,9 @@ pub struct Person {
     /// volume do barramento da pessoa em dB (default 0)
     #[serde(default, skip_serializing_if = "Option::is_none", serialize_with = "js_num_opt")]
     pub volume: Option<f64>,
+    /// voz dos kiai da pessoa: "a" (animalese), "m" (gravação masculina) ou "f" (feminina); sem valor = a da linha
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<String>,
     #[serde(flatten)]
     pub extra: Extra,
 }
@@ -300,6 +306,9 @@ pub struct KyaiVoice {
     /// volume dos gritos em dB (default 0)
     #[serde(default, skip_serializing_if = "Option::is_none", serialize_with = "js_num_opt")]
     pub gain: Option<f64>,
+    /// voz dos kiai: "a" (animalese, padrão), "m" ou "f" (gravações); a da pessoa tem prioridade
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub voice: Option<String>,
 }
 
 /// Linha (instrumento) da grade.
@@ -508,6 +517,9 @@ pub struct Measure {
     /// kiai/kakegoe por linha, paralelo a `cells`: UMA sílaba por célula ("so", "re!")
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kyai: Option<CellRows>,
+    /// efeitos por célula, paralelo a `cells` (`"R4< D+1"`, ver `crate::fx`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub fx: Option<CellRows>,
     /// mudança de andamento que começa neste compasso (rallentando/accelerando/a tempo)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tempo: Option<TempoMark>,
@@ -537,6 +549,11 @@ impl Measure {
         self.kyai.as_ref()?.get(track_id)?.get(ci)?.as_deref()
     }
 
+    /// texto de efeitos da célula (`"R4<"`), se houver
+    pub fn fx_at(&self, track_id: &str, ci: usize) -> Option<&str> {
+        self.fx.as_ref()?.get(track_id)?.get(ci)?.as_deref().filter(|s| !s.is_empty())
+    }
+
     /// dono CRU gravado em `cellOwners` (sem fallback; ver `ops::people::cell_owner_of`)
     pub fn raw_owner(&self, track_id: &str, ci: usize) -> Option<&str> {
         self.cell_owners.as_ref()?.get(track_id)?.get(ci)?.as_deref()
@@ -560,6 +577,12 @@ pub struct Section {
     /// quantas vezes a seção toca (ritornello); default 1
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repeat: Option<u32>,
+    /// cor da seção (`#rrggbb`); sem cor herda a do grupo
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// grupo (`SectionGroup.id`) a que a seção pertence
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
     #[serde(flatten)]
     pub extra: Extra,
 }
@@ -570,6 +593,25 @@ impl Section {
         self.repeat.unwrap_or(1).max(1)
     }
 }
+
+/// Grupo de seções (organização, cor e região — NÃO muda a ordem tocada;
+/// `docs/planejamento/tracker.md` §3.5). As seções do grupo são contíguas.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SectionGroup {
+    pub id: String,
+    pub name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    /// recolhido no painel de seções (estado de UI salvo no arquivo)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub collapsed: bool,
+    #[serde(flatten)]
+    pub extra: Extra,
+}
+
+/// Paleta de cores de estrutura (seções e grupos): mais suaves que as das linhas.
+pub const SECTION_COLORS: [&str; 8] = ["#d9775f", "#d9a441", "#8fb86a", "#4fb3a0", "#5e9fd8", "#8c86d6", "#c97aa8", "#9a8f84"];
 
 // ───────────────────────────── trechos de ensaio ─────────────────────────────
 
@@ -630,6 +672,13 @@ pub struct Song {
     /// trechos de ensaio com nome (F7b)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub practice: Option<Vec<PracticeSpot>>,
+    /// grupos de seções (tracker §3.5)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub section_groups: Option<Vec<SectionGroup>>,
+    /// cor dos instrumentos PRONTOS nesta música (id da def → `#rrggbb`); os
+    /// custom guardam a cor na própria def (`InstrumentDef.color`)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instrument_colors: Option<BTreeMap<String, String>>,
     #[serde(flatten)]
     pub extra: Extra,
 }
@@ -649,6 +698,8 @@ impl Default for Song {
             main_track_ids: None,
             main_track_id: None,
             practice: None,
+            section_groups: None,
+            instrument_colors: None,
             extra: Extra::new(),
         }
     }

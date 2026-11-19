@@ -5,6 +5,20 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 ## [Não lançado]
 
 ### Adicionado
+- **Kiai com timbre de grito**: o animalese ficou mais agudo e áspero (dobro desafinado,
+  rouquidão uma oitava abaixo, sopro e estouro de ar no "!").
+- **Kiai com vozes reais** (opcional): gravações masculinas e femininas (ha, hai, iya, yo, sa,
+  hyo, orya…); voz animalese/masc/fem por linha ou por pessoa.
+- **Contagem falada no count-in** (ichi, ni, san…), em voz masculina ou feminina.
+- **Visão por pessoa** (`Alt+V`): o editor mostra só as linhas de uma pessoa.
+- Aba **LINHAS** no painel da esquerda (cabeçalhos de faixa com o que o inspector mostra).
+- **Minimap** à direita do editor vertical (clique/arraste para rolar) e a grade **acompanha a seleção**
+  (teclado e arrasto com rolagem automática nas bordas).
+- **Efeitos por célula** estilo tracker: rulo, flam, atraso, corte, força e humanização (`R4< D+1`),
+  com coluna própria no editor vertical, atalhos e inspector; tocam no áudio, na esteira e no MIDI.
+- **Painel de seções** à esquerda: seleção, renomear, arrastar para reordenar (Alt clona), menu de
+  contexto, copiar/colar seções entre músicas, **grupos** recolhíveis e **cores** de seção e grupo;
+  os trechos de ensaio passaram para ele. **Cor por instrumento** na página Kit.
 - **Modo projeção** (`F10`): seção, volta, compasso, tempos, próxima seção e BPM em letras grandes.
 - **Metrônomo com som de shime ou kane** (além do bipe): chip na barra de cima.
 - **Export MIDI** (`.mid`, uma faixa por linha, bateria GM; também `wadawko-cli midi`).
@@ -50,6 +64,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 - Licença do código: **MIT OR Apache-2.0** (`LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`).
 
 ### Mudado
+- **Identidade visual nova**: tema escuro com grafites azulados, rosa e ciano; fonte Inconsolata;
+  ícones próprios; botões com relevo (gradiente, brilho, sombra; aceso com brilho rosa).
+- Minimap mais calmo: cores esmaecidas, 1 px entre células e densidade por tempo nas passagens rápidas.
 - Barra de cima **compacta em janela estreita** (< 1200 px): nada mais se sobrepõe ao transporte.
 - **Desempenho**: cada seção da grade é desenhada em cache; passar o mouse num botão
   re-renderiza só aquela seção (≈11× menos trabalho por hover).

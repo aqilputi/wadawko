@@ -10,6 +10,7 @@ use wadawko_core::ops;
 use wadawko_core::{Song, TempoMark, kyai};
 
 use super::paint::{PaintArgs, paint_section};
+use super::vgeom::{self, Cols, LEFT_W, Layout};
 use super::{DYNAMICS, GridEvent, GridView, InputTarget, KYAI_H, LABEL_W, Menu, SEC_DYN_H, SEC_GAP, SEC_HEAD_H, TDYN_H, TIMELINE_H, sec_key};
 use crate::keys::{self, HintAct};
 use crate::song_ext::SongExt;
@@ -51,14 +52,14 @@ fn popover(th: &Theme) -> gpui_kit::Div {
 }
 
 impl GridView {
-    fn track_edit(&mut self, t: usize, cx: &mut Context<Self>, f: impl FnOnce(&mut Song, &str)) {
+    pub(super) fn track_edit(&mut self, t: usize, cx: &mut Context<Self>, f: impl FnOnce(&mut Song, &str)) {
         let tid = self.song.tid(t).to_string();
         self.edit(cx, |s| f(s, &tid));
     }
 
     /// Popover de edição da linha (⚙): nome, instrumento, ordem, principal,
     /// sub-linhas, pessoas, voz do kiai.
-    fn row_menu(&self, t: usize, top: f32, th: &Theme, cx: &mut Context<Self>) -> gpui_kit::Div {
+    fn row_menu(&self, t: usize, left: f32, top: f32, th: &Theme, cx: &mut Context<Self>) -> gpui_kit::Div {
         let song = self.song.clone();
         let Some(track) = song.tracks.get(t) else { return div() };
         let tid = track.id.clone();
@@ -125,6 +126,7 @@ impl GridView {
         }
 
         let (pitch, vary, gain) = kyai::kyai_voice_or_default(track.kyai.as_ref());
+        let kyai_sex_code: Option<&'static str> = track.kyai.as_ref().and_then(|v| v.voice.as_deref()).and_then(kyai::KyaiTimbre::parse).map(kyai::KyaiTimbre::code).filter(|c| *c != "a");
         let voice = |id: &'static str, label: String, cx: &mut Context<Self>, delta: (f64, f64, f64)| {
             chip((id, t), th, false).child(SharedString::from(label)).on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
                 this.track_edit(t, cx, |s, tid| {
@@ -147,7 +149,7 @@ impl GridView {
         let name = track.name.clone();
 
         popover(th)
-            .left(px(8.0))
+            .left(px(left))
             .top(px(top))
             .w(px(520.0))
             .child(
@@ -257,7 +259,29 @@ impl GridView {
                     .child(voice("kv-g-", "−".into(), cx, (0.0, 0.0, -1.0)))
                     .child(val(format!("{gain:+.0} dB")))
                     .child(voice("kv-g+", "+".into(), cx, (0.0, 0.0, 1.0)))
-                    .child(click("kv-test", "▶ testar".into(), false, cx, Rc::new(move |this, cx| this.preview_kyai(t, &["so".to_string(), "re".to_string()], cx)))),
+                    .child(div().ml(px(6.0)).text_size(px(11.0)).text_color(th.ink_soft).child("voz"))
+                    .children([("kv-x-a", "animalese", None), ("kv-x-m", "masc", Some("m")), ("kv-x-f", "fem", Some("f"))].map(|(id, label, code)| {
+                        click(
+                            id,
+                            label.into(),
+                            kyai_sex_code == code,
+                            cx,
+                            Rc::new(move |this, cx| {
+                                this.track_edit(t, cx, |s, tid| {
+                                    if let Some(tr) = s.track_mut(tid) {
+                                        tr.kyai.get_or_insert_with(Default::default).voice = code.map(str::to_string);
+                                    }
+                                })
+                            }),
+                        )
+                    }))
+                    .child(click(
+                        "kv-test",
+                        "▶ testar".into(),
+                        false,
+                        cx,
+                        Rc::new(move |this, cx| this.preview_kyai(t, &["so".to_string(), "re".to_string(), "i".to_string(), "ya!".to_string()], cx)),
+                    )),
             )
     }
 
@@ -386,12 +410,37 @@ impl Render for GridView {
         let song = self.song.clone();
         let secs = song.secs();
         let rows = self.rows();
+        let vertical = self.layout == Layout::Vertical;
+        // "ajustar à largura": a coluna de nota encolhe até COL_W_MIN antes de rolar em x
+        let extras = Cols::new(&rows, self.col_w).extras();
+        let n_rows = rows.y.len();
+        let fit = move |root_w: f32, want: f32| vgeom::fit_col_w(want, root_w, n_rows, extras);
+        self.col_w_eff = fit(f32::from(self.geom.borrow().root.size.width), self.col_w);
+        let cols = Cols::new(&rows, self.col_w_eff);
         {
             let mut g = self.geom.borrow_mut();
             g.offset = self.offset;
             g.cw = self.cw;
             g.rows = rows.clone();
+            g.layout = self.layout;
+            g.cols = cols.clone();
+            g.row_h = self.row_h;
             g.sections.resize(secs.len(), Bounds::default());
+        }
+        // cabeçalho de colunas (vertical): view em cache, notificada só quando a chave muda
+        if vertical {
+            if self.col_head_view.is_none() {
+                let grid = cx.entity().downgrade();
+                self.col_head_view = Some(cx.new(|_| super::vrender::ColHeadView { grid }));
+            }
+            let key = self.col_head_key(cx);
+            if key != self.col_head_key
+                && let Some(v) = &self.col_head_view
+            {
+                self.col_head_key = key;
+                let id = v.entity_id();
+                cx.defer(move |cx| cx.notify(id));
+            }
         }
         let geom = self.geom.clone();
         let weak = cx.entity().downgrade();
@@ -399,6 +448,7 @@ impl Render for GridView {
         // barra da seção se adapta à largura da grade (do último frame; 0 = ainda sem medida → completa)
         let bar = BarFit::for_width(f32::from(self.geom.borrow().root.size.width));
         let bar_used = bar;
+        let (want_w, eff_used) = (self.col_w, self.col_w_eff);
         let rails = ops::people::rails_for_tracks(&song);
         let rail_w = rails.len() as f32 * 5.0 + if rails.is_empty() { 0.0 } else { 4.0 };
         self.geom.borrow_mut().label_pad = 6.0 + rail_w;
@@ -425,6 +475,9 @@ impl Render for GridView {
                 if ev.modifiers.control {
                     let a = this.geom.borrow().sections.first().map(|b| f32::from(ev.position.x) - f32::from(b.origin.x)).unwrap_or(0.0);
                     this.zoom_at((dy * 0.004).exp(), a.max(0.0));
+                    if this.layout == Layout::Vertical {
+                        cx.emit(GridEvent::SettingsChanged);
+                    }
                     cx.stop_propagation();
                     cx.notify();
                 } else if ev.modifiers.shift || dx.abs() > dy.abs() {
@@ -439,7 +492,7 @@ impl Render for GridView {
                         geom.borrow_mut().root = b;
                         // a largura mudou de faixa (redimensionou a janela, abriu/fechou a
                         // lateral): re-renderiza para a barra das seções se reorganizar
-                        if BarFit::for_width(f32::from(b.size.width)) != bar_used {
+                        if BarFit::for_width(f32::from(b.size.width)) != bar_used || (vertical && fit(f32::from(b.size.width), want_w) != eff_used) {
                             let _ = weak_fit.update(cx, |_, cx| cx.notify());
                         }
                     },
@@ -476,14 +529,16 @@ impl Render for GridView {
             let mut h = SEC_HEAD_H;
             y_acc += SEC_HEAD_H;
             if !collapsed {
-                if let Some(Menu::Row { t, s: ms }) = self.menu
+                let body = if vertical { vgeom::section_body_h(&song, s, self.row_h) } else { rows.body_h() };
+                if !vertical
+                    && let Some(Menu::Row { t, s: ms }) = self.menu
                     && ms == s
                     && t < rows.y.len()
                 {
                     row_menu_at = Some((t, y_acc + SEC_DYN_H + TIMELINE_H + rows.y[t] + rows.cell_h + 4.0));
                 }
-                y_acc += rows.body_h();
-                h += rows.body_h();
+                y_acc += body;
+                h += body;
             } else if let Some(slot) = self.geom.borrow_mut().sections.get_mut(s) {
                 *slot = Bounds::default();
             }
@@ -495,9 +550,20 @@ impl Render for GridView {
         match self.menu.clone() {
             Some(Menu::Dyn { m, track, x, y }) => root = root.child(self.dyn_menu(m, track, x, y, &th, cx)),
             Some(Menu::Tempo { m, x, y }) => root = root.child(self.tempo_menu(m, x, y, &th, cx)),
+            Some(Menu::Row { t, .. }) if vertical => {
+                // abaixo do cabeçalho de colunas (fixo): no topo da área visível do editor
+                let (top, left) = {
+                    let g = self.geom.borrow();
+                    let top = (f32::from(g.viewport.origin.y) - f32::from(g.root.origin.y)).max(0.0) + 4.0;
+                    let x = LEFT_W + cols.x.get(t).copied().unwrap_or(0.0) - self.offset;
+                    let max_x = (f32::from(g.root.size.width) - 530.0).max(0.0);
+                    (top, x.clamp(0.0, max_x))
+                };
+                root = root.child(self.row_menu(t, left, top, &th, cx));
+            }
             Some(Menu::Row { t, .. }) => {
                 if let Some((_, top)) = row_menu_at {
-                    root = root.child(self.row_menu(t, top, &th, cx));
+                    root = root.child(self.row_menu(t, 8.0, top, &th, cx));
                 }
             }
             None => {}
@@ -520,10 +586,16 @@ impl GridView {
         kyai_rows.sort();
         crate::shell::chrome::key(|k| {
             use std::hash::Hash;
-            (Arc::as_ptr(&self.song) as usize, st.revision, st.theme.dark, selected, format!("{range:?}"), looping, format!("{bar:?}")).hash(k);
+            (Arc::as_ptr(&self.song) as usize, st.revision, st.theme.dark, selected, format!("{range:?}"), looping, format!("{bar:?}"), &st.tp.rehearse).hash(k);
             (format!("{:?}", self.cursor), format!("{:?}", self.anchor), self.vmode, format!("{:?}", self.lane), &self.edit).hash(k);
             (format!("{:?}", self.menu), format!("{:?}", self.move_drag), format!("{:?}", self.loop_drag), self.drag_sec, self.drag_over).hash(k);
             (self.cw.to_bits(), self.offset.to_bits(), self.cell_h.to_bits(), collapsed, dyn_rows, kyai_rows).hash(k);
+            (self.layout, self.col_w_eff.to_bits(), self.row_h.to_bits(), &self.view_person, self.show_fx_all, {
+                let mut v: Vec<&String> = self.show_fx.iter().collect();
+                v.sort();
+                v
+            })
+                .hash(k);
         })
     }
 
@@ -565,6 +637,9 @@ impl GridView {
         let mk = |id: String, label: &'static str, on: bool, op: Op| mkc(id, label, on, th.accent, op);
 
         let Some(sec) = secs.get(s) else { return div().into_any_element() };
+        let sec_meta = sec.id.as_deref().and_then(|id| song.section(id));
+        let sec_col = sec_meta.and_then(|m| ops::structure::section_color(&song, m)).and_then(crate::theme::parse_color);
+        let group_name = sec_meta.and_then(|m| m.group.as_deref()).and_then(|g| ops::structure::group(&song, g)).map(|g| g.name.clone());
         let collapsed = self.is_collapsed(sec);
         let rep = sec.repeat;
         let cur_sec = self.cursor.map(|c| song.section_of(c.m)) == Some(s);
@@ -681,6 +756,20 @@ impl GridView {
                                 }),
                             ),
                     )
+                    // cor da seção (ou do grupo) e o grupo a que ela pertence
+                    .when_some(sec_col, |d, c| d.child(div().size(px(10.0)).flex_none().rounded(px(2.0)).bg(c)))
+                    .when_some(group_name.clone(), |d, g| {
+                        d.child(
+                            div()
+                                .flex_none()
+                                .max_w(px(90.0))
+                                .truncate()
+                                .text_size(px(9.5))
+                                .font_weight(FontWeight::BOLD)
+                                .text_color(th.ink_faint)
+                                .child(SharedString::from(format!("{} ›", g.to_uppercase()))),
+                        )
+                    })
                     .child({
                         let w = weak.clone();
                         let sid2 = sid_hint.clone();
@@ -793,9 +882,11 @@ impl GridView {
             })
             .child(mkh(format!("s{s}-rm"), "✕", with_sec(ops::sections::remove_section)).ml(px(8.0)).mr(px(8.0)));
 
-        let mut block = div().flex().flex_col().child(header);
+        let mut block = div().w_full().flex().flex_col().child(header);
 
-        if !collapsed {
+        if !collapsed && self.layout == Layout::Vertical {
+            block = block.child(self.vsection_body(s, cx));
+        } else if !collapsed {
             let mut labels = div()
                 .w(px(LABEL_W))
                 .flex_none()
@@ -831,7 +922,7 @@ impl GridView {
                     }
                 }
                 // listra na cor da linha (F1), esmaecida quando a linha não soa
-                let tcol = track_color(tr);
+                let tcol = track_color(&song, tr);
                 let stripe = div().absolute().left_0().top_0().h(px(rows.cell_h)).w(px(4.0)).bg(if audible { tcol } else { Theme::alpha(tcol, 0.4) });
                 let mut label = div().relative().h(px(rows.row_h(t))).flex().flex_col().child(stripe).child(rail_el).child(
                     div()

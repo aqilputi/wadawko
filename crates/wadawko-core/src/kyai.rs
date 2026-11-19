@@ -151,6 +151,42 @@ pub fn kyai_profile(seed_id: &str, track: &Track) -> KyaiProfile {
     KyaiProfile { pitch: -4.0 + rnd(h, 1.0) * 9.0 + pitch, speed: 0.85 + rnd(h, 2.0) * 0.35, vary, grit: rnd(h, 3.0) * 0.012, breath: 0.5 + rnd(h, 4.0) * 0.6, range: 0.75 + rnd(h, 5.0) * 0.5 }
 }
 
+/// Voz dos kiai: o animalese sintetizado (padrão) ou as gravações reais.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum KyaiTimbre {
+    /// letras do animalese, com timbre de grito
+    #[default]
+    Animalese,
+    /// gravação masculina
+    Male,
+    /// gravação feminina
+    Female,
+}
+
+impl KyaiTimbre {
+    pub fn parse(s: &str) -> Option<KyaiTimbre> {
+        match s {
+            "a" => Some(KyaiTimbre::Animalese),
+            "m" => Some(KyaiTimbre::Male),
+            "f" => Some(KyaiTimbre::Female),
+            _ => None,
+        }
+    }
+    pub fn code(self) -> &'static str {
+        match self {
+            KyaiTimbre::Animalese => "a",
+            KyaiTimbre::Male => "m",
+            KyaiTimbre::Female => "f",
+        }
+    }
+}
+
+/// Voz de quem grita: a da pessoa (`Person.voice`), senão a da linha
+/// (`track.kyai.voice`), senão o animalese.
+pub fn kyai_timbre(song: &Song, seed_id: &str, track: &Track) -> KyaiTimbre {
+    song.people().iter().find(|p| p.id == seed_id).and_then(|p| p.voice.as_deref()).or_else(|| track.kyai.as_ref().and_then(|v| v.voice.as_deref())).and_then(KyaiTimbre::parse).unwrap_or_default()
+}
+
 // ───────────────────────────── entonação ─────────────────────────────
 
 /// Contorno (início, fim) em semitons da sílaba `idx` de uma palavra de `n`

@@ -79,6 +79,20 @@ impl Shell {
                 "■ parado · Espaço toca · Esc sai"
             }),
         );
+        // count-in (antes de tocar ou entre as voltas): contagem gigante no meio da tela
+        let count = st.audio.as_ref().and_then(|a| {
+            let c = a.clock();
+            let snap = c.snapshot();
+            let spb = 60.0 / snap.bpm.max(1.0) as f64 * c.sample_rate as f64;
+            (snap.playing && snap.preroll_frames > 0 && spb > 0.0).then(|| (snap.preroll_frames as f64 / spb).ceil() as u32)
+        });
+        if let Some(n) = count {
+            return root
+                .child(
+                    div().flex_1().flex().items_center().justify_center().child(div().text_size(px(360.0)).font_weight(FontWeight::BOLD).text_color(accent).child(SharedString::from(n.to_string()))),
+                )
+                .into_any_element();
+        }
         match info {
             Some(i) => {
                 let mut dots = div().flex().gap(px(24.0));
@@ -121,7 +135,7 @@ impl Shell {
         // linhas da música, como lembrete de quem toca (listras de cor)
         let mut legend = div().flex().flex_wrap().gap(px(18.0)).text_size(px(22.0)).text_color(soft);
         for t in &song.tracks {
-            legend = legend.child(div().flex().items_center().gap(px(8.0)).child(div().w(px(18.0)).h(px(18.0)).bg(track_color(t))).child(SharedString::from(t.name.clone())));
+            legend = legend.child(div().flex().items_center().gap(px(8.0)).child(div().w(px(18.0)).h(px(18.0)).bg(track_color(&song, t))).child(SharedString::from(t.name.clone())));
         }
         root.child(legend).into_any_element()
     }
@@ -131,15 +145,15 @@ impl Shell {
 mod tests {
     use super::*;
     use wadawko_core::demo::demo_song;
-    use wadawko_core::model::{Extra, Section};
+    use wadawko_core::model::Section;
 
     #[test]
     fn info_com_repeticao_e_proxima() {
         let mut song = demo_song();
         // A = compassos 0–1 (2×), B = 2–3
         song.sections = Some(vec![
-            Section { id: "a".into(), name: "A".into(), start: 0, repeat: Some(2), extra: Extra::new() },
-            Section { id: "b".into(), name: "B".into(), start: 2, repeat: None, extra: Extra::new() },
+            Section { id: "a".into(), name: "A".into(), start: 0, repeat: Some(2), ..Default::default() },
+            Section { id: "b".into(), name: "B".into(), start: 2, repeat: None, ..Default::default() },
         ]);
         let order = wadawko_core::timeline::play_order(&song, None);
         assert_eq!(order, vec![0, 1, 0, 1, 2, 3]);

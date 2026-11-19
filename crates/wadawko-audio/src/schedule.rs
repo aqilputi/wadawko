@@ -7,7 +7,7 @@
 
 use std::collections::HashMap;
 
-use wadawko_core::kyai::{kyai_events, kyai_lag, kyai_note, kyai_profile, kyai_seed, kyai_voice_or_default};
+use wadawko_core::kyai::{kyai_events, kyai_lag, kyai_note, kyai_profile, kyai_seed, kyai_timbre, kyai_voice_or_default};
 use wadawko_core::ops::kit::resolve_instrument;
 use wadawko_core::ops::measures::bar_beat_starts;
 use wadawko_core::ops::people::{cell_owner_of, person_audible};
@@ -17,7 +17,8 @@ use wadawko_core::{Dynamic, InstrumentDef, InstrumentId, Song, ToneType, Track, 
 use wadawko_samples::{BaseInstrument, FilterKind, RoundRobin, SampleBank, Zone as SZone};
 
 use crate::dsp::{Biquad, FilterChain, FilterType, Rng};
-use crate::kyai_voice::kyai_grains;
+use crate::kyai_synth::kyai_grains;
+use crate::kyai_voice::{kiai_grain, plan_for, voice_of};
 
 /// Resolução do transport (ticks por semínima).
 pub const PPQ: f64 = 960.0;
@@ -59,7 +60,7 @@ pub struct HitEv {
     pub strip: u16,
     pub rim: bool,
     /// aplica a humanização (ganho ±12 %, pitch ±1 %, tempo ±6 ms) ao disparar
-    pub humanize: bool,
+    pub humanize: f32,
     /// para o `HitFired`: índice da linha, célula-FONTE global e golpe dentro da célula
     pub track: u16,
     pub cell: u32,
@@ -68,7 +69,7 @@ pub struct HitEv {
     pub notify: bool,
 }
 
-/// Grão de letra do animalese (kiai).
+/// Trecho de um sample tocado como voz solta (kiai gravado).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct GrainEv {
     pub sample: u16,
@@ -103,6 +104,11 @@ pub enum EventKind {
     Hit(HitEv),
     Grain(GrainEv),
     Noise(NoiseEv),
+    /// corte (`X` dos efeitos por célula): abafa as vozes do canal (as duas strips)
+    Cut {
+        /// canal = strip / 2
+        channel: u16,
+    },
     /// clique do metrônomo (só soa com o metrônomo ligado no engine, que
     /// decide o nível pelo padrão de acentos e pela subdivisão — `metronome.rs`)
     Click {
@@ -473,7 +479,7 @@ pub fn hit_event(bank: &SampleBank, def: &InstrumentDef, zone: Zone, vel: f64, d
         choke: m.tail.choke,
         strip,
         rim: z.is_rim(),
-        humanize: true,
+        humanize: 1.0,
         track: 0,
         cell: 0,
         hit: 0,
@@ -667,24 +673,39 @@ impl Compiler {
                     }
                     let Some(syl) = meas.cell(&track.id, ci).filter(|s| !s.is_empty()) else { continue };
                     let Some(resolved) = resolve_cell(syl) else { continue };
+                    // efeitos por célula (`wadawko_core::fx`): texto inválido = sem efeito
+                    let fx = meas.fx_at(&track.id, ci).and_then(|s| wadawko_core::fx::parse(s).ok()).unwrap_or_default();
+                    let applied = wadawko_core::fx::apply(&resolved, &fx);
                     // instrumento compartilhado: golpe roteia pro barramento do dono da célula
                     let owner = cell_owner_of(song, track, mi, ci);
                     if opts.skip_inaudible && bus_person(track, owner).is_some_and(|p| !person_audible(song, Some(p))) {
                         continue;
                     }
                     let slot = channel(ti, owner, false);
-                    for (hi, hit) in resolved.hits.iter().enumerate() {
-                        // posição do golpe como fração do TEMPO, com warp de swing
-                        let beat_frac = swing_warp(cell_frac + hit.offset / sub as f64, swing);
-                        let tick = time.bar_tick(u) + (beat as f64 + beat_frac) * PPQ;
-                        let d0 = curves[ti].at(u, (beat as f64 + beat_frac) / meas.beats.max(1) as f64);
+                    // posição no compasso (em tempos), com warp de swing dentro do tempo; o
+                    // offset pode passar da célula (atraso/antecipação/flam dos efeitos)
+                    let at_beats = |off: f64| {
+                        let pos = beat as f64 + cell_frac + off / sub as f64;
+                        let b = pos.floor();
+                        b + swing_warp(pos - b, swing)
+                    };
+                    if let Some(c) = applied.cut {
+                        let tick = (time.bar_tick(u) + at_beats(c) * PPQ).max(0.0);
+                        events.push(Event { tick, kind: EventKind::Cut { channel: slot as u16 } });
+                    }
+                    for (hi, fh) in applied.hits.iter().enumerate() {
+                        let hit = &fh.hit;
+                        let pos = at_beats(hit.offset);
+                        let tick = (time.bar_tick(u) + pos * PPQ).max(0.0);
+                        let d0 = curves[ti].at(u, (pos / meas.beats.max(1) as f64).clamp(0.0, 1.0));
                         let dynv = (if hit.sfz { sfz_dyn(d0) } else { d0 }) * mains[ti];
                         let strip = (slot * 2 + (hit.zone == Zone::Rim) as usize) as u16;
                         let mut ev = hit_event(&self.bank, defs[ti], hit.zone, hit.vel, dynv, rr.entry(slot).or_default(), strip);
                         ev.track = ti as u16;
                         ev.cell = global as u32;
-                        ev.hit = hi as u8;
+                        ev.hit = hi.min(255) as u8;
                         ev.notify = true;
+                        ev.humanize = applied.humanize as f32;
                         events.push(Event { tick, kind: EventKind::Hit(ev) });
                     }
                 }
@@ -698,31 +719,53 @@ impl Compiler {
             }
         }
 
-        // kiai: cada sílaba com a voz do dono da célula e entonação da palavra
+        // kiai: voz do dono da célula — animalese (sintetizado) ou gravações (m/f; a palavra decide as tomadas)
         let animalese = self.bank.animalese_id().0;
-        let spb = 60.0 / bpm;
         let mut grains = Vec::new();
-        for e in kyai_events(song, &order, |f| swing_warp(f, swing)) {
+        let spb = 60.0 / bpm;
+        let kev = kyai_events(song, &order, |f| swing_warp(f, swing));
+        let mut plan: Vec<Option<&'static str>> = Vec::new();
+        for (i, e) in kev.iter().enumerate() {
             let ti = e.track_index;
             let track = &song.tracks[ti];
+            let Some(meas) = song.measures.get(e.mi) else { continue };
+            let seed = kyai_seed(track, meas, e.ci);
+            let voice = voice_of(kyai_timbre(song, seed, track));
+            if let Some(voice) = voice
+                && (e.idx == 0 || plan.len() != e.n)
+            {
+                // a palavra são os `n` eventos seguidos da mesma linha (saída agrupada por linha)
+                let syls: Vec<&str> = kev[i..].iter().take_while(|x| x.track_index == ti).take(e.n).map(|x| x.syl.as_str()).collect();
+                plan = plan_for(&self.bank, voice, &syls);
+                plan.resize(e.n, None);
+            }
             if opts.skip_inaudible && !audible[ti] {
                 continue;
             }
-            let Some(meas) = song.measures.get(e.mi) else { continue };
             let owner = cell_owner_of(song, track, e.mi, e.ci);
             if opts.skip_inaudible && bus_person(track, owner).is_some_and(|p| !person_audible(song, Some(p))) {
                 continue;
             }
             let slot = channel(ti, owner, true);
-            let prof = kyai_profile(kyai_seed(track, meas, e.ci), track);
+            let prof = kyai_profile(seed, track);
             // variação determinística por (semente, linha, compasso tocado, célula)
             let mut rng = Rng::new(opts.seed ^ ((ti as u64) << 48) ^ ((e.u as u64) << 16) ^ e.ci as u64);
             let lag = kyai_lag(prof.vary, rng.unit64());
-            let note = kyai_note(&e.syl, e.idx, e.n, e.shout, e.gap_beats * spb, &prof, || rng.unit64());
-            grains.clear();
-            kyai_grains(&note, &prof, animalese, (slot * 2) as u16, lag, self.sr, &mut rng, &mut grains);
-            let tick = e.beats * PPQ;
-            events.extend(grains.iter().map(|&kind| Event { tick, kind }));
+            let Some(voice) = voice else {
+                let note = kyai_note(&e.syl, e.idx, e.n, e.shout, e.gap_beats * spb, &prof, || rng.unit64());
+                grains.clear();
+                kyai_grains(&note, &prof, animalese, (slot * 2) as u16, lag, self.sr, &mut rng, &mut grains);
+                let tick = e.beats * PPQ;
+                events.extend(grains.iter().map(|&kind| Event { tick, kind }));
+                continue;
+            };
+            let Some(word) = plan.get(e.idx).copied().flatten() else { continue };
+            // a palavra inteira gravada vale até o fim da palavra (a próxima sílaba dela fica muda)
+            let gap_beats = if e.idx == 0 && e.n > 1 && plan.iter().skip(1).all(Option::is_none) { kev[i..].iter().take(e.n).map(|x| x.gap_beats).sum::<f64>() } else { e.gap_beats };
+            let note = kyai_note(&e.syl, e.idx, e.n, e.shout || gap_beats > e.gap_beats, gap_beats * spb, &prof, || rng.unit64());
+            if let Some(kind) = kiai_grain(&self.bank, voice, word, &note, &prof, gap_beats * spb, (slot * 2) as u16, lag, &mut rng) {
+                events.push(Event { tick: e.beats * PPQ, kind });
+            }
         }
 
         // ordem de tempo estável: no mesmo tick vale a ordem de linha (o choke depende dela)

@@ -22,6 +22,15 @@ macro_rules! with_sample_names {
             "kane-head-0-0", "kane-head-0-1", "kane-head-0-2", "kane-head-0-3",
             "kane-rim-0-0", "kane-rim-0-1", "kane-rim-0-2", "kane-rim-0-3",
             "animalese",
+            "kiai/m-ha-0", "kiai/m-ha-1", "kiai/m-ha-2", "kiai/m-ha-3", "kiai/m-hai-0", "kiai/m-hai-1",
+            "kiai/m-yo-0", "kiai/m-yo-1", "kiai/m-yo-2", "kiai/m-iyo-0", "kiai/m-iyo-1", "kiai/m-iya-0",
+            "kiai/m-iya-1", "kiai/m-haiya-0", "kiai/m-ya-0", "kiai/m-ei-0", "kiai/m-orya-0", "kiai/f-hai-0",
+            "kiai/f-hai-1", "kiai/f-hai-2", "kiai/f-hai-3", "kiai/f-ha-0", "kiai/f-ha-1", "kiai/f-ha-2",
+            "kiai/f-ha-3", "kiai/f-ha-4", "kiai/f-sa-0", "kiai/f-iya-0", "kiai/f-iya-1", "kiai/f-hya-0",
+            "kiai/f-hyo-0", "kiai/f-ya-0", "kiai/f-ho-0", "kiai/m-count-ichi-0", "kiai/m-count-ni-0", "kiai/m-count-san-0",
+            "kiai/m-count-yon-0", "kiai/m-count-go-0", "kiai/m-count-roku-0", "kiai/m-count-nana-0", "kiai/m-count-hachi-0", "kiai/f-count-ichi-0",
+            "kiai/f-count-ni-0", "kiai/f-count-san-0", "kiai/f-count-shi-0", "kiai/f-count-go-0", "kiai/f-count-roku-0", "kiai/f-count-shichi-0",
+            "kiai/f-count-hachi-0",
         }
     };
 }
@@ -31,7 +40,7 @@ macro_rules! names_array {
 }
 
 /// Nomes (sem `.ogg`) de todos os samples do banco: os 72 golpes do
-/// manifesto (únicos) + `animalese`. O índice aqui é o [`crate::SampleId`].
+/// manifesto (únicos) + `animalese` + as gravações de kiai/contagem (`kiai/…`, ver [`crate::kiai`]). O índice aqui é o [`crate::SampleId`].
 pub static SAMPLE_NAMES: &[&str] = with_sample_names!(names_array);
 
 #[cfg(feature = "embed")]

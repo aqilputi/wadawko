@@ -214,7 +214,7 @@ impl MixerView {
 
         let small = |s: String| div().text_size(px(10.0)).font_weight(FontWeight::BOLD).text_color(th.ink_soft).child(SharedString::from(s));
         // cabeçalho de 22 px preenchido com a cor da linha (F1), como o mixer de uma DAW
-        let tcol = track_color(t);
+        let tcol = track_color(song, t);
         let head = div()
             .w_full()
             .flex_none()

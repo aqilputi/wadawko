@@ -122,31 +122,38 @@ pub fn note_events(song: &Song, order: &[usize]) -> LaneData {
             for (ti, track) in song.tracks.iter().enumerate() {
                 let Some(syl) = meas.cell(&track.id, ci).filter(|s| !s.is_empty()) else { continue };
                 let Some(res) = resolve_cell(syl) else { continue };
+                // efeitos por célula: a MESMA transformação do áudio (`wadawko_core::fx::apply`)
+                let fx = meas.fx_at(&track.id, ci).and_then(|s| wadawko_core::fx::parse(s).ok()).unwrap_or_default();
+                let hits = wadawko_core::fx::apply(&res, &fx).hits;
+                let main = hits.iter().position(|h| !h.grace).unwrap_or(0);
                 let owner = if track.is_shared() { cell_owner_of(song, track, mi, ci) } else { None };
                 let owner_muted = owner.is_some_and(|o| !person_audible(song, Some(o)));
                 // agrupa golpes simultâneos (mesmo offset): R+L juntos = uma nota de duas mãos
                 let mut groups: Vec<Vec<usize>> = Vec::new();
-                for (hi, h) in res.hits.iter().enumerate() {
-                    match groups.iter_mut().find(|g| res.hits[g[0]].offset == h.offset) {
+                for (hi, h) in hits.iter().enumerate() {
+                    match groups.iter_mut().find(|g| hits[g[0]].hit.offset == h.hit.offset) {
                         Some(g) => g.push(hi),
                         None => groups.push(vec![hi]),
                     }
                 }
                 for g in &groups {
-                    let first = &res.hits[g[0]];
-                    let both = g.len() >= 2 && g.iter().any(|&i| res.hits[i].hand != first.hand);
-                    let beat_frac = swing_warp(cell_frac + first.offset / sub as f64, swing);
+                    let first = &hits[g[0]].hit;
+                    let both = g.len() >= 2 && g.iter().any(|&i| hits[i].hit.hand != first.hand);
+                    // posição em tempos com swing dentro do tempo (o offset pode sair da célula)
+                    let pos = beat as f64 + cell_frac + first.offset / sub as f64;
+                    let b = pos.floor();
+                    let beat_pos = b + swing_warp(pos - b, swing);
                     by_track[ti].push(NoteEvent {
                         track: ti,
-                        tick: (starts[u] + beat as f64 + beat_frac) * PPQ,
+                        tick: ((starts[u] + beat_pos) * PPQ).max(0.0),
                         cell: cell_start[mi] + ci,
                         hit: g[0],
                         zone: first.zone,
                         accent: first.accent || both,
-                        ghost: first.vel <= 0.25 && !both,
+                        ghost: (first.vel <= 0.25 || hits[g[0]].grace) && !both,
                         both_hands: both,
                         hand: first.hand,
-                        label: if g.contains(&0) { syl.to_string() } else { String::new() },
+                        label: if g.contains(&main) { syl.to_string() } else { String::new() },
                         owner: owner.map(str::to_string),
                         owner_muted,
                     });
@@ -687,7 +694,7 @@ fn paint_lane(b: Bounds<Pixels>, a: &PaintArgs, window: &mut Window, cx: &mut Ap
             ring(window, dcx, mid, fd + 6.0, 3.0, mul_alpha(th.accent, amount));
         }
         // anel externo na cor da linha (F1), por fora do aro `ink` do tambor
-        ring(window, dcx, mid, fd + 3.0, 2.0, mul_alpha(track_color(track), if song.audible(t) { 1.0 } else { 0.35 }));
+        ring(window, dcx, mid, fd + 3.0, 2.0, mul_alpha(track_color(song, track), if song.audible(t) { 1.0 } else { 0.35 }));
         disc(window, dcx, mid, fd, th.paper_raise, 3.0, th.ink);
         ring(window, dcx, mid, fd - 6.0, 4.0, th.paper);
         disc(window, dcx, mid, fd - 14.0, th.paper_hover, 0.0, gpui_kit::transparent_black());

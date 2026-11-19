@@ -68,8 +68,9 @@ frontmatter, legível por pessoas e agentes):
 
 ## Créditos
 
-Samples de taiko: SCC Taiko Drums (CC BY-SA 4.0), freesound (CC BY 3.0 / CC0), animalese.js
-(CC BY 4.0). Fontes: Zen Kaku Gothic New, Shippori Mincho e Bravura (SIL OFL). Detalhes em
+Samples de taiko: SCC Taiko Drums (CC BY-SA 4.0), freesound (CC BY 3.0 / CC0; vozes dos kiai
+CC0 / CC BY 3.0 / CC BY 4.0), animalese.js (CC BY 4.0).
+Fontes: Zen Kaku Gothic New, Shippori Mincho e Bravura (SIL OFL). Detalhes em
 [créditos](docs/creditos.md) e no [`NOTICE`](NOTICE).
 
 ## Licença

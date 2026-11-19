@@ -7,6 +7,7 @@
 //! `Entity<AppState>` (`state.rs`).
 
 mod actions;
+mod fxedit;
 pub(crate) use actions::tap_bpm;
 pub mod chrome;
 pub mod io;
@@ -26,7 +27,7 @@ use crate::song_ext::SongExt;
 use crate::state::AppState;
 use crate::stats::Stats;
 use crate::theme::Theme;
-use crate::views::grid::{self, Cur, GridEvent, GridView, InputTarget, Lane, Mode, Motion, VMode};
+use crate::views::grid::{self, Cur, GridEvent, GridView, InputTarget, Lane, Layout, Mode, Motion, VMode};
 use crate::views::{Page, Tab, Views};
 
 thread_local! {
@@ -84,6 +85,18 @@ pub struct Bench {
     warmed: bool,
 }
 
+/// Onde desenhar o playhead: `pos` é x (grade horizontal) ou y (editor vertical, topo
+/// da linha audível), `b` o canvas da seção e `row_h` a altura da linha (vertical).
+#[derive(Clone, Copy)]
+pub struct PlayheadAt {
+    pub pos: f32,
+    pub b: Bounds<Pixels>,
+    pub vertical: bool,
+    pub row_h: f32,
+    /// vertical: largura ocupada (gutter + compasso + colunas), para a linha não passar das colunas
+    pub w: f32,
+}
+
 /// Célula soando agora: bounds, intensidade (1 = golpe acabou de soar → 0) e se é borda.
 pub struct Flash {
     pub bounds: Bounds<Pixels>,
@@ -99,7 +112,7 @@ pub struct Shell {
     pub palette_focus: FocusHandle,
     /// moldura em cache (barra de cima, lateral, painel de músicas, barra de contexto,
     /// status bar) — ver `chrome.rs`; índices em `chrome::Part`
-    pub chrome: [Entity<chrome::Chrome>; 5],
+    pub chrome: [Entity<chrome::Chrome>; 7],
     /// o que a status bar mostra (recalculado a cada frame; ela redesenha quando muda)
     pub status: crate::views::status_bar::StatusModel,
     /// altura medida da barra de contexto (0 = medir no próximo frame, sem cache)
@@ -133,6 +146,33 @@ pub struct Shell {
     pub director_close: bool,
     /// janela estreita: a barra de cima compacta (ver `views::topbar`)
     pub top_narrow: bool,
+    /// painel de seções à esquerda (tracker §3)
+    pub sec_panel_open: bool,
+    /// aba do painel da esquerda: seções ou linhas (instrumentos)
+    pub left_tab: crate::views::tracks_panel::LeftTab,
+    pub sec_drag: Option<crate::views::sections_panel::SecDrag>,
+    pub sec_menu: Option<crate::views::sections_panel::SecMenu>,
+    /// última seção clicada (âncora do Shift+clique)
+    pub sec_anchor: Option<String>,
+    /// prompt pedido de um listener sem janela; o render abre
+    pub pending_ask: Option<(InputTarget, String)>,
+    /// minimap ligado (`view::ToggleMinimap`)
+    pub mini_open: bool,
+    /// linha sob o mouse no último render (o overlay redesenha quando muda)
+    pub hover_band_key: Option<i32>,
+    /// a grade segue o playhead tocando (`view::ToggleFollow`)
+    pub follow_on: bool,
+    /// seguir pausado porque a pessoa mexeu (rolou/moveu o cursor) tocando; volta ao parar
+    pub follow_suspended: bool,
+    /// seguir centrado (linha fixa a 40 %) em vez de virar a página (`view::ToggleFollowCenter`)
+    pub follow_center: bool,
+    /// minimap: geometria do último desenho e arrasto em curso
+    pub mini_geom: Rc<Cell<crate::views::minimap::MiniGeom>>,
+    pub mini_drag: bool,
+    /// cursor/âncora do último render: mudou → a grade acompanha (revela o cursor)
+    pub last_sel: Option<(Option<Cur>, Option<Cur>)>,
+    /// ponteiro durante o arrasto de seleção na grade (rolagem automática nas bordas)
+    pub drag_ptr: Rc<Cell<Option<gpui_kit::Point<Pixels>>>>,
     pub prompt: Option<keys::modal::Prompt>,
     pub last_change: Option<keys::modal::Change>,
     pub recording: bool,
@@ -167,10 +207,15 @@ impl Shell {
         let grid = cx.new(|cx| {
             let mut g = GridView::new(state.clone(), stats.clone(), vim_on, cx);
             g.cell_h = settings.row_h;
+            g.layout = settings.layout;
+            g.row_h = settings.tracker_row_h;
+            g.col_w = settings.tracker_col_w;
+            g.col_w_eff = settings.tracker_col_w;
             g
         });
         cx.subscribe_in(&grid, window, |this: &mut Self, _g, ev: &GridEvent, window, cx| match ev {
             GridEvent::Ask(target, initial) => this.ask(target.clone(), initial.clone(), window, cx),
+            GridEvent::SettingsChanged => this.save_settings(cx),
         })
         .detach();
         cx.observe(&state, |_, _, cx| cx.notify()).detach();
@@ -234,7 +279,8 @@ impl Shell {
             swing: Rc::new(RefCell::new(Default::default())),
             chrome: {
                 let me = cx.weak_entity();
-                [chrome::Part::Top, chrome::Part::Nav, chrome::Part::Panel, chrome::Part::Context, chrome::Part::Status].map(|p| cx.new(|_| chrome::Chrome::new(me.clone(), p)))
+                [chrome::Part::Top, chrome::Part::Nav, chrome::Part::Panel, chrome::Part::Context, chrome::Part::Status, chrome::Part::Sections, chrome::Part::Minimap]
+                    .map(|p| cx.new(|_| chrome::Chrome::new(me.clone(), p)))
             },
             status: Default::default(),
             ctx_h: Rc::new(std::cell::Cell::new(0.0)),
@@ -259,6 +305,21 @@ impl Shell {
             director: None,
             director_close: false,
             top_narrow: false,
+            sec_panel_open: true,
+            left_tab: Default::default(),
+            sec_drag: None,
+            sec_menu: None,
+            sec_anchor: None,
+            pending_ask: None,
+            mini_geom: Default::default(),
+            mini_drag: false,
+            mini_open: true,
+            hover_band_key: None,
+            follow_on: true,
+            follow_suspended: false,
+            follow_center: false,
+            last_sel: None,
+            drag_ptr: Default::default(),
             prompt: None,
             last_change: None,
             recording: false,
@@ -309,6 +370,8 @@ impl Shell {
                 h(k, &(g.mode, g.zoom_pct(), g.anchor.is_some(), beats, viewport_w.round() as i32));
             }),
             chrome::key(|k| h(k, &(dark, &self.status))),
+            chrome::key(|k| self.sections_panel_key(k, cx)),
+            chrome::key(|k| self.minimap_key(k, cx)),
         ];
         for (i, (view, key)) in self.chrome.iter().zip(keys).enumerate() {
             view.update(cx, |c, cx| {
@@ -366,8 +429,17 @@ impl Shell {
 
     pub fn save_settings(&self, cx: &App) {
         let st = self.state.read(cx);
-        let row_h = self.grid.read(cx).cell_h;
-        let _ = keys::save_settings(keys::Settings { vim: self.vim_on, av_offset_ms: st.av_offset_ms, metro: st.tp.metro, count_in_loop: st.tp.count_in_loop, row_h });
+        let g = self.grid.read(cx);
+        let _ = keys::save_settings(keys::Settings {
+            vim: self.vim_on,
+            av_offset_ms: st.av_offset_ms,
+            metro: st.tp.metro,
+            count_in_loop: st.tp.count_in_loop,
+            row_h: g.cell_h,
+            layout: g.layout,
+            tracker_row_h: g.row_h,
+            tracker_col_w: g.col_w,
+        });
     }
 
     // ───────── transporte / projeto ─────────
@@ -417,6 +489,12 @@ impl Shell {
     }
 
     /// Abre o prompt de texto para renomear/definir algo (pedido pela grade ou por uma ação).
+    /// Como [`Self::ask`], para listeners sem a janela: o próximo render abre o prompt.
+    pub fn ask_later(&mut self, target: InputTarget, initial: String, cx: &mut Context<Self>) {
+        self.pending_ask = Some((target, initial));
+        cx.notify();
+    }
+
     pub fn ask(&mut self, target: InputTarget, initial: String, window: &mut Window, cx: &mut Context<Self>) {
         self.open_prompt(keys::modal::PromptKind::Input(target), window, cx);
         if let Some(p) = self.prompt.as_mut() {
@@ -539,6 +617,8 @@ impl Shell {
     }
 
     pub fn cancel(&mut self, cx: &mut Context<Self>) {
+        self.sec_menu = None;
+        self.sec_drag = None;
         if self.director.is_some() {
             self.director_close = true;
         }
@@ -563,9 +643,9 @@ impl Shell {
         self.page == Page::Editor && self.tab == Tab::Grade
     }
 
-    /// (x na janela, bounds do canvas da seção) do playhead — tocando, a posição
-    /// audível; parado, a célula de onde o play vai começar.
-    fn playhead(&self, cx: &App) -> Option<(f32, Bounds<Pixels>)> {
+    /// Posição do playhead (x na grade horizontal; y no editor vertical) e o canvas da
+    /// seção — tocando, a posição audível; parado, a célula de onde o play vai começar.
+    pub(crate) fn playhead(&self, cx: &App) -> Option<PlayheadAt> {
         let st = self.state.read(cx);
         let song = st.song();
         let (m, frac) = if st.playing() {
@@ -591,9 +671,17 @@ impl Shell {
         if f32::from(b.size.width) <= 0.0 {
             return None;
         }
+        if grid.layout == Layout::Vertical {
+            // topo da linha (célula) audível — o playhead anda de linha em linha
+            let len = song.mlen(m).max(1);
+            let k = ((frac * len as f32).floor() as usize).min(len - 1);
+            let y = f32::from(b.origin.y) + grid::measure_y(song, s, m, g.row_h)? + k as f32 * g.row_h;
+            let w = (grid::LEFT_W + g.cols.w - g.offset).min(f32::from(b.size.width));
+            return Some(PlayheadAt { pos: y, b, vertical: true, row_h: g.row_h, w });
+        }
         let xs = grid::measure_xs(song, s, g.cw);
         let x = f32::from(b.origin.x) + xs.get(m.checked_sub(a)?)? + frac * song.mlen(m) as f32 * g.cw - offset;
-        Some((x, b))
+        Some(PlayheadAt { pos: x, b, vertical: false, row_h: 0.0, w: 0.0 })
     }
 
     /// Células que acabaram de soar (eventos `HitFired` do engine, já atrasados
@@ -644,6 +732,22 @@ impl Shell {
         }
         let grid = self.grid.read(cx);
         let g = grid.geom.borrow();
+        if grid.layout == Layout::Vertical {
+            // vertical: 3 px no rodapé do cabeçalho de colunas, na largura da nota
+            let hb = g.col_head;
+            if f32::from(hb.size.width) <= 0.0 {
+                return Vec::new();
+            }
+            let x0 = f32::from(hb.origin.x) + grid::LEFT_W - g.offset;
+            let y = f32::from(hb.origin.y) + f32::from(hb.size.height) - 3.0;
+            return levels
+                .iter()
+                .enumerate()
+                .filter(|(t, l)| (l.level > 0.0 || l.peak > 0.0) && *t < g.cols.x.len())
+                .map(|(t, l)| (Bounds::new(point(px(x0 + g.cols.x[t] + 2.0), px(y)), size(px(g.cols.note_w - 4.0), px(3.0))), l.level, l.peak))
+                .filter(|(b, _, _)| f32::from(b.origin.x) >= f32::from(hb.origin.x) + grid::LEFT_W - 2.0)
+                .collect();
+        }
         let w = (grid::LABEL_W - g.label_pad - 150.0).max(24.0);
         let mut out = Vec::new();
         for b in g.sections.iter().filter(|b| f32::from(b.size.width) > 0.0) {
@@ -661,10 +765,43 @@ impl Shell {
     }
 
     fn follow(&mut self, cx: &mut Context<Self>) {
-        if !self.playing(cx) || !self.on_grid() {
+        if !self.playing(cx) {
+            // parou: o seguir volta para a próxima vez
+            self.follow_suspended = false;
             return;
         }
-        let Some((x, b)) = self.playhead(cx) else { return };
+        if !self.follow_on || self.follow_suspended || !self.on_grid() {
+            return;
+        }
+        let Some(ph) = self.playhead(cx) else { return };
+        if ph.vertical {
+            let vb = self.scroll.bounds();
+            let (vt, vh) = (f32::from(vb.origin.y), f32::from(vb.size.height));
+            // follow centrado (T3b): a linha que soa fica fixa a 40 % da vista e a música
+            // rola por baixo; custa um re-render das seções visíveis por frame
+            if self.follow_center && vh > 0.0 {
+                let cur = self.scroll.offset();
+                let max = self.scroll.max_offset();
+                let ny = (f32::from(cur.y) - (ph.pos - (vt + vh * 0.4))).clamp(-f32::from(max.y), 0.0);
+                if (ny - f32::from(cur.y)).abs() > 0.5 {
+                    DBG_FOLLOW_V.fetch_add(1, Ordering::Relaxed);
+                    self.scroll.set_offset(point(cur.x, px(ny)));
+                }
+                return;
+            }
+            // follow "página": vira a página quando o playhead passa de 85 % da área visível
+            if vh > 0.0 && (ph.pos + ph.row_h > vt + vh * 0.85 || ph.pos < vt) {
+                let cur = self.scroll.offset();
+                let max = self.scroll.max_offset();
+                let ny = (f32::from(cur.y) - (ph.pos - vt - vh * 0.1)).clamp(-f32::from(max.y), 0.0);
+                if (ny - f32::from(cur.y)).abs() > 0.5 {
+                    DBG_FOLLOW_V.fetch_add(1, Ordering::Relaxed);
+                    self.scroll.set_offset(point(cur.x, px(ny)));
+                }
+            }
+            return;
+        }
+        let (x, b) = (ph.pos, ph.b);
         let left = f32::from(b.origin.x);
         let w = f32::from(b.size.width);
         if x > left + w * 0.85 || x < left {
@@ -751,6 +888,9 @@ impl Shell {
 
 impl Render for Shell {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if let Some((target, initial)) = self.pending_ask.take() {
+            self.ask(target, initial, window, cx);
+        }
         keys::next_frame();
         RENDERS.fetch_add(1, Ordering::Relaxed);
         let t_render = Instant::now();
@@ -786,6 +926,8 @@ impl Shell {
         }
 
         let th = self.theme(cx);
+        // área visível do editor (do último frame): culling e alvos de salto do editor vertical
+        self.grid.read(cx).geom.borrow_mut().viewport = self.scroll.bounds();
         // playhead + notas soando agora (overlay sem cache, irmão da grade)
         let ph = if self.on_grid() { self.playhead(cx) } else { None };
         let (flashes, play_pos) = if self.on_grid() { self.playing_cells(cx) } else { (Vec::new(), None) };
@@ -793,6 +935,53 @@ impl Shell {
         self.status = self.status_model(playing, play_pos, cx);
         // moldura em cache: só re-renderiza quando a chave dela muda
         self.top_narrow = f32::from(window.viewport_size().width) < crate::views::topbar::NARROW_W;
+        // a grade acompanha o cursor/seleção: mudou (teclado, vim, painel, paleta) → revela
+        let sel = {
+            let g = self.grid.read(cx);
+            (g.cursor, g.anchor)
+        };
+        if self.last_sel != Some(sel) {
+            let first = self.last_sel.is_none();
+            self.last_sel = Some(sel);
+            if !first && self.on_grid() && !self.grid.read(cx).is_drag_selecting() {
+                if self.playing(cx) {
+                    // mexeu tocando: o seguir pausa (como no Live) até parar
+                    if self.follow_on && !self.follow_suspended {
+                        self.follow_suspended = true;
+                        self.flash("seguir pausado enquanto você edita — para, ou Scroll Lock, retoma", cx);
+                    }
+                }
+                self.reveal_cursor(cx);
+            }
+        }
+        // arrastando a seleção perto da borda de cima/baixo: rola sozinho e estende
+        if self.on_grid() && self.grid.read(cx).is_drag_selecting() {
+            if let Some(p) = self.drag_ptr.get() {
+                let vb = self.scroll.bounds();
+                let (top, bottom) = (f32::from(vb.origin.y), f32::from(vb.origin.y) + f32::from(vb.size.height));
+                let y = f32::from(p.y);
+                const EDGE: f32 = 40.0;
+                let dy = if y < top + EDGE {
+                    -((top + EDGE - y).min(EDGE * 2.0) * 0.5)
+                } else if y > bottom - EDGE {
+                    (y - (bottom - EDGE)).min(EDGE * 2.0) * 0.5
+                } else {
+                    0.0
+                };
+                if dy != 0.0 && f32::from(vb.size.height) > 0.0 {
+                    let cur = self.scroll.offset();
+                    let max = self.scroll.max_offset();
+                    let ny = (f32::from(cur.y) - dy).clamp(-f32::from(max.y), 0.0);
+                    if (ny - f32::from(cur.y)).abs() > 0.1 {
+                        self.scroll.set_offset(point(cur.x, px(ny)));
+                        self.grid.update(cx, |g, cx| g.drag_select_at(p, cx));
+                        window.request_animation_frame();
+                    }
+                }
+            }
+        } else if self.drag_ptr.get().is_some() {
+            self.drag_ptr.set(None);
+        }
         self.refresh_chrome(playing, f32::from(window.viewport_size().width), cx);
         let nav = self.chrome[1].clone().cached(gpui_kit::StyleRefinement::default().w(px(64.0)).h_full().flex_none());
         let topbar = self.chrome[0].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(44.0)).flex_none());
@@ -816,6 +1005,39 @@ impl Shell {
                             let cell = self.ctx_h.clone();
                             head.child(div().w_full().on_children_prepainted(move |b, _, _| cell.set(b.first().map_or(0.0, |b| f32::from(b.size.height)))).child(bar.clone()))
                         };
+                        // editor vertical: cabeçalho de colunas fixo (fora da rolagem), em cache;
+                        // os mini-medidores são pintados por cima, num canvas sem cache
+                        let col_head = {
+                            let g = self.grid.read(cx);
+                            (g.layout == Layout::Vertical).then(|| g.col_head_view.clone()).flatten()
+                        };
+                        if let Some(v) = col_head {
+                            let meters = row_meters.clone();
+                            head = head.child(
+                                div()
+                                    .relative()
+                                    .w_full()
+                                    .flex_none()
+                                    .h(px(grid::COL_HEAD_H))
+                                    .px(px(20.0))
+                                    .bg(th.bg)
+                                    .border_b_1()
+                                    .border_color(th.line)
+                                    .child(v.cached(gpui_kit::StyleRefinement::default().w_full().h(px(grid::COL_HEAD_H))))
+                                    .child(
+                                        canvas(
+                                            |_, _, _| {},
+                                            move |vb, _, window, _| {
+                                                for (b, level, peak) in &meters {
+                                                    window.with_content_mask(Some(gpui_kit::ContentMask { bounds: vb }), |window| crate::ui::paint_meter(window, *b, *level, *peak, false, &th));
+                                                }
+                                            },
+                                        )
+                                        .absolute()
+                                        .inset_0(),
+                                    ),
+                            );
+                        }
                         let grid_h = self.grid.read(cx).grid_height();
                         // a grade NÃO fica em cache aqui: no gpui, uma view em cache que
                         // re-renderiza redesenha todo o seu subárvore (`refreshing`), o que
@@ -831,9 +1053,16 @@ impl Shell {
             other => (None, self.views.page(other).unwrap_or_else(|| div().into_any_element())),
         };
 
+        // linha do tempo sob o mouse (editor vertical): faixa sutil no overlay, sem tocar nas seções
+        let hover_band = if self.on_grid() && !self.grid.read(cx).is_drag_selecting() { self.grid.read(cx).vrow_band(window.mouse_position()) } else { None };
+        self.hover_band_key = hover_band.map(|(y, ..)| y.round() as i32);
         let overlay = canvas(
             |_, _, _| {},
             move |vb, _, window, _| {
+                if let Some((y, h, x0, x1)) = hover_band {
+                    let r = Bounds::new(point(px(x0), px(y)), size(px((x1 - x0).max(0.0)), px(h)));
+                    window.with_content_mask(Some(gpui_kit::ContentMask { bounds: vb }), |window| window.paint_quad(fill(r, Theme::alpha(th.ink, 0.04))));
+                }
                 // mini-medidores das linhas (3 px sob o nome)
                 for (b, level, peak) in &row_meters {
                     let clip = vb.intersect(b);
@@ -859,8 +1088,31 @@ impl Shell {
                         ));
                     });
                 }
-                let Some((x, b)) = ph else { return };
+                let Some(ph) = ph else { return };
+                let b = ph.b;
                 let clip = vb.intersect(&b);
+                if ph.vertical {
+                    // linha de 2 px no topo da linha audível + wash 12 % da linha inteira + ▶ no gutter
+                    window.with_content_mask(Some(gpui_kit::ContentMask { bounds: clip }), |window| {
+                        let (x0, w) = (f32::from(b.origin.x), ph.w);
+                        let y = ph.pos;
+                        if playing {
+                            window.paint_quad(fill(Bounds::new(point(px(x0), px(y)), size(px(w), px(ph.row_h))), Theme::alpha(th.accent, 0.12)));
+                            window.paint_quad(fill(Bounds::new(point(px(x0 + grid::LEFT_W), px(y)), size(px(w - grid::LEFT_W), px(2.0))), th.playhead));
+                        }
+                        let mut tri = gpui_kit::PathBuilder::fill();
+                        let (tx, cy) = (x0 + 3.0, y + ph.row_h * 0.5);
+                        tri.move_to(point(px(tx), px(cy - 5.0)));
+                        tri.line_to(point(px(tx + 8.0), px(cy)));
+                        tri.line_to(point(px(tx), px(cy + 5.0)));
+                        tri.close();
+                        if let Ok(p) = tri.build() {
+                            window.paint_path(p, th.accent);
+                        }
+                    });
+                    return;
+                }
+                let x = ph.pos;
                 window.with_content_mask(Some(gpui_kit::ContentMask { bounds: clip }), |window| {
                     let top = f32::from(b.origin.y) + grid::SEC_DYN_H;
                     let h = f32::from(b.size.height) - grid::SEC_DYN_H;
@@ -886,16 +1138,44 @@ impl Shell {
             .flex_1()
             .min_h_0()
             .relative()
-            .child(div().id("editor-scroll").size_full().overflow_y_scroll().track_scroll(&self.scroll).p(px(20.0)).when(header.is_some(), |d| d.pt(px(12.0))).child(content))
+            .child(
+                div()
+                    .id("editor-scroll")
+                    .size_full()
+                    .overflow_y_scroll()
+                    .track_scroll(&self.scroll)
+                    .p(px(20.0))
+                    .when(header.is_some(), |d| d.pt(px(12.0)))
+                    // rolar tocando pausa o seguir (volta ao parar)
+                    .on_scroll(cx.listener(|this, _: &gpui_kit::ScrollEvent, _, cx| {
+                        if this.follow_on && !this.follow_suspended && this.playing(cx) {
+                            this.follow_suspended = true;
+                            this.flash("seguir pausado — para, ou Scroll Lock, retoma", cx);
+                        }
+                    }))
+                    // a faixa da linha sob o mouse muda → só o Shell (overlay) redesenha
+                    .on_mouse_move(cx.listener(|this, ev: &gpui_kit::MouseMoveEvent, _, cx| {
+                        let k = this.grid.read(cx).vrow_band(ev.position).map(|(y, ..)| y.round() as i32);
+                        if k != this.hover_band_key {
+                            cx.notify();
+                        }
+                    }))
+                    .child(content),
+            )
             .child(overlay);
         let editor = div().flex_1().min_w_0().h_full().flex().flex_col().bg(th.bg).when_some(header, |d, h| d.child(div().flex_none().child(h))).child(scroll_area);
 
         let panel = self.chrome[2].clone().cached(gpui_kit::StyleRefinement::default().w(px(280.0)).h_full().flex_none());
+        let show_secs = self.sec_panel_open && self.page == Page::Editor;
+        let show_mini = self.mini_open && self.on_grid() && self.grid.read(cx).layout == Layout::Vertical;
+        let minimap = self.chrome[chrome::Part::Minimap as usize].clone().cached(gpui_kit::StyleRefinement::default().w(px(crate::views::minimap::MINI_W)).h_full().flex_none());
+        let secs_panel = self.chrome[chrome::Part::Sections as usize].clone().cached(gpui_kit::StyleRefinement::default().w(px(crate::views::sections_panel::SECTIONS_W)).h_full().flex_none());
         let status = self.chrome[chrome::Part::Status as usize].clone().cached(gpui_kit::StyleRefinement::default().w_full().h(px(22.0)).flex_none());
 
         // ── workspace (contexto de teclas da grade) ──
         let vmode = self.grid.read(cx).vmode;
-        let ctx = format!("Workspace vim={} mode={}{}", if self.vim_on { "on" } else { "off" }, vmode.ctx(), if self.count.is_some() { " count" } else { "" });
+        let layout = self.grid.read(cx).layout;
+        let ctx = format!("Workspace vim={} mode={} layout={}{}", if self.vim_on { "on" } else { "off" }, vmode.ctx(), layout.name(), if self.count.is_some() { " count" } else { "" });
         let workspace = div()
             .id("workspace")
             .key_context(KeyContext::parse(&ctx).unwrap_or_default())
@@ -905,16 +1185,19 @@ impl Shell {
             .flex()
             .flex_col()
             .child(
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .flex()
-                    .when(self.nav_open, |d| d.child(nav))
-                    .child(div().flex_1().min_w_0().flex().flex_col().child(topbar).child(div().flex_1().min_h_0().flex().child(editor).child(panel))),
+                div().flex_1().min_h_0().flex().when(self.nav_open, |d| d.child(nav)).child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .child(topbar)
+                        .child(div().flex_1().min_h_0().flex().when(show_secs, |d| d.child(secs_panel)).child(editor).when(show_mini, |d| d.child(minimap)).child(panel)),
+                ),
             )
             .child(status);
 
-        let root = div().id("root").relative().size_full().font_family("Zen Kaku Gothic New").bg(th.bg).text_color(th.ink);
+        let root = div().id("root").relative().size_full().font_family(crate::theme::UI_FONT).bg(th.bg).text_color(th.ink);
         let root = self.actions(root, cx);
         let mut root = crate::views::bind_actions(root, cx).child(workspace);
 
@@ -927,6 +1210,11 @@ impl Shell {
         // ── linha de prompt (: / ? " m ' e renomear) ──
         if let Some(p) = &self.prompt {
             root = root.child(div().id("prompt").absolute().inset_0().key_context("Prompt").track_focus(&self.prompt_focus).on_key_down(cx.listener(Self::prompt_key)).child(self.prompt_bar(p, &th)));
+        }
+
+        // ── menus do painel de seções ──
+        if let Some(menu) = self.sec_menu_overlay(&th, cx) {
+            root = root.child(menu);
         }
 
         // ── modo projeção (F7d): por cima de tudo ──
@@ -995,6 +1283,27 @@ impl Shell {
                 );
             }
             None => self.swing.borrow_mut().reset(),
+        }
+
+        // ── arrasto de seleção: guarda o ponteiro (a rolagem automática usa no render) ──
+        if self.on_grid() && self.grid.read(cx).is_drag_selecting() {
+            let (ptr, me) = (self.drag_ptr.clone(), cx.entity().downgrade());
+            root = root.child(
+                canvas(
+                    |_, _, _| {},
+                    move |_, _, window, _| {
+                        let (ptr, me) = (ptr.clone(), me.clone());
+                        window.on_mouse_event(move |ev: &gpui_kit::MouseMoveEvent, phase, _, cx| {
+                            if phase == gpui_kit::DispatchPhase::Capture {
+                                ptr.set(Some(ev.position));
+                                let _ = me.update(cx, |_, cx| cx.notify());
+                            }
+                        });
+                    },
+                )
+                .absolute()
+                .inset_0(),
+            );
         }
 
         // ── arrasto na faixa de loop da régua: mover/soltar valem em toda a janela ──

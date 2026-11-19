@@ -17,14 +17,17 @@ pub mod grid;
 pub mod inspector;
 pub mod kit;
 pub mod lane;
+pub mod minimap;
 pub mod mixer;
 pub mod nav_rail;
 pub mod people;
 pub mod right_panel;
 pub mod score;
+pub mod sections_panel;
 pub mod settings;
 pub mod status_bar;
 pub mod topbar;
+pub mod tracks_panel;
 pub mod widgets;
 
 use gpui_kit::{AnyElement, Context, Entity, prelude::*};

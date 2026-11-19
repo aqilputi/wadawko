@@ -17,7 +17,9 @@ Taiko samples (assets/samples/, full file-by-file list in assets/samples/CREDITS
     CC BY-SA 4.0 when redistributed.
   * taikoset1_ste58, by whatsanickname4u (Dave Thayer): CC BY 3.0
   * Small shrine gong, by RutgerMuller: CC0
-  * animalese.js, by Josh Simmons: CC BY 4.0 (kiai voice, animalese.ogg)
+  * animalese.js, by Josh Simmons: CC BY 4.0 (default kiai voice, animalese.ogg)
+  * kiai and spoken count-in voices (assets/samples/kiai/): Freesound recordings by
+    several authors under CC0 / CC BY 3.0 / CC BY 4.0 (listed in assets/samples/CREDITS.md)
 
 Fonts (assets/fonts/)
   * Zen Kaku Gothic New, Shippori Mincho, Bravura: SIL Open Font License 1.1

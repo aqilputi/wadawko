@@ -56,7 +56,7 @@ fn assert_well_formed(label: &str, song: &Song, s: &Schedule) {
             }
             EventKind::Grain(g) => assert!(s.channels[(g.strip / 2) as usize].kyai && g.dur > 0.0 && g.gain.is_finite()),
             EventKind::Noise(n) => assert!(s.channels[(n.strip / 2) as usize].kyai && n.dur > 0.0),
-            EventKind::Click { .. } => {}
+            EventKind::Click { .. } | EventKind::Cut { .. } => {}
         }
     }
 }
@@ -384,11 +384,11 @@ fn kyai_events_are_scheduled_and_deterministic() {
     let voice: Vec<_> = s.events.iter().filter(|e| matches!(e.kind, EventKind::Grain(_) | EventKind::Noise(_))).collect();
     let ticks: std::collections::BTreeSet<u64> = voice.iter().map(|e| e.tick as u64).collect();
     assert_eq!(ticks.into_iter().collect::<Vec<_>>(), vec![0, 480, 3 * 3840 + 2880]);
-    // "so": 1 ruído (s) + grãos da vogal "o" (letra 14 do animalese)
+    // padrão = animalese: "so" = 1 ruído (s) + grãos da vogal "o" (letra 14) com o dobro desafinado
     let so: Vec<_> = voice.iter().filter(|e| e.tick == 0.0).collect();
     assert_eq!(so.iter().filter(|e| matches!(e.kind, EventKind::Noise(_))).count(), 1);
     let grains: Vec<_> = so.iter().filter_map(|e| if let EventKind::Grain(g) = e.kind { Some(g) } else { None }).collect();
-    assert!(grains.len() >= 2);
+    assert!(grains.len() >= 4 && grains.len() % 2 == 0);
     assert!(grains.iter().all(|g| (g.start - 14.0 * 0.15).abs() < 0.02 && g.sample == bank().animalese_id().0 && g.strip == slot * 2));
     // a sílaba cabe no intervalo até a próxima (meia colcheia a 100 BPM = 0,3 s), fora o micro-atraso
     assert!(grains.iter().all(|g| g.delay + g.dur < 0.3 + 0.018 * 0.5 + 0.006), "{grains:?}");
@@ -397,11 +397,18 @@ fn kyai_events_are_scheduled_and_deterministic() {
     let other = compile(&song, bank(), SR, &CompileOptions { seed: 99, ..Default::default() });
     assert_ne!(other.events, s.events);
     assert_eq!(other.hits().count(), s.hits().count());
+    // voz gravada (masc): "so" sem gravação de "sore" → uma tomada pela vogal, sem ruído
+    let mut rec = song.clone();
+    rec.tracks[1].kyai = Some(wadawko_core::KyaiVoice { voice: Some("m".into()), ..Default::default() });
+    let r = live(&rec);
+    let so: Vec<_> = r.events.iter().filter(|e| e.tick == 0.0 && matches!(e.kind, EventKind::Grain(_) | EventKind::Noise(_))).collect();
+    assert_eq!(so.len(), 1);
+    assert!(matches!(so[0].kind, EventKind::Grain(g) if wadawko_samples::SAMPLE_NAMES[g.sample as usize].starts_with("kiai/m-") && g.start == 0.0));
     // linha muda: no export o kiai dela também some
     song.tracks[1].muted = true;
     assert!(export(&song).events.iter().all(|e| !matches!(e.kind, EventKind::Grain(_) | EventKind::Noise(_))));
     // volume da voz (dB) vai pro canal de kiai
-    song.tracks[1].kyai = Some(wadawko_core::KyaiVoice { pitch: None, vary: Some(0.0), gain: Some(-6.0) });
+    song.tracks[1].kyai = Some(wadawko_core::KyaiVoice { pitch: None, vary: Some(0.0), gain: Some(-6.0), voice: None });
     let s = live(&song);
     assert!((s.channels[s.channel_slot("chu1@master#kyai").unwrap() as usize].gain - 0.5012).abs() < 1e-4);
 }
@@ -512,4 +519,45 @@ fn formula_diferente_com_ritornello_dobra_o_playhead() {
     // na 2ª volta, o 1º tempo do compasso de 5/4 (tick 16) dobra para o tick 4 da música escrita
     assert_eq!(s.time.fold_tick(16.0 * PPQ), 4.0 * PPQ);
     assert_eq!(hits_of(&s, 0).len(), 6);
+}
+
+#[test]
+fn efeitos_por_celula_viram_eventos() {
+    use wadawko_core::ops::cells::set_fx;
+    // 1 linha de chū, 1 compasso 4/4 em colcheias (célula = 480 ticks)
+    let mut song = demo_song();
+    song.tracks.retain(|t| t.id == "chu1");
+    song.measures.truncate(1);
+    for m in &mut song.measures {
+        m.cells.retain(|k, _| k == "chu1");
+        m.cells.insert("chu1".into(), vec![None; 8]);
+    }
+    let cell = PPQ / 2.0;
+    let hits = |s: &Song| live(s).hits().map(|(t, h)| (t, *h)).collect::<Vec<(f64, HitEv)>>();
+    set_cell(&mut song, "chu1", 0, 2, Some("don"), None);
+    let base = hits(&song);
+    assert_eq!(base.len(), 1);
+    // rulo ×4: 4 golpes na célula, em i/4
+    set_fx(&mut song, "chu1", 0, 2, Some("R4")).unwrap();
+    let r: Vec<f64> = hits(&song).iter().map(|(t, _)| *t).collect();
+    assert_eq!(r, (0..4).map(|i| 2.0 * cell + i as f64 * cell / 4.0).collect::<Vec<_>>());
+    // flam: um golpe antes (2/16 da célula), mais fraco
+    set_fx(&mut song, "chu1", 0, 2, Some("F")).unwrap();
+    let f = hits(&song);
+    assert_eq!(f.len(), 2);
+    assert!((f[0].0 - (2.0 * cell - cell * 2.0 / 16.0)).abs() < 1e-9);
+    assert!(f[0].1.gain < f[1].1.gain);
+    // atraso +2 = 20 % da célula; corte emite um Cut; H0 = exato
+    set_fx(&mut song, "chu1", 0, 2, Some("D+2 X H0")).unwrap();
+    let s = live(&song);
+    let (t, h) = s.hits().next().unwrap();
+    assert!((t - (2.0 * cell + 0.2 * cell)).abs() < 1e-9);
+    assert_eq!(h.humanize, 0.0);
+    let cuts: Vec<f64> = s.events.iter().filter(|e| matches!(e.kind, EventKind::Cut { .. })).map(|e| e.tick).collect();
+    assert_eq!(cuts.len(), 1);
+    assert!((cuts[0] - (2.0 * cell + 0.7 * cell)).abs() < 1e-9, "corte a 50 % + atraso de 20 %");
+    // sem efeito: volta ao original (humanização padrão)
+    set_fx(&mut song, "chu1", 0, 2, None).unwrap();
+    assert_eq!(hits(&song)[0].0, base[0].0);
+    assert_eq!(hits(&song)[0].1.humanize, 1.0);
 }
