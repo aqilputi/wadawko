@@ -200,3 +200,100 @@ pub fn fill_kyai<S: AsRef<str>>(song: &mut Song, track_id: &str, mi: usize, ci: 
     }
     FillResult { written, next: normalize_pos(song, m, c) }
 }
+
+// ───────────────────────────── preencher padrões (ux-pesquisa #2) ─────────────────────────────
+
+/// Padrão para preencher uma sequência de células.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FillPattern {
+    /// uma a cada `n` células (a partir da 1ª)
+    Every(usize),
+    /// contratempo: o meio de cada tempo (`sub` = células por tempo)
+    Offbeat(usize),
+    /// euclidiano: `k` golpes espalhados em cada bloco de `n` células
+    Euclid(usize, usize),
+    /// oroshi: golpes cada vez mais próximos até o fim (gaps 4, 3, 2, 2, 1…)
+    Oroshi,
+}
+
+/// Quais posições `0..len` recebem golpe.
+pub fn fill_mask(p: FillPattern, len: usize) -> Vec<bool> {
+    match p {
+        FillPattern::Every(n) => (0..len).map(|i| i % n.max(1) == 0).collect(),
+        FillPattern::Offbeat(sub) => {
+            let sub = sub.max(1);
+            (0..len).map(|i| sub >= 2 && i % sub == sub / 2).collect()
+        }
+        FillPattern::Euclid(k, n) => {
+            let n = n.max(1);
+            let k = k.min(n);
+            (0..len).map(|i| (i % n) * k % n < k).collect()
+        }
+        FillPattern::Oroshi => {
+            let mut m = vec![false; len];
+            let gaps = [4usize, 3, 2, 2];
+            let (mut i, mut g) = (0usize, 0usize);
+            while i < len {
+                m[i] = true;
+                i += gaps.get(g).copied().unwrap_or(1);
+                g += 1;
+            }
+            m
+        }
+    }
+}
+
+/// Preenche as células globais `g0..=g1` da linha com `syl` onde o padrão manda;
+/// só nas vazias, a menos que `overwrite`. Devolve quantas escreveu. Num oroshi
+/// a última célula vira acento (`DON` em maiúsculas).
+pub fn fill_cells(song: &mut Song, track_id: &str, g0: usize, g1: usize, p: FillPattern, syl: &str, overwrite: bool) -> usize {
+    use crate::ops::measures::col_to_pos;
+    let len = g1.saturating_sub(g0) + 1;
+    let mask = fill_mask(p, len);
+    let mut n = 0;
+    for (i, on) in mask.into_iter().enumerate() {
+        if !on {
+            continue;
+        }
+        let Some(pos) = col_to_pos(song, g0 + i) else { continue };
+        if !overwrite && get_cell(song, track_id, pos.mi, pos.ci).is_some_and(|s| !s.is_empty()) {
+            continue;
+        }
+        let last = p == FillPattern::Oroshi && i + 1 >= len.saturating_sub(1);
+        let s = if last { syl.to_uppercase() } else { syl.to_string() };
+        set_cell(song, track_id, pos.mi, pos.ci, Some(&s), None);
+        n += 1;
+    }
+    n
+}
+
+#[cfg(test)]
+mod fill_tests {
+    use super::*;
+
+    #[test]
+    fn mascaras() {
+        let b = |m: Vec<bool>| m.iter().map(|&x| if x { 'x' } else { '.' }).collect::<String>();
+        assert_eq!(b(fill_mask(FillPattern::Every(2), 8)), "x.x.x.x.");
+        assert_eq!(b(fill_mask(FillPattern::Every(4), 8)), "x...x...");
+        assert_eq!(b(fill_mask(FillPattern::Offbeat(2), 8)), ".x.x.x.x");
+        assert_eq!(b(fill_mask(FillPattern::Euclid(3, 8), 8)), "x..x..x.");
+        assert_eq!(fill_mask(FillPattern::Euclid(5, 8), 8).iter().filter(|x| **x).count(), 5);
+        assert_eq!(b(fill_mask(FillPattern::Oroshi, 16)), "x...x..x.x.xxxxx");
+    }
+
+    #[test]
+    fn preenche_so_vazias() {
+        let mut s = crate::templates::template_song("vazia").unwrap();
+        let t = s.tracks[0].id.clone();
+        set_cell(&mut s, &t, 0, 2, Some("ka"), None);
+        let n = fill_cells(&mut s, &t, 0, 7, FillPattern::Every(2), "don", false);
+        assert_eq!(n, 3, "a célula 2 já tinha ka");
+        assert_eq!(get_cell(&s, &t, 0, 2), Some("ka"));
+        assert_eq!(get_cell(&s, &t, 0, 4), Some("don"));
+        // atravessa compassos (células globais)
+        let n2 = fill_cells(&mut s, &t, 6, 11, FillPattern::Every(2), "don", true);
+        assert_eq!(n2, 3);
+        assert_eq!(get_cell(&s, &t, 1, 2), Some("don"));
+    }
+}

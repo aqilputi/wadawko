@@ -87,6 +87,10 @@ pub mod project {
     use gpui_kit::actions;
     actions!(project, [Undo, Redo, New, Duplicate, Rename, Delete, Save, NextSong, PrevSong, ExportJson, ImportJson, ImportLibrary, ExportMp3, ExportWav, ExportMidi, CancelExport]);
 }
+pub mod fill {
+    use gpui_kit::actions;
+    actions!(fill, [Open, Every2, Every4, Offbeat, Euclid3, Euclid5, Oroshi]);
+}
 pub mod step {
     use gpui_kit::actions;
     actions!(step, [Step0, Step1, Step2, Step3, Step4, Step5, Step6, Step7, Step8, Step9]);

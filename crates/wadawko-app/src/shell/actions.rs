@@ -190,7 +190,7 @@ impl Shell {
     }
 
     pub(crate) fn actions(&self, d: gpui_kit::Stateful<gpui_kit::Div>, cx: &mut Context<Self>) -> gpui_kit::Stateful<gpui_kit::Div> {
-        use crate::keys::{fx, grid as ga, hints, keys as kb, measure, nav, practice, project, section, song, step, track, transport, view, vim};
+        use crate::keys::{fill, fx, grid as ga, hints, keys as kb, measure, nav, practice, project, section, song, step, track, transport, view, vim};
         let d = on!(d, cx, transport::TogglePlay, |this, w, cx| this.toggle_play(false, cx));
         let d = on!(d, cx, transport::PlayHere, |this, w, cx| this.toggle_play(true, cx));
         let d = on!(d, cx, transport::PlayFromStart, |this, w, cx| this.state.update(cx, |s, cx| {
@@ -363,6 +363,21 @@ impl Shell {
             this.reveal_cursor(cx)
         });
         let d = on!(d, cx, fx::Edit, |this, w, cx| this.fx_edit(w, cx));
+        let d = on!(d, cx, fill::Open, |this, w, cx| {
+            this.open_palette(w, cx);
+            if let Some(p) = this.palette.as_mut() {
+                p.query = "preencher".into();
+            }
+        });
+        let d = on!(d, cx, fill::Every2, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Every(2), cx));
+        let d = on!(d, cx, fill::Every4, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Every(4), cx));
+        let d = on!(d, cx, fill::Offbeat, |this, w, cx| {
+            let sub = this.grid.read(cx).cursor.and_then(|c| this.song(cx).measures.get(c.m).map(|m| m.subdivision)).unwrap_or(2);
+            this.fill_action(wadawko_core::ops::cells::FillPattern::Offbeat(sub), cx)
+        });
+        let d = on!(d, cx, fill::Euclid3, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Euclid(3, 8), cx));
+        let d = on!(d, cx, fill::Euclid5, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Euclid(5, 8), cx));
+        let d = on!(d, cx, fill::Oroshi, |this, w, cx| this.fill_action(wadawko_core::ops::cells::FillPattern::Oroshi, cx));
         let d = on!(d, cx, fx::Roll, |this, w, cx| this.fx_action("roll", cx));
         let d = on!(d, cx, fx::RollCresc, |this, w, cx| this.fx_action("roll_cresc", cx));
         let d = on!(d, cx, fx::Flam, |this, w, cx| this.fx_action("flam", cx));

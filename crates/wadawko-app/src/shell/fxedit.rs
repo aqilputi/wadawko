@@ -94,6 +94,34 @@ pub(crate) fn transform(action: &str, mut v: Vec<Fx>) -> Vec<Fx> {
 }
 
 impl Shell {
+    /// Preenche a seleção (ou o compasso do cursor na linha) com um padrão (ux #2).
+    /// A sílaba é a da célula do cursor; vazia, `don` (contratempo: `ka`).
+    pub(crate) fn fill_action(&mut self, p: wadawko_core::ops::cells::FillPattern, cx: &mut Context<Self>) {
+        use wadawko_core::ops::cells::FillPattern;
+        let g = self.grid.read(cx);
+        let Some(c) = g.cursor else {
+            self.flash("ponha o cursor numa célula da grade", cx);
+            return;
+        };
+        let song = g.song.clone();
+        let (t0, t1, g0, g1) = if g.anchor.is_some() {
+            g.sel_range().unwrap_or((c.t, c.t, 0, 0))
+        } else {
+            // sem seleção: o compasso inteiro do cursor
+            let a = song.flat(c.m, 0);
+            (c.t, c.t, a, a + song.mlen(c.m).saturating_sub(1))
+        };
+        let syl = song.cell(c.t, c.m, c.k).map(str::to_string).unwrap_or_else(|| if matches!(p, FillPattern::Offbeat(_)) { "ka".into() } else { "don".into() });
+        let ids: Vec<String> = (t0..=t1).filter_map(|t| song.tracks.get(t).map(|x| x.id.clone())).collect();
+        let mut n = 0;
+        self.edit(cx, |s| {
+            for id in &ids {
+                n += wadawko_core::ops::cells::fill_cells(s, id, g0, g1, p, &syl, false);
+            }
+        });
+        self.flash(if n == 0 { "nada a preencher (as células já têm notas)".to_string() } else { format!("{n} nota(s) \"{syl}\" escritas") }, cx);
+    }
+
     /// Células alvo: a seleção da grade, senão a célula do cursor — (compasso, linha, célula).
     fn fx_targets(&self, cx: &gpui_kit::App) -> Vec<(usize, usize, usize)> {
         let g = self.grid.read(cx);

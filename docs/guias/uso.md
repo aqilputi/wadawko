@@ -169,6 +169,14 @@ escreve nos tempos; passo 0 fica na célula.
   cursor abre com a cor (12 cores ou "herdar"), volume, pan, o que mostrar na grade (dinâmica,
   kiai, efeitos), pessoas e ↑/↓, nome, som e remover.
 
+# Preencher a seleção
+
+Selecione células (ou deixe só o cursor: vale o compasso dele na linha) e use `Ctrl+Shift+I`
+(paleta filtrada em "Preencher") ou, no vim, `space e …`: **a cada 2** (`2`), **a cada 4** (`4`),
+**contratempo** (`c`), **euclidiano 3 em 8** (`3`) e **5 em 8** (`5`), **oroshi** (`o`, golpes cada
+vez mais próximos, terminando em acento). Escreve a sílaba da célula do cursor (vazia: `don`; no
+contratempo, `ka`), só nas células vazias, num passo de desfazer.
+
 # Efeitos por célula
 
 Como os comandos de um tracker, curtos e legíveis, até 3 por célula (ex.: `R4< D+1`):

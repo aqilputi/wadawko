@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-19T02:36:11Z
+  at: 2026-11-19T03:03:39Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -80,6 +80,7 @@ Valem na área do editor (grade, partitura, esteira), com ou sem vim.
 | `Ctrl+L` | `transport::LoopSelection` | Loop: trecho da seleção (ou do compasso do cursor) |
 | `Alt+T` | `transport::TapTempo` | Tap tempo (bata no ritmo para marcar o BPM) |
 | `Ctrl+Shift+B` | `view::ToggleSections` | Painel de seções: mostrar/esconder |
+| `Ctrl+Shift+I` | `fill::Open` | Preencher a seleção… (padrões) |
 | `Alt+P` | `transport::RehearsePick` | Ensaiar como… (escolher a pessoa) |
 | `Alt+Shift+P` | `transport::RehearseOff` | Ensaiar como: todos (desligar) |
 | `scrolllock` | `view::ToggleFollow` | Seguir o playhead: ligar/desligar |
@@ -181,6 +182,12 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 | `Space` `s` `Shift+G` | `section::Ungroup` | Seções: desfazer o grupo |
 | `Space` `s` `y` | `section::Copy` | Seções: copiar as selecionadas (cola noutra música também) |
 | `Space` `s` `Shift+P` | `section::Paste` | Seções: colar depois da selecionada |
+| `Space` `e` `2` | `fill::Every2` | Preencher: a cada 2 células |
+| `Space` `e` `4` | `fill::Every4` | Preencher: a cada 4 células |
+| `Space` `e` `c` | `fill::Offbeat` | Preencher: contratempo |
+| `Space` `e` `3` | `fill::Euclid3` | Preencher: euclidiano 3 em 8 |
+| `Space` `e` `5` | `fill::Euclid5` | Preencher: euclidiano 5 em 8 |
+| `Space` `e` `o` | `fill::Oroshi` | Preencher: oroshi (cada vez mais rápido) |
 | `Space` `f` `r` | `fx::Roll` | Efeito: rulo (×2 → 3 → 4 → 6 → 8 → nenhum) |
 | `Space` `f` `Shift+R` | `fx::RollCresc` | Efeito: rulo crescendo / decrescendo |
 | `Space` `f` `f` | `fx::Flam` | Efeito: flam (liga/desliga) |
@@ -408,6 +415,7 @@ Apertar o prefixo e esperar mostra as continuações possíveis.
 | `Space` `m` | música |
 | `Space` `z` | zoom |
 | `Space` `f` | efeitos |
+| `Space` `e` | preencher |
 | `g` | ir |
 | `z` | zoom/dobrar |
 | `d` | apagar |

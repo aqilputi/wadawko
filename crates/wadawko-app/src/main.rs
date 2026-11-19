@@ -1224,6 +1224,33 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
             println!("PROBE ensaiar como: paleta {q:?} → {on:?} → desligado {off}");
             check("ensaiar como: Alt+P + Enter liga; Alt+Shift+P desliga", q.as_deref() == Some("ensaiar como") && on.is_some() && off);
         }
+        // preencher (ux #2): "a cada 2" no compasso do cursor escreve nas vazias; um Ctrl+Z desfaz
+        {
+            let target = cx.update(|cx| {
+                let song = state.read(cx).song().clone();
+                (0..song.measures.len().min(8)).find_map(|m| (0..song.tracks.len()).find(|&t| (0..song.mlen(m)).step_by(2).any(|k| song.cell(t, m, k).is_none())).map(|t| Cur { m, t, k: 0 }))
+            });
+            if let Some(c) = target {
+                let count = |cx: &mut AsyncApp| cx.update(|cx| {
+                    let song = state.read(cx).song().clone();
+                    (0..song.mlen(c.m)).filter(|&k| song.cell(c.t, c.m, k).is_some()).count()
+                });
+                cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                    g.cursor = Some(c);
+                    g.anchor = None;
+                    cx.notify();
+                }));
+                let n0 = count(cx);
+                let _ = w.update(cx, |_, window, cx| window.dispatch_action(Box::new(keys::fill::Every2), cx));
+                wait(cx, 120).await;
+                let n1 = count(cx);
+                key("ctrl-z", cx);
+                wait(cx, 120).await;
+                let n2 = count(cx);
+                println!("PROBE preencher a cada 2: {c:?} · {n0} → {n1} → Ctrl+Z {n2}");
+                check("preencher: a cada 2 escreve nas vazias e um Ctrl+Z desfaz", n1 > n0 && n2 == n0);
+            }
+        }
         // trechos de ensaio (F7b): Ctrl+Shift+L guarda o trecho com nome; clicar na lista volta o loop; Ctrl+Z desfaz
         {
             let n_spots = |cx: &mut AsyncApp| cx.update(|cx| wadawko_core::ops::practice::spots(state.read(cx).song()).to_vec());
