@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-19T00:34:26Z
+  at: 2026-11-19T00:35:25Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -371,13 +371,13 @@ Com a paleta aberta. Tab/Shift+Tab e ↑/↓ andam na lista, Enter executa, Esc 
 | `Alt+0` | `step::Step0` | Passo de edição: 0 (fica na célula) |
 | `Alt+1` | `step::Step1` | Passo de edição: 1 |
 | `Alt+2` | `step::Step2` | Passo de edição: 2 |
-| `Alt+3` | `step::Step3` |  |
+| `Alt+3` | `step::Step3` | Passo de edição: 3 |
 | `Alt+4` | `step::Step4` | Passo de edição: 4 |
-| `Alt+5` | `step::Step5` |  |
-| `Alt+6` | `step::Step6` |  |
-| `Alt+7` | `step::Step7` |  |
-| `Alt+8` | `step::Step8` |  |
-| `Alt+9` | `step::Step9` |  |
+| `Alt+5` | `step::Step5` | Passo de edição: 5 |
+| `Alt+6` | `step::Step6` | Passo de edição: 6 |
+| `Alt+7` | `step::Step7` | Passo de edição: 7 |
+| `Alt+8` | `step::Step8` | Passo de edição: 8 |
+| `Alt+9` | `step::Step9` | Passo de edição: 9 |
 
 ## Contexto `Workspace && layout == vertical && (mode == normal || mode == visual || mode == vline)`
 
