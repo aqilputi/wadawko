@@ -91,6 +91,7 @@
   {
     "context": "Workspace && (mode == normal || mode == visual || mode == vline)",
     "bindings": {
+      "delete": "grid::DeleteSelection",
       "h": "grid::Left",
       "l": "grid::Right",
       "j": "grid::Down",
@@ -302,6 +303,7 @@
   {
     "context": "Workspace && mode == insert",
     "bindings": {
+      "delete": "grid::DeleteSelection",
       "escape": "vim::Normal",
       "ctrl-[": "vim::Normal"
     }
