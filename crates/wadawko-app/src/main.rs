@@ -1194,6 +1194,14 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 let r2 = cx.update(|cx| state.read(cx).tp.range);
                 println!("PROBE loop no gutter: arrasto c1→c2 = {r1:?} · Alt+clique = {r2:?}");
                 check("loop no gutter do editor vertical: arrastar cria c1–c2; Alt+clique limpa", r1 == Some(wadawko_core::timeline::Region { start_bar: 0, end_bar: 2 }) && r2.is_none());
+                // clique simples dentro do trecho também desmarca
+                cx.update(|cx| state.update(cx, |s, cx| s.set_range(Some(wadawko_core::timeline::Region { start_bar: 0, end_bar: 2 }), cx)));
+                wait(cx, 150).await;
+                let p1 = pt(1, cx).unwrap_or(p1);
+                click(p1, none, cx).await;
+                let r3 = cx.update(|cx| state.read(cx).tp.range);
+                println!("PROBE loop no gutter: clique dentro de c1–c2 = {r3:?}");
+                check("loop no gutter do editor vertical: clique dentro do trecho desmarca", r3.is_none());
             }
         }
         // ensaiar como… (ux #1): Alt+P abre a paleta filtrada; Enter liga; Alt+Shift+P desliga

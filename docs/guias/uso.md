@@ -244,7 +244,7 @@ botões prontos. O áudio, a esteira e o MIDI tocam os efeitos; a partitura aind
 - **Loop por trecho** ("esses dois compassos de novo"): **arraste na faixa de cima da régua**
   do primeiro ao último compasso — o trecho fica azul, o loop liga e a música só toca ali
   (pode atravessar seções). Puxe as alças das pontas para ajustar; clique dentro do trecho
-  liga/desliga o loop; `Alt+clique` limpa; clique fora marca só aquele compasso. `Ctrl+L`
+  desmarca (`Alt+clique` também); clique fora marca só aquele compasso. `Ctrl+L`
   faz o trecho da seleção (ou do compasso do cursor); no vim, `[` e `]` põem o início e o fim
   no compasso do cursor. O trecho aparece na barra de ferramentas (`↺ c2–c3 ✕` — clique
   limpa) e na barra de status. Tocando, mudar o trecho não reinicia: o playhead continua se

@@ -309,7 +309,7 @@ pub const DRAG_START_PX: f32 = 4.0;
 
 /// Arrasto na faixa de loop da régua (F2): define o trecho `[min, max]` entre
 /// `anchor` e `cur` (compassos-fonte). Pegando uma alça, `anchor` é a ponta
-/// oposta; clique sem arrasto dentro do trecho alterna o loop, com Alt limpa.
+/// oposta; clique sem arrasto dentro do trecho (ou com Alt) limpa.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LoopDrag {
     /// seção onde o ponteiro está (muda ao arrastar para outra seção)
@@ -967,17 +967,15 @@ impl GridView {
     }
 
     /// Soltou o botão durante o arrasto na faixa de loop: grava o trecho
-    /// (ou, sem arrasto: alterna o loop dentro do trecho / limpa com Alt / marca o compasso).
+    /// (ou, sem arrasto: limpa dentro do trecho ou com Alt / marca o compasso fora dele).
     pub fn finish_loop_drag(&mut self, cx: &mut Context<Self>) {
         let Some(d) = self.loop_drag.take() else { return };
         self.state.update(cx, |st, cx| {
             if d.moved {
                 st.set_range(Some(d.region()), cx);
-            } else if d.alt {
+            } else if d.alt || d.inside {
+                // clique sem arrasto dentro do trecho (ou com Alt) desmarca
                 st.set_range(None, cx);
-            } else if d.inside {
-                let on = !st.tp.looping;
-                st.set_loop(on, cx);
             } else {
                 st.set_range(Some(d.region()), cx);
             }
