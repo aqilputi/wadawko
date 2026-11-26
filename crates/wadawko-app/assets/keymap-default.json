@@ -92,6 +92,9 @@
     "context": "Workspace && (mode == normal || mode == visual || mode == vline)",
     "bindings": {
       "delete": "grid::DeleteSelection",
+      "ctrl-c": "grid::Copy",
+      "ctrl-x": "grid::Cut",
+      "ctrl-v": "grid::Paste",
       "h": "grid::Left",
       "l": "grid::Right",
       "j": "grid::Down",
@@ -304,6 +307,9 @@
     "context": "Workspace && mode == insert",
     "bindings": {
       "delete": "grid::DeleteSelection",
+      "ctrl-c": "grid::Copy",
+      "ctrl-x": "grid::Cut",
+      "ctrl-v": "grid::Paste",
       "escape": "vim::Normal",
       "ctrl-[": "vim::Normal"
     }
