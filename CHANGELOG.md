@@ -64,6 +64,9 @@ Formato: [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) · versões
 - Licença do código: **MIT OR Apache-2.0** (`LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`).
 
 ### Mudado
+- **`Delete`, `Ctrl+C`, `Ctrl+X` e `Ctrl+V` agem na seleção também com o vim ligado** (normal,
+  visual e inserção), na grade e no editor vertical. Antes só funcionavam no modo simples; sem
+  seleção, agem na célula do cursor. Passo novo no `--demo probe`.
 - **Identidade visual nova**: tema escuro com grafites azulados, rosa e ciano; fonte Inconsolata;
   ícones próprios; botões com relevo (gradiente, brilho, sombra; aceso com brilho rosa).
 - Minimap mais calmo: cores esmaecidas, 1 px entre células e densidade por tempo nas passagens rápidas.

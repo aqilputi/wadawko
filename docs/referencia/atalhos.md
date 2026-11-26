@@ -5,7 +5,7 @@ description: "Todas as teclas do keymap padrão do app, por contexto, com o tít
 tags: [referência, teclado, atalhos]
 generated:
   by: process:tools/gen-atalhos.py
-  at: 2026-11-19T03:48:34Z
+  at: 2026-11-26T16:12:20Z
 fontes: [crates/wadawko-app/assets/keymap-default.json, crates/wadawko-app/src/keys/registry.rs]
 ---
 
@@ -121,6 +121,10 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 
 | Tecla | Comando | Ação |
 |---|---|---|
+| `Delete` | `grid::DeleteSelection` | Apagar seleção |
+| `Ctrl+C` | `grid::Copy` | Copiar seleção |
+| `Ctrl+X` | `grid::Cut` | Recortar seleção |
+| `Ctrl+V` | `grid::Paste` | Colar |
 | `h` | `grid::Left` | célula ← |
 | `l` | `grid::Right` | célula → |
 | `j` | `grid::Down` | linha ↓ |
@@ -335,6 +339,10 @@ Com o vim ligado (Configurações ou `keys::ToggleVim`).
 
 | Tecla | Comando | Ação |
 |---|---|---|
+| `Delete` | `grid::DeleteSelection` | Apagar seleção |
+| `Ctrl+C` | `grid::Copy` | Copiar seleção |
+| `Ctrl+X` | `grid::Cut` | Recortar seleção |
+| `Ctrl+V` | `grid::Paste` | Colar |
 | `Esc` | `vim::Normal` | voltar ao normal |
 | `Ctrl+[` | `vim::Normal` | voltar ao normal |
 

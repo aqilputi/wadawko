@@ -1167,6 +1167,69 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 check("teclado vertical: passo 2 desce 2 células; Tab vai para a próxima linha", wrote.as_deref() == Some("don") && c1.is_some_and(|c| c.k == k0 + 2 && c.t == 0) && c2.is_some_and(|c| c.t == 1));
             }
         }
+        // seleção com o vim ligado (normal/visual): Ctrl+C, Ctrl+V, Delete e Ctrl+Z sobre um bloco de notas
+        {
+            let vim0 = cx.update(|cx| shell.read(cx).vim_on);
+            cx.update(|cx| shell.clone().update(cx, |sh, cx| sh.set_vim(true, cx)));
+            let snap = |cx: &mut AsyncApp, m: usize| -> Vec<Option<String>> {
+                cx.update(|cx| {
+                    let song = state.read(cx).song().clone();
+                    (0..2).flat_map(|t| (0..4).map(move |k| (t, k))).map(|(t, k)| song.cell(t, m, k).map(str::to_string)).collect()
+                })
+            };
+            let pick = cx.update(|cx| {
+                let song = state.read(cx).song().clone();
+                let has = |m: usize| (0..2).any(|t| (0..4).any(|k| song.cell(t, m, k).is_some()));
+                let ok = |m: usize| song.tracks.len() >= 2 && song.mlen(m) >= 4;
+                let src = (0..song.measures.len()).find(|&m| ok(m) && has(m))?;
+                let dst = (0..song.measures.len()).rev().find(|&m| m != src && ok(m))?;
+                Some((src, dst))
+            });
+            if let Some((src, dst)) = pick {
+                let sel = |a: Cur, c: Cur, cx: &mut AsyncApp| {
+                    cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                        g.anchor = Some(a);
+                        g.cursor = Some(c);
+                        g.vmode = views::grid::VMode::Visual;
+                        cx.notify();
+                    }))
+                };
+                let s0 = snap(cx, src);
+                let d0 = snap(cx, dst);
+                sel(Cur { m: src, t: 0, k: 0 }, Cur { m: src, t: 1, k: 3 }, cx);
+                key("ctrl-c", cx);
+                wait(cx, 60).await;
+                let after_copy = cx.update(|cx| shell.read(cx).grid.read(cx).anchor);
+                // Ctrl+V no modo normal: cola com o canto no cursor
+                cx.update(|cx| shell.read(cx).grid.clone().update(cx, |g, cx| {
+                    g.anchor = None;
+                    g.vmode = views::grid::VMode::Normal;
+                    g.cursor = Some(Cur { m: dst, t: 0, k: 0 });
+                    cx.notify();
+                }));
+                key("ctrl-v", cx);
+                wait(cx, 60).await;
+                let d1 = snap(cx, dst);
+                sel(Cur { m: dst, t: 0, k: 0 }, Cur { m: dst, t: 1, k: 3 }, cx);
+                key("delete", cx);
+                wait(cx, 60).await;
+                let d2 = snap(cx, dst);
+                // Ctrl+X recorta (copia e apaga) e Ctrl+Z ×3 volta tudo
+                sel(Cur { m: src, t: 0, k: 0 }, Cur { m: src, t: 1, k: 3 }, cx);
+                key("ctrl-x", cx);
+                wait(cx, 60).await;
+                let s1 = snap(cx, src);
+                for _ in 0..3 {
+                    key("ctrl-z", cx);
+                }
+                wait(cx, 80).await;
+                let (s2, d3) = (snap(cx, src), snap(cx, dst));
+                key("escape", cx);
+                println!("PROBE seleção vim: c{} → c{} · copiou (âncora sai: {}) · colou={} · Delete limpou={} · Ctrl+X limpou={} · Ctrl+Z volta={}", src + 1, dst + 1, after_copy.is_none(), d1 == s0, d2.iter().all(Option::is_none), s1.iter().all(Option::is_none), s2 == s0 && d3 == d0);
+                check("vim: Ctrl+C/Ctrl+V/Delete/Ctrl+X na seleção e Ctrl+Z volta", d1 == s0 && d2.iter().all(Option::is_none) && s1.iter().all(Option::is_none) && s2 == s0 && d3 == d0);
+            }
+            cx.update(|cx| shell.clone().update(cx, |sh, cx| sh.set_vim(vim0, cx)));
+        }
         // faixa de loop no gutter do editor vertical (T3b): arrastar c1→c2 cria o trecho; Alt+clique limpa
         if cx.update(|cx| shell.read(cx).grid.read(cx).layout == views::grid::Layout::Vertical) {
             cx.update(|cx| shell.read(cx).scroll.set_offset(gpui_kit::point(gpui_kit::px(0.0), gpui_kit::px(0.0))));
@@ -1194,6 +1257,14 @@ fn run_probe(state: Entity<AppState>, shell: Entity<Shell>, w: Win, cx: &mut App
                 let r2 = cx.update(|cx| state.read(cx).tp.range);
                 println!("PROBE loop no gutter: arrasto c1→c2 = {r1:?} · Alt+clique = {r2:?}");
                 check("loop no gutter do editor vertical: arrastar cria c1–c2; Alt+clique limpa", r1 == Some(wadawko_core::timeline::Region { start_bar: 0, end_bar: 2 }) && r2.is_none());
+                // clique simples dentro do trecho também desmarca
+                cx.update(|cx| state.update(cx, |s, cx| s.set_range(Some(wadawko_core::timeline::Region { start_bar: 0, end_bar: 2 }), cx)));
+                wait(cx, 150).await;
+                let p1 = pt(1, cx).unwrap_or(p1);
+                click(p1, none, cx).await;
+                let r3 = cx.update(|cx| state.read(cx).tp.range);
+                println!("PROBE loop no gutter: clique dentro de c1–c2 = {r3:?}");
+                check("loop no gutter do editor vertical: clique dentro do trecho desmarca", r3.is_none());
             }
         }
         // ensaiar como… (ux #1): Alt+P abre a paleta filtrada; Enter liga; Alt+Shift+P desliga
